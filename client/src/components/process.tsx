@@ -40,14 +40,17 @@ export default function Process() {
           </p>
         </div>
         
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {steps.map((step, index) => {
             const IconComponent = step.icon;
             
             return (
               <div key={index} className="text-center">
                 <div className="bg-white rounded-xl p-6 h-full shadow-sm hover:shadow-md transition-all duration-200">
-                  <div className="bg-primary bg-opacity-10 rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-4">
+                  <div className="flex items-center justify-center mx-auto mb-4">
+                    <IconComponent className="w-8 h-8 text-primary" />
+                  </div>
+                  <div className="mb-3">
                     <span className="text-primary font-bold text-lg">{step.number}</span>
                   </div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-3" data-testid={`text-step-title-${index}`}>

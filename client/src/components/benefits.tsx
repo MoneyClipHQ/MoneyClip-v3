@@ -37,9 +37,6 @@ export default function Features() {
             return (
               <div key={index} className="text-center">
                 <div className="bg-gray-50 rounded-xl p-8 h-full">
-                  <div className="bg-primary bg-opacity-10 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-6">
-                    <IconComponent className="w-8 h-8 text-primary" />
-                  </div>
                   <h3 className="text-xl font-semibold text-gray-900 mb-4" data-testid={`text-feature-title-${index}`}>
                     {feature.title}
                   </h3>

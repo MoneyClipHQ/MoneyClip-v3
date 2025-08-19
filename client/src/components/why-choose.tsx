@@ -39,9 +39,6 @@ export default function WhyChoose() {
             return (
               <div key={index} className="text-center">
                 <div className="bg-white rounded-xl p-6 h-full shadow-sm">
-                  <div className="bg-primary bg-opacity-10 rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-4">
-                    <IconComponent className="w-6 h-6 text-primary" />
-                  </div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-3" data-testid={`text-why-title-${index}`}>
                     {benefit.title}
                   </h3>
