@@ -4,6 +4,17 @@
 
 MoneyClip is a web application designed specifically for financial advisors to create secure screen recordings for client communication. The application allows advisors to record their screens while explaining portfolios, market updates, or financial plans, then share these recordings securely with clients through password-protected, expiring links. This solution addresses the challenge of explaining complex financial concepts while maintaining compliance standards required in the financial services industry.
 
+## Recent Changes (August 19, 2025)
+
+### Complete Sign Up System Implementation
+- **Full advisor registration flow**: Created comprehensive signup page with account creation and subscription management
+- **Payment processing integration**: Built payment form with card details collection (stubbed for MVP/test mode)
+- **MVP subscription model**: Fixed $20/month plan with automatic billing setup
+- **Data validation & error handling**: Email uniqueness checking, form validation, and user-friendly error messages
+- **Success confirmation flow**: Post-signup confirmation with account details and next steps
+- **Audit logging system**: Complete event tracking for compliance (SIGNUP_PAGE_VIEWED, SIGNUP_SUBMITTED, SUBSCRIPTION_CREATED)
+- **Routing integration**: Connected signup flow to existing landing page and navigation
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
