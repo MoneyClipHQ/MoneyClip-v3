@@ -10,10 +10,10 @@ export default function CTA() {
     <section className="bg-primary py-16 sm:py-20">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
         <h2 className="text-3xl sm:text-4xl font-bold text-white mb-6">
-          Ready to transform client communication?
+          Built for Advisors by Advisors
         </h2>
-        <p className="text-xl text-blue-100 mb-8 max-w-2xl mx-auto">
-          Join financial advisors who are already using MoneyClip to save time and improve client relationships.
+        <p className="text-xl text-blue-100 mb-8 max-w-3xl mx-auto">
+          Created by financial professionals who understand the unique challenges of client communication and regulatory compliance.
         </p>
         <div className="flex justify-center">
           <Button

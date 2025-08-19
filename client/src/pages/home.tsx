@@ -1,7 +1,8 @@
 import Header from "@/components/header";
 import Hero from "@/components/hero";
 import Process from "@/components/process";
-import Benefits from "@/components/benefits";
+import Features from "@/components/benefits";
+import WhyChoose from "@/components/why-choose";
 import CTA from "@/components/cta";
 import Footer from "@/components/footer";
 
@@ -12,7 +13,8 @@ export default function Home() {
       <main>
         <Hero />
         <Process />
-        <Benefits />
+        <Features />
+        <WhyChoose />
         <CTA />
       </main>
       <Footer />
