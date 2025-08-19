@@ -1,0 +1,80 @@
+Create a minimalist Sign Up page for MoneyClip (advisor-focused). The page collects basic account info and payment details for a single MVP plan and then creates the account.
+
+Purpose
+	•	Let a new financial advisor create an account and subscribe to the MVP plan.
+	•	Keep the flow simple, professional, and consistent with the app’s fintech aesthetic.
+
+Form fields (all required)
+	•	Advisor Name
+	•	Company Name
+	•	Email (validate format; check if already in use)
+	•	Payment Details (cardholder name, card number, expiration, CVC, postal code)
+	•	Plan is fixed: MoneyClip MVP — $20/month (includes everything). Display as a non-editable plan summary.
+
+UI & copy
+	•	Page title: “Create your MoneyClip account”
+	•	Short plan summary box: “MVP plan • $20/month • All features included”
+	•	Clear note: “Billing monthly. Cancel anytime.”
+	•	Checkboxes:
+	•	“I agree to the Terms and Privacy Policy” (links open placeholder pages)
+	•	Optional marketing emails (unchecked by default)
+	•	Primary action: Start subscription
+	•	Secondary link: “Already have an account? Log in”
+
+Behavior
+	•	Validate all fields before allowing submission.
+	•	If email is already registered, show a friendly error and link to Log in.
+	•	On submit:
+	•	Create the advisor account with Advisor Name, Company Name, Email.
+	•	Attach the subscription for the $20/month MVP plan.
+	•	Do not store raw card data; rely on the payment provider’s tokenized response (integration can be stubbed for MVP/test mode).
+	•	On success:
+	•	Show a confirmation state with the plan and next billing date.
+	•	Provide a Continue button that takes the user to the Dashboard (or an onboarding step if defined).
+	•	Send a confirmation email (content can be simple placeholder for MVP).
+
+Receipts & billing (MVP expectations)
+	•	Generate a simple on-screen receipt/confirmation with:
+	•	Advisor Name, Company, Email
+	•	Plan: MoneyClip MVP — $20/month
+	•	Status: Active
+	•	Next billing date (30 days from today)
+	•	Provide a link to “Manage billing” (placeholder page for MVP).
+
+Accessibility & responsiveness
+	•	Keyboard navigable, visible focus states for all controls.
+	•	Inline error messages announced to screen readers.
+	•	Works on desktop and mobile.
+
+Compliance & audit
+	•	Log events: SIGNUP_PAGE_VIEWED, SIGNUP_SUBMITTED, SIGNUP_FAILED (with reason), SUBSCRIPTION_CREATED.
+	•	Do not log or store sensitive card numbers/CVC in app logs.
+
+Error states
+	•	Invalid email format → inline error near Email.
+	•	Email already in use → inline error + link to Log in.
+	•	Payment failure/decline → clear, non-technical message and a Try again button; preserve non-payment fields.
+	•	Network/server error → show a generic retry option; never lose typed data in the form.
+
+Acceptance criteria
+	•	I can enter Advisor Name, Company Name, Email, and Payment Details, check Terms, and click Start subscription.
+	•	If the email is already registered, I’m told kindly and can click Log in.
+	•	On success, I see a confirmation with plan, price, and next billing date, and I can Continue to the Dashboard.
+	•	A confirmation email is (stub) sent.
+	•	No raw card data is stored by the app; payment provider handles tokenization.
+	•	The page is minimalist, responsive, and accessible.
+
+Manual test steps
+	1.	Submit with empty fields → see required-field errors.
+	2.	Enter invalid email → see inline validation.
+	3.	Use an email that already exists → see “already in use” and a Log in link works.
+	4.	Enter valid details and a test payment → see success confirmation and Continue to Dashboard.
+	5.	Simulate a payment decline → see clear error, ability to retry without retyping everything.
+	6.	Refresh after success → account exists and can log in.
+	7.	Verify audit events for page view and submission are recorded.
+
+Guardrails
+	•	Single plan only: $20/month, no plan picker.
+	•	No free trial unless explicitly added later.
+	•	No stack/library recommendations.
+	•	No storing PCI data; use provider tokenization only (stub acceptable for MVP/test mode).
