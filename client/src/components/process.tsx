@@ -4,20 +4,20 @@ export default function Process() {
   const steps = [
     {
       icon: Video,
-      title: "1. Record Your Screen",
-      description: "Capture your screen as you walk through portfolios, market updates, or financial plans. No technical setup required.",
+      title: "Record Your Screen",
+      description: "Capture your screen as you explain portfolios, market updates, or financial strategies. One-click recording with no technical setup.",
       color: "primary"
     },
     {
       icon: Share,
-      title: "2. Share Securely",
-      description: "Generate a secure, password-protected link that expires when you want it to. Built for financial industry compliance.",
+      title: "Share a Secure Link",
+      description: "Generate password-protected, expiring links that meet compliance requirements. Control who sees what and for how long.",
       color: "primary"
     },
     {
       icon: GraduationCap,
-      title: "3. Educate Clients",
-      description: "Clients watch at their own pace, replay sections they need to review, and come to meetings better prepared.",
+      title: "Educate Your Clients",
+      description: "Clients watch at their convenience, replay complex sections, and arrive at meetings with better understanding.",
       color: "accent"
     }
   ];
