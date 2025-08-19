@@ -1,15 +1,14 @@
 import { Button } from "@/components/ui/button";
-import { Link } from "wouter";
 
 export default function Header() {
   const handleLogin = () => {
-    // For demo purposes, redirect to dashboard
-    window.location.href = "/dashboard";
+    // TODO: Implement login functionality
+    console.log("Login clicked");
   };
 
   const handleSignup = () => {
-    // For demo purposes, redirect to dashboard
-    window.location.href = "/dashboard";
+    // TODO: Implement signup functionality
+    console.log("Signup clicked");
   };
 
   return (
