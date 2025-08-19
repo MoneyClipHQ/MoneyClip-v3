@@ -1,0 +1,59 @@
+Create a minimalist Advisor Dashboard for MoneyClip. Keep the layout clean, fast to scan, and consistent with modern advisor fintech apps.
+
+Goals:
+	•	Make recording the primary action.
+	•	Give quick access to the video library and scripted content.
+	•	Show the three most recent videos for fast resume.
+	•	Provide a simple account menu with branding, compliance, settings, and sign out.
+
+Layout and IA:
+	•	Header:
+	•	Left: MoneyClip logo (clickable to Dashboard).
+	•	Right: Advisor’s name. Clicking opens a dropdown: Branding, Compliance, Settings, Sign out.
+	•	Primary navigation (top row under header): Two buttons: Video Library, Scripted Content.
+	•	Primary action (center-stage): Large “Record” button. Clear label and subtext like “Record your screen with voice.”
+	•	Recent items: A row showing the advisor’s three most recent videos as simple, clickable thumbnails or boxes. Each shows title, created/updated time, and a subtle play or open icon.
+	•	Empty state: If no recent videos, show a friendly message and a “Record your first video” button.
+
+Behavior:
+	•	Clicking Record takes the advisor directly into the recording flow.
+	•	Clicking a recent video opens its detail page.
+	•	Video Library and Scripted Content lead to their respective pages.
+	•	Advisor name dropdown opens on click or Enter and closes on outside click or Escape.
+
+Content and labels:
+	•	Clear, short labels: “Record,” “Video Library,” “Scripted Content,” “Branding,” “Compliance,” “Settings,” “Sign out.”
+	•	No jargon. Keep helper copy to one short line where needed.
+
+Design requirements:
+	•	Minimalist, professional aesthetic suitable for advisor fintech.
+	•	Responsive on desktop and mobile.
+	•	Obvious visual priority on the Record button.
+	•	Consistent spacing, typography, and hover/focus states.
+
+Accessibility:
+	•	All interactive elements are keyboard reachable in a logical order.
+	•	Visible focus states.
+	•	Dropdown can be opened and navigated with keyboard.
+
+Acceptance criteria:
+	•	I see header with logo left and advisor name right.
+	•	Clicking the advisor name opens a dropdown with: Branding, Compliance, Settings, Sign out. Each item is selectable.
+	•	I see two top buttons: Video Library and Scripted Content.
+	•	A large center “Record” button is present and clearly the primary action.
+	•	I see the three most recent videos as clickable thumbnails or boxes with title and time info.
+	•	If there are no videos, I see an empty state with a call to start recording.
+	•	Page looks clean and works on desktop and mobile.
+
+Manual test steps:
+	1.	Open Dashboard. Confirm header, nav buttons, central Record, and recent videos appear.
+	2.	Click Record. Confirm navigation into the recording flow.
+	3.	Click a recent video. Confirm it opens the video detail page.
+	4.	Open the advisor dropdown. Navigate with keyboard and select Settings.
+	5.	Resize to mobile width. Confirm layout adapts and all controls are usable.
+	6.	Test with zero videos. Confirm empty state and “Record your first video” path.
+
+Guardrails:
+	•	Do not add extra widgets or marketing copy.
+	•	Keep text short; avoid clutter.
+	•	No stack or library choices in this prompt.
