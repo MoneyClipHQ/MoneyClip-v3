@@ -14,8 +14,7 @@ export default function Hero() {
           <span className="text-primary">secure</span> for financial advisors
         </h1>
         <p className="mt-6 text-xl text-secondary leading-relaxed max-w-3xl mx-auto">
-          Create secure screen recordings to explain portfolios, market updates, and financial plans. 
-          Share with clients through password-protected, expiring links that meet compliance standards.
+          Give your clients advice they can actually understand — and rewatch — with compliant screen recordings that save you time.
         </p>
         <div className="mt-10">
           <Button
