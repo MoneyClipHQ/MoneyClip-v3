@@ -338,14 +338,7 @@ export default function Settings() {
     return null;
   };
 
-  // Cleanup debounced save on unmount
-  useEffect(() => {
-    return () => {
-      if (debouncedBrandingSave.current) {
-        clearTimeout(debouncedBrandingSave.current);
-      }
-    };
-  }, []);
+
 
   // Watch for color changes to check contrast
   useEffect(() => {

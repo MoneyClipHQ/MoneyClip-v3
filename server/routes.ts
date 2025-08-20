@@ -402,12 +402,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Update branding
   app.patch("/api/settings/branding", requireAuth, async (req: Request, res: Response) => {
     try {
+      console.log("Branding update request:", {
+        advisorId: req.session.advisorId,
+        bodySize: JSON.stringify(req.body).length,
+        hasLogoUrl: !!req.body.logoUrl,
+        logoUrlLength: req.body.logoUrl ? req.body.logoUrl.length : 0
+      });
+      
       const validatedData = updateBrandingSchema.parse(req.body);
       
       // Get advisor ID from session
       const advisorId = req.session.advisorId!;
       
       await storage.updateBranding(advisorId, validatedData);
+      
+      console.log("Branding updated successfully for advisor:", advisorId);
       
       res.json({ success: true });
     } catch (error) {
