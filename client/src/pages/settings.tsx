@@ -249,47 +249,32 @@ export default function Settings() {
     },
   });
 
-  // Debounced save function for branding
-  const debouncedBrandingSave = useRef<NodeJS.Timeout | null>(null);
 
-  // Auto-save handlers
-  const handleContactBlur = (field: keyof UpdateContactInfo) => {
-    const value = contactForm.getValues(field);
+
+  // Save handlers for explicit save buttons
+  const handleContactSave = () => {
     if (contactForm.formState.isValid) {
       updateContactMutation.mutate(contactForm.getValues());
     }
   };
 
-  const handleComplianceBlur = () => {
+  const handleComplianceSave = () => {
     if (complianceForm.formState.isValid) {
       updateComplianceMutation.mutate(complianceForm.getValues());
     }
   };
 
-  const handleBrandingChange = (field: keyof UpdateBranding) => {
-    // Clear existing timeout
-    if (debouncedBrandingSave.current) {
-      clearTimeout(debouncedBrandingSave.current);
-    }
+  const handleBrandingSave = () => {
+    const formData = brandingForm.getValues();
+    console.log("Manual branding save triggered with:", {
+      logoUrl: formData.logoUrl ? `${formData.logoUrl.substring(0, 50)}...` : "null",
+      primaryColor: formData.primaryColor,
+      secondaryColor: formData.secondaryColor
+    });
     
-    // Set new timeout for debounced save
-    debouncedBrandingSave.current = setTimeout(() => {
-      const formData = brandingForm.getValues();
-      const isValid = brandingForm.formState.isValid;
-      
-      // Validate the specific field that changed
-      const fieldValue = formData[field];
-      if (field === 'primaryColor' || field === 'secondaryColor') {
-        const isValidColor = fieldValue && /^#[0-9A-F]{6}$/i.test(fieldValue);
-        if (!isValidColor) {
-          return; // Don't save invalid colors
-        }
-      }
-      
-      if (isValid) {
-        updateBrandingMutation.mutate(formData);
-      }
-    }, 500); // 500ms delay
+    if (brandingForm.formState.isValid) {
+      updateBrandingMutation.mutate(formData);
+    }
   };
 
   // Logo upload handler
@@ -326,7 +311,7 @@ export default function Settings() {
       console.log("Logo uploaded, data URL length:", result.length);
       setLogoPreview(result);
       brandingForm.setValue("logoUrl", result);
-      handleBrandingChange("logoUrl");
+      // Note: User needs to click Save to persist logo
     };
     reader.readAsDataURL(file);
   };
@@ -335,7 +320,7 @@ export default function Settings() {
     setLogoFile(null);
     setLogoPreview(null);
     brandingForm.setValue("logoUrl", "");
-    handleBrandingChange("logoUrl");
+    // Note: User needs to click Save to persist logo removal
   };
 
   // Color contrast check
@@ -448,7 +433,7 @@ export default function Settings() {
                             <Input
                               {...field}
                               data-testid="input-advisor-name"
-                              onBlur={() => handleContactBlur("advisorName")}
+                              onChange={field.onChange}
                             />
                           </FormControl>
                           <FormMessage />
@@ -466,7 +451,7 @@ export default function Settings() {
                             <Input
                               {...field}
                               data-testid="input-company-name"
-                              onBlur={() => handleContactBlur("companyName")}
+                              onChange={field.onChange}
                             />
                           </FormControl>
                           <FormMessage />
@@ -485,7 +470,7 @@ export default function Settings() {
                               {...field}
                               type="email"
                               data-testid="input-email"
-                              onBlur={() => handleContactBlur("email")}
+                              onChange={field.onChange}
                             />
                           </FormControl>
                           <FormMessage />
@@ -505,7 +490,7 @@ export default function Settings() {
                               type="tel"
                               placeholder="+1 (555) 123-4567"
                               data-testid="input-phone"
-                              onBlur={() => handleContactBlur("phone")}
+                              onChange={field.onChange}
                             />
                           </FormControl>
                           <FormMessage />
@@ -525,7 +510,7 @@ export default function Settings() {
                               type="url"
                               placeholder="https://calendly.com/yourname"
                               data-testid="input-calendar-link"
-                              onBlur={() => handleContactBlur("calendarLink")}
+                              onChange={field.onChange}
                             />
                           </FormControl>
                           <FormMessage />
@@ -535,16 +520,26 @@ export default function Settings() {
                   </form>
                 </Form>
                 
-                {/* Save indicator */}
-                {updateContactMutation.isPending && (
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
-                    Saving...
+                {/* Save Button */}
+                <div className="flex items-center justify-between pt-4 border-t">
+                  <div className="text-xs text-gray-500">
+                    Last updated: {displaySettings?.updatedAt?.toLocaleString() || "Never"}
                   </div>
-                )}
-                
-                <div className="text-xs text-gray-500">
-                  Last updated: {displaySettings?.updatedAt?.toLocaleString() || "Never"}
+                  <Button 
+                    onClick={handleContactSave}
+                    disabled={updateContactMutation.isPending}
+                    data-testid="button-save-contact"
+                    className="min-w-[100px]"
+                  >
+                    {updateContactMutation.isPending ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Saving...
+                      </>
+                    ) : (
+                      "Save Changes"
+                    )}
+                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -573,7 +568,7 @@ export default function Settings() {
                               {...field}
                               rows={8}
                               data-testid="textarea-disclosure"
-                              onBlur={handleComplianceBlur}
+                              onChange={field.onChange}
                               className="resize-none"
                             />
                           </FormControl>
@@ -641,13 +636,24 @@ export default function Settings() {
                   </AlertDialog>
                 </div>
                 
-                {/* Save indicator */}
-                {updateComplianceMutation.isPending && (
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
-                    Saving...
-                  </div>
-                )}
+                {/* Save Button */}
+                <div className="flex justify-end pt-4 border-t">
+                  <Button 
+                    onClick={handleComplianceSave}
+                    disabled={updateComplianceMutation.isPending}
+                    data-testid="button-save-compliance"
+                    className="min-w-[100px]"
+                  >
+                    {updateComplianceMutation.isPending ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Saving...
+                      </>
+                    ) : (
+                      "Save Changes"
+                    )}
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -739,7 +745,6 @@ export default function Settings() {
                                     value={field.value || "#2563eb"}
                                     onChange={(e) => {
                                       field.onChange(e.target.value);
-                                      handleBrandingChange("primaryColor");
                                     }}
                                     className="w-12 h-10 rounded border border-gray-300 cursor-pointer"
                                     data-testid="input-primary-color"
@@ -750,7 +755,6 @@ export default function Settings() {
                                     data-testid="input-primary-color-hex"
                                     onChange={(e) => {
                                       field.onChange(e.target.value);
-                                      handleBrandingChange("primaryColor");
                                     }}
                                     className="flex-1"
                                   />
@@ -774,7 +778,6 @@ export default function Settings() {
                                     value={field.value || "#1e40af"}
                                     onChange={(e) => {
                                       field.onChange(e.target.value);
-                                      handleBrandingChange("secondaryColor");
                                     }}
                                     className="w-12 h-10 rounded border border-gray-300 cursor-pointer"
                                     data-testid="input-secondary-color"
@@ -785,7 +788,6 @@ export default function Settings() {
                                     data-testid="input-secondary-color-hex"
                                     onChange={(e) => {
                                       field.onChange(e.target.value);
-                                      handleBrandingChange("secondaryColor");
                                     }}
                                     className="flex-1"
                                   />
@@ -807,21 +809,24 @@ export default function Settings() {
                       </div>
                     )}
                     
-                    {/* Save indicator */}
-                    {updateBrandingMutation.isPending && (
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
-                        Saving branding changes...
-                      </div>
-                    )}
-                    
-                    {/* Success indicator */}
-                    {updateBrandingMutation.isSuccess && !updateBrandingMutation.isPending && (
-                      <div className="flex items-center gap-2 text-sm text-green-600">
-                        <Check className="h-4 w-4" />
-                        Branding saved successfully
-                      </div>
-                    )}
+                    {/* Save Button */}
+                    <div className="flex justify-end pt-4 border-t">
+                      <Button 
+                        onClick={handleBrandingSave}
+                        disabled={updateBrandingMutation.isPending}
+                        data-testid="button-save-branding"
+                        className="min-w-[100px]"
+                      >
+                        {updateBrandingMutation.isPending ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                            Saving...
+                          </>
+                        ) : (
+                          "Save Changes"
+                        )}
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
               </div>
