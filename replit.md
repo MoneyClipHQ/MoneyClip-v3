@@ -4,9 +4,32 @@
 
 MoneyClip is a web application designed specifically for financial advisors to create secure screen recordings for client communication. The application allows advisors to record their screens while explaining portfolios, market updates, or financial plans, then share these recordings securely with clients through password-protected, expiring links. This solution addresses the challenge of explaining complex financial concepts while maintaining compliance standards required in the financial services industry.
 
-## Recent Changes (August 19, 2025)
+## Recent Changes (August 20, 2025)
 
-### Complete Sign Up System Implementation
+### Advisor Dashboard Implementation - Complete Redesign
+- **Complete dashboard overhaul**: Implemented minimalist, advisor-focused dashboard per detailed specification
+- **Header with advisor dropdown**: MoneyClip logo (clickable to dashboard) and advisor name dropdown with Branding, Compliance, Settings, Sign Out options
+- **Primary navigation**: Two-button navigation for Video Library and Scripted Content with proper routing
+- **Prominent Record button**: Large, center-stage Record button as primary action with clear subtext
+- **Recent videos section**: Grid display of three most recent videos with thumbnails, titles, and timestamps
+- **Empty state handling**: Friendly message and "Record your first video" button when no videos exist
+- **Mobile responsiveness**: Full responsive design that adapts cleanly to mobile and desktop
+- **Accessibility compliance**: Keyboard navigation, focus states, and proper ARIA attributes throughout
+
+### Video Management System
+- **Video schema**: Added comprehensive video table with advisor relationships, metadata, status tracking
+- **Video Library page**: Full-featured library with search, grid/list view toggle, filtering, and category organization
+- **Scripted Content page**: Template-based content system with categorized scripts, difficulty levels, time estimates
+- **Navigation integration**: Seamless routing between dashboard, video library, and scripted content
+
+### Component Architecture
+- **AdvisorDropdown**: Reusable dropdown component with keyboard accessibility and outside click handling
+- **VideoThumbnail**: Smart thumbnail component with hover effects, play icons, and responsive design
+- **Page routing**: Added new routes for video-library and scripted-content with proper navigation
+
+## Previous Changes (August 19, 2025)
+
+### Complete Sign Up System Implementation (August 19)
 - **Full advisor registration flow**: Created comprehensive signup page with account creation and subscription management
 - **Payment processing integration**: Built payment form with card details collection (stubbed for MVP/test mode)
 - **MVP subscription model**: Fixed $20/month plan with automatic billing setup

@@ -140,6 +140,35 @@ export type Subscription = typeof subscriptions.$inferSelect;
 export type InsertSignupEvent = z.infer<typeof insertSignupEventSchema>;
 export type SignupEvent = typeof signupEvents.$inferSelect;
 
+// Videos table for advisor recordings
+export const videos = pgTable("videos", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  advisorId: varchar("advisor_id").notNull().references(() => advisors.id),
+  title: text("title").notNull(),
+  description: text("description"),
+  fileUrl: text("file_url"), // URL to the recorded video file
+  thumbnailUrl: text("thumbnail_url"), // URL to the video thumbnail
+  duration: numeric("duration"), // Duration in seconds
+  status: text("status").notNull().default("draft"), // draft, published, archived
+  viewCount: numeric("view_count").default("0"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Video schemas
+export const insertVideoSchema = createInsertSchema(videos).pick({
+  advisorId: true,
+  title: true,
+  description: true,
+  fileUrl: true,
+  thumbnailUrl: true,
+  duration: true,
+  status: true,
+});
+
+export type InsertVideo = z.infer<typeof insertVideoSchema>;
+export type Video = typeof videos.$inferSelect;
+
 // Legacy user table (keeping for backward compatibility)
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

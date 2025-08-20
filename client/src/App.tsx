@@ -8,6 +8,8 @@ import SignUp from "@/pages/signup";
 import Pricing from "@/pages/pricing";
 import Login from "@/pages/login";
 import Dashboard from "@/pages/dashboard";
+import VideoLibrary from "@/pages/video-library";
+import ScriptedContent from "@/pages/scripted-content";
 import Terms from "@/pages/terms";
 import Billing from "@/pages/billing";
 import Contact from "@/pages/contact";
@@ -21,6 +23,8 @@ function Router() {
       <Route path="/pricing" component={Pricing} />
       <Route path="/login" component={Login} />
       <Route path="/dashboard" component={Dashboard} />
+      <Route path="/video-library" component={VideoLibrary} />
+      <Route path="/scripted-content" component={ScriptedContent} />
       <Route path="/terms" component={Terms} />
       <Route path="/billing" component={Billing} />
       <Route path="/contact" component={Contact} />
