@@ -6,6 +6,15 @@ MoneyClip is a web application designed specifically for financial advisors to c
 
 ## Recent Changes (August 20, 2025)
 
+### Settings Page Implementation - Complete (August 20)
+- **Complete Settings page**: Implemented minimalist Settings page accessible via dashboard dropdown
+- **Three main sections**: Contact Info (advisor details, phone, calendar), Compliance (disclosure text), and Branding (logo, colors)
+- **Autosave functionality**: All form changes automatically save with toast notifications
+- **Backend API integration**: Full CRUD operations with settings storage and event logging
+- **Updated disclosure text**: Applied comprehensive financial services compliance disclosure as default
+- **Mock preview feature**: Shows how branding appears to video viewers with color contrast validation
+- **Form validation**: Proper validation for all fields including phone, email, URL, and hex color formats
+
 ### Advisor Dashboard Implementation - Complete Redesign
 - **Complete dashboard overhaul**: Implemented minimalist, advisor-focused dashboard per detailed specification
 - **Header with advisor dropdown**: MoneyClip logo (clickable to dashboard) and advisor name dropdown with Branding, Compliance, Settings, Sign Out options
