@@ -73,12 +73,45 @@ export default function RecordPreviewPage() {
   }, [videoUrl]);
 
   const generateAIContent = async () => {
-    // Mock AI-generated content
-    // In production, this would call an AI service to transcribe and generate
-    setTimeout(() => {
-      setTitle("Portfolio Review - Q4 2024");
-      setDescription("Reviewed quarterly performance, discussed rebalancing strategy, and outlined tax-loss harvesting opportunities for year-end planning.");
-    }, 1000);
+    // Set initial placeholder content while processing
+    setTitle("Processing...");
+    setDescription("AI is analyzing your video content...");
+  };
+
+  // Process video with OpenAI after saving
+  const processVideoWithAI = async (videoId: string, videoBlob: Blob) => {
+    try {
+      // Convert video blob to audio buffer for transcription
+      const arrayBuffer = await videoBlob.arrayBuffer();
+      const audioBuffer = Buffer.from(arrayBuffer).toString('base64');
+      
+      const response = await apiRequest(`/api/videos/process`, 'POST', {
+        videoId,
+        audioBuffer,
+        duration: videoDuration
+      });
+
+      if (response.video) {
+        setTitle(response.video.title);
+        setDescription(response.video.description || "");
+        
+        toast({
+          title: "AI Processing Complete",
+          description: "Title and description generated from video content",
+        });
+      }
+    } catch (error) {
+      console.error('AI processing error:', error);
+      // Keep fallback content if AI processing fails
+      setTitle("Financial Advisory Video");
+      setDescription("Professional financial guidance and insights.");
+      
+      toast({
+        title: "AI Processing Failed",
+        description: "Using fallback title and description",
+        variant: "destructive",
+      });
+    }
   };
 
   const formatTime = (seconds: number): string => {
@@ -91,25 +124,44 @@ export default function RecordPreviewPage() {
     mutationFn: async () => {
       setIsSaving(true);
       
-      // TODO: Upload video to storage
-      // For now, we'll use a placeholder URL
+      // Get video blob from session storage 
+      const recordedVideoData = sessionStorage.getItem("recordedVideoBlob");
+      let videoBlob: Blob | null = null;
+      
+      if (recordedVideoData) {
+        // Convert base64 back to blob for processing
+        const binaryString = atob(recordedVideoData);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        videoBlob = new Blob([bytes], { type: 'video/webm' });
+      }
+      
       const videoData: Partial<InsertVideo> = {
         advisorId: user?.id,
         clientName: clientName || undefined,
-        title: title || "Untitled Recording",
-        description: description || undefined,
-        fileUrl: "placeholder-video-url", // TODO: Upload actual video
-        thumbnailUrl: "placeholder-thumbnail-url", // TODO: Generate thumbnail
+        title: title || "Processing...",
+        description: description || "AI is analyzing content...",
+        fileUrl: videoUrl || "processing", // Will be updated after upload
+        thumbnailUrl: null, // TODO: Generate thumbnail
         duration: videoDuration.toString(),
-        status: "published",
+        status: "processing",
         password: (showPassword && password) ? password : undefined,
-        shareLink: `moneyclip-${Date.now()}`, // Generate unique share ID
-        captionsEnabled: true, // Always enabled by default, advisor can toggle in preview
+        shareLink: `moneyclip-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+        captionsEnabled: true, // Always enabled
         showWebcam,
       };
 
-      const response = await apiRequest("POST", "/api/videos", videoData);
-      return response.json();
+      const response = await apiRequest("/api/videos", 'POST', videoData);
+
+      // Start AI processing in background if we have video data
+      if (videoBlob && response.id) {
+        // Process in background without blocking UI
+        processVideoWithAI(response.id, videoBlob);
+      }
+
+      return response;
     },
     onSuccess: (data) => {
       const link = `${window.location.origin}/share/${data.shareLink}`;
@@ -129,6 +181,7 @@ export default function RecordPreviewPage() {
       
       // Clean up session storage
       sessionStorage.removeItem("recordedVideo");
+      sessionStorage.removeItem("recordedVideoBlob");
       sessionStorage.removeItem("recordingSettings");
     },
     onError: (error) => {
@@ -168,6 +221,7 @@ export default function RecordPreviewPage() {
   const handleDiscard = () => {
     if (window.confirm("Are you sure you want to discard this recording?")) {
       sessionStorage.removeItem("recordedVideo");
+      sessionStorage.removeItem("recordedVideoBlob");
       sessionStorage.removeItem("recordingSettings");
       navigate("/dashboard");
     }

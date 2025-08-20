@@ -14,6 +14,7 @@ import {
 } from "@shared/schema";
 import { z } from "zod";
 import { format } from "date-fns";
+import { transcribeAndGenerateContent, generateCaptions } from "./openai-service";
 
 // Auth middleware
 function requireAuth(req: any, res: any, next: any) {
@@ -495,6 +496,112 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.status(500).json({
         error: "Failed to create video"
+      });
+    }
+  });
+
+  // Process video with OpenAI transcription and AI-generated content
+  app.post("/api/videos/process", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const advisorId = req.session.advisorId!;
+      const { videoId, audioBuffer, duration } = req.body;
+
+      if (!videoId || !audioBuffer) {
+        return res.status(400).json({
+          error: "MISSING_DATA",
+          message: "Video ID and audio data are required"
+        });
+      }
+
+      // Log processing start
+      await storage.logRecordingEvent({
+        advisorId,
+        videoId,
+        event: "PROCESSING_STARTED",
+        metadata: JSON.stringify({
+          audioDuration: duration,
+          timestamp: new Date().toISOString()
+        })
+      });
+
+      console.log(`Starting AI processing for video ${videoId}...`);
+
+      try {
+        // Convert base64 audio to buffer
+        const buffer = Buffer.from(audioBuffer, 'base64');
+        
+        // Process with OpenAI
+        const result = await transcribeAndGenerateContent(buffer, `video-${videoId}.webm`);
+        
+        // Generate captions if transcription successful
+        const captions = result.text !== "Transcription unavailable" 
+          ? generateCaptions(result.text, duration || 300)
+          : "";
+
+        // Update video with AI-generated content
+        const updatedVideo = await storage.updateVideo(videoId, {
+          title: result.title,
+          description: result.description,
+          transcriptUrl: result.text !== "Transcription unavailable" ? `/transcripts/${videoId}.txt` : null,
+          captionsEnabled: true
+        });
+
+        // Log processing success
+        await storage.logRecordingEvent({
+          advisorId,
+          videoId,
+          event: "PROCESSING_COMPLETED",
+          metadata: JSON.stringify({
+            transcriptionLength: result.text.length,
+            titleGenerated: result.title,
+            descriptionGenerated: result.description,
+            captionsGenerated: captions.length > 0
+          })
+        });
+
+        console.log(`AI processing completed for video ${videoId}`);
+
+        res.json({
+          success: true,
+          video: updatedVideo,
+          transcription: result.text,
+          captions: captions
+        });
+
+      } catch (openaiError) {
+        console.error("OpenAI processing error:", openaiError);
+        
+        // Log processing failure
+        await storage.logRecordingEvent({
+          advisorId,
+          videoId,
+          event: "PROCESSING_FAILED",
+          metadata: JSON.stringify({
+            error: openaiError instanceof Error ? openaiError.message : "Unknown error",
+            timestamp: new Date().toISOString()
+          })
+        });
+
+        // Update video with fallback content
+        const fallbackVideo = await storage.updateVideo(videoId, {
+          title: "Financial Advisory Video",
+          description: "Professional financial guidance and insights.",
+          captionsEnabled: false
+        });
+
+        res.json({
+          success: true,
+          video: fallbackVideo,
+          transcription: "Transcription unavailable",
+          captions: "",
+          warning: "AI processing failed, using fallback content"
+        });
+      }
+
+    } catch (error) {
+      console.error("Video processing error:", error);
+      res.status(500).json({
+        error: "Failed to process video"
       });
     }
   });

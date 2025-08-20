@@ -162,10 +162,18 @@ export default function RecordPage() {
         const blob = new Blob(chunksRef.current, { type: mimeType });
         const url = URL.createObjectURL(blob);
         
-        // Navigate to preview with the recorded video
-        sessionStorage.setItem("recordedVideo", url);
-        sessionStorage.setItem("recordingSettings", JSON.stringify(settings));
-        navigate("/record/preview");
+        // Convert blob to base64 for storage and later AI processing
+        const reader = new FileReader();
+        reader.onload = () => {
+          const base64Data = (reader.result as string).split(',')[1]; // Remove data URL prefix
+          sessionStorage.setItem("recordedVideoBlob", base64Data);
+          
+          // Navigate to preview with the recorded video
+          sessionStorage.setItem("recordedVideo", url);
+          sessionStorage.setItem("recordingSettings", JSON.stringify(settings));
+          navigate("/record/preview");
+        };
+        reader.readAsDataURL(blob);
       };
 
       mediaRecorderRef.current = recorder;
