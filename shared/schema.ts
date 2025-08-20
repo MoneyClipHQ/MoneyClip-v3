@@ -73,6 +73,7 @@ export const PLANS = {
     ],
     notIncluded: [
       "Advisor branding",
+      "CRM integration",
       "Scripted content"
     ]
   },
@@ -90,6 +91,7 @@ export const PLANS = {
       "Basic analytics"
     ],
     notIncluded: [
+      "CRM integration",
       "Scripted content"
     ]
   },
@@ -102,6 +104,7 @@ export const PLANS = {
       "Screen recording + secure sharing",
       "Advisor branding (logo, colors)",
       "Custom viewer page styling", 
+      "CRM integration",
       "Scripted content templates",
       "Password-protected links",
       "Basic captions", 

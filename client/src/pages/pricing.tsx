@@ -59,6 +59,12 @@ export default function Pricing() {
       premium: true
     },
     {
+      feature: "CRM integration",
+      starter: false,
+      professional: false,
+      premium: true
+    },
+    {
       feature: "Scripted content",
       starter: false,
       professional: false,
@@ -122,8 +128,8 @@ export default function Pricing() {
                 data-testid={`card-plan-${planId}`}
               >
                 {planId === 'professional' && (
-                  <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                    <span className="bg-primary text-white text-sm font-medium px-4 py-1 rounded-full">
+                  <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 z-10">
+                    <span className="bg-primary text-white text-xs font-semibold px-3 py-1 rounded-full shadow-md">
                       Most Popular
                     </span>
                   </div>
