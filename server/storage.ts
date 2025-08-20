@@ -260,6 +260,7 @@ export class MemStorage implements IStorage {
       calendarLink: insertSettings.calendarLink || null,
       disclosureText: insertSettings.disclosureText || null,
       logoUrl: insertSettings.logoUrl || null,
+      profilePictureUrl: insertSettings.profilePictureUrl || null,
       primaryColor: insertSettings.primaryColor || null,
       secondaryColor: insertSettings.secondaryColor || null,
       updatedAt: new Date()
@@ -287,6 +288,7 @@ export class MemStorage implements IStorage {
         calendarLink: data.calendarLink,
         disclosureText: "Before accessing or viewing this video, you must read and acknowledge the following disclosure. By proceeding, you confirm that you understand and accept these terms.\n\nThe information presented in this video, including any financial projections, scenarios, analyses, or recommendations, is provided for illustrative and educational purposes only. It is not intended to constitute personalized investment advice, financial planning, tax advice, legal advice, or any other professional guidance tailored to your specific circumstances.\n\nAll projections, estimates, and scenarios are based on hypothetical assumptions, such as growth rates, inflation, expenses, retirement ages, market conditions, and other variables. These assumptions are subject to change and may not reflect actual future events. Actual results may vary significantly due to factors including, but not limited to:\n\nMarket volatility, economic fluctuations, interest rate changes, and geopolitical events.\n\nUnexpected personal life events, health issues, or changes in income/expenses.\n\nChanges in tax laws, regulations, or government policies.\n\nInflation, deflation, or currency fluctuations.\n\nInvestment risks, including the potential loss of principal, liquidity risks, credit risks, and concentration risks.\n\nFees, commissions, or other costs associated with investments or financial products.\n\nNo representation or warranty is made regarding the accuracy, completeness, or reliability of the information provided. Past performance of any investment, strategy, or market is not indicative of future results, and no guarantee is made that any projected outcomes will be achieved. Investing always involves risks, including the possibility of substantial losses.\n\nThis video is not a solicitation to buy or sell any securities, insurance products, or other financial instruments. Any decisions you make based on this information are solely your responsibility.\n\nWe strongly recommend that you consult with a qualified financial advisor, tax professional, accountant, attorney, or other relevant experts before making any financial decisions or implementing any strategies discussed. Reliance on this information without professional consultation could result in adverse financial, tax, or legal consequences.\n\nThis disclosure is intended to comply with applicable regulatory requirements, including those from the Securities and Exchange Commission (SEC), Financial Industry Regulatory Authority (FINRA), and other governing bodies. If you are a client of our firm, this does not alter or supersede any existing agreements or disclosures provided to you.\n\nBy clicking \"Accept\" or proceeding to view the video, you acknowledge that you have read, understood, and agree to this disclosure, and you release the advisor, firm, and any affiliates from any liability arising from your use of this information. If you do not agree, please do not proceed.",
         logoUrl: undefined,
+        profilePictureUrl: undefined,
         primaryColor: "#2563eb",
         secondaryColor: "#1e40af"
       });
@@ -318,6 +320,7 @@ export class MemStorage implements IStorage {
         calendarLink: undefined,
         disclosureText: data.disclosureText,
         logoUrl: undefined,
+        profilePictureUrl: undefined,
         primaryColor: "#2563eb",
         secondaryColor: "#1e40af"
       });
@@ -347,11 +350,13 @@ export class MemStorage implements IStorage {
         calendarLink: undefined,
         disclosureText: "Before accessing or viewing this video, you must read and acknowledge the following disclosure. By proceeding, you confirm that you understand and accept these terms.\n\nThe information presented in this video, including any financial projections, scenarios, analyses, or recommendations, is provided for illustrative and educational purposes only. It is not intended to constitute personalized investment advice, financial planning, tax advice, legal advice, or any other professional guidance tailored to your specific circumstances.\n\nAll projections, estimates, and scenarios are based on hypothetical assumptions, such as growth rates, inflation, expenses, retirement ages, market conditions, and other variables. These assumptions are subject to change and may not reflect actual future events. Actual results may vary significantly due to factors including, but not limited to:\n\nMarket volatility, economic fluctuations, interest rate changes, and geopolitical events.\n\nUnexpected personal life events, health issues, or changes in income/expenses.\n\nChanges in tax laws, regulations, or government policies.\n\nInflation, deflation, or currency fluctuations.\n\nInvestment risks, including the potential loss of principal, liquidity risks, credit risks, and concentration risks.\n\nFees, commissions, or other costs associated with investments or financial products.\n\nNo representation or warranty is made regarding the accuracy, completeness, or reliability of the information provided. Past performance of any investment, strategy, or market is not indicative of future results, and no guarantee is made that any projected outcomes will be achieved. Investing always involves risks, including the possibility of substantial losses.\n\nThis video is not a solicitation to buy or sell any securities, insurance products, or other financial instruments. Any decisions you make based on this information are solely your responsibility.\n\nWe strongly recommend that you consult with a qualified financial advisor, tax professional, accountant, attorney, or other relevant experts before making any financial decisions or implementing any strategies discussed. Reliance on this information without professional consultation could result in adverse financial, tax, or legal consequences.\n\nThis disclosure is intended to comply with applicable regulatory requirements, including those from the Securities and Exchange Commission (SEC), Financial Industry Regulatory Authority (FINRA), and other governing bodies. If you are a client of our firm, this does not alter or supersede any existing agreements or disclosures provided to you.\n\nBy clicking \"Accept\" or proceeding to view the video, you acknowledge that you have read, understood, and agree to this disclosure, and you release the advisor, firm, and any affiliates from any liability arising from your use of this information. If you do not agree, please do not proceed.",
         logoUrl: data.logoUrl,
+        profilePictureUrl: data.profilePictureUrl,
         primaryColor: data.primaryColor,
         secondaryColor: data.secondaryColor
       });
     } else {
       settings.logoUrl = data.logoUrl || null;
+      settings.profilePictureUrl = data.profilePictureUrl || null;
       settings.primaryColor = data.primaryColor || null;
       settings.secondaryColor = data.secondaryColor || null;
       settings.updatedAt = new Date();
@@ -362,7 +367,7 @@ export class MemStorage implements IStorage {
     await this.logSettingsEvent({
       advisorId,
       event: "BRANDING_UPDATED",
-      fieldName: "logoUrl,primaryColor,secondaryColor",
+      fieldName: "logoUrl,profilePictureUrl,primaryColor,secondaryColor",
       metadata: JSON.stringify({
         logoUrl: data.logoUrl,
         primaryColor: data.primaryColor,
@@ -728,6 +733,7 @@ export class DatabaseStorage implements IStorage {
         calendarLink: undefined,
         disclosureText: data.disclosureText,
         logoUrl: undefined,
+        profilePictureUrl: undefined,
         primaryColor: "#2563eb",
         secondaryColor: "#1e40af"
       });
@@ -768,6 +774,7 @@ export class DatabaseStorage implements IStorage {
         calendarLink: undefined,
         disclosureText: "Before accessing or viewing this video, you must read and acknowledge the following disclosure. By proceeding, you confirm that you understand and accept these terms.\n\nThe information presented in this video, including any financial projections, scenarios, analyses, or recommendations, is provided for illustrative and educational purposes only. It is not intended to constitute personalized investment advice, financial planning, tax advice, legal advice, or any other professional guidance tailored to your specific circumstances.\n\nAll projections, estimates, and scenarios are based on hypothetical assumptions, such as growth rates, inflation, expenses, retirement ages, market conditions, and other variables. These assumptions are subject to change and may not reflect actual future events. Actual results may vary significantly due to factors including, but not limited to:\n\nMarket volatility, economic fluctuations, interest rate changes, and geopolitical events.\n\nUnexpected personal life events, health issues, or changes in income/expenses.\n\nChanges in tax laws, regulations, or government policies.\n\nInflation, deflation, or currency fluctuations.\n\nInvestment risks, including the potential loss of principal, liquidity risks, credit risks, and concentration risks.\n\nFees, commissions, or other costs associated with investments or financial products.\n\nNo representation or warranty is made regarding the accuracy, completeness, or reliability of the information provided. Past performance of any investment, strategy, or market is not indicative of future results, and no guarantee is made that any projected outcomes will be achieved. Investing always involves risks, including the possibility of substantial losses.\n\nThis video is not a solicitation to buy or sell any securities, insurance products, or other financial instruments. Any decisions you make based on this information are solely your responsibility.\n\nWe strongly recommend that you consult with a qualified financial advisor, tax professional, accountant, attorney, or other relevant experts before making any financial decisions or implementing any strategies discussed. Reliance on this information without professional consultation could result in adverse financial, tax, or legal consequences.\n\nThis disclosure is intended to comply with applicable regulatory requirements, including those from the Securities and Exchange Commission (SEC), Financial Industry Regulatory Authority (FINRA), and other governing bodies. If you are a client of our firm, this does not alter or supersede any existing agreements or disclosures provided to you.\n\nBy clicking \"Accept\" or proceeding to view the video, you acknowledge that you have read, understood, and agree to this disclosure, and you release the advisor, firm, and any affiliates from any liability arising from your use of this information. If you do not agree, please do not proceed.",
         logoUrl: data.logoUrl,
+        profilePictureUrl: data.profilePictureUrl,
         primaryColor: data.primaryColor,
         secondaryColor: data.secondaryColor
       });
@@ -777,6 +784,7 @@ export class DatabaseStorage implements IStorage {
         .update(advisorSettings)
         .set({
           logoUrl: data.logoUrl,
+          profilePictureUrl: data.profilePictureUrl,
           primaryColor: data.primaryColor,
           secondaryColor: data.secondaryColor,
           updatedAt: new Date(),
@@ -789,9 +797,10 @@ export class DatabaseStorage implements IStorage {
     await this.logSettingsEvent({
       advisorId,
       event: "BRANDING_UPDATED",
-      fieldName: "logoUrl,primaryColor,secondaryColor",
+      fieldName: "logoUrl,profilePictureUrl,primaryColor,secondaryColor",
       metadata: JSON.stringify({
         logoUrl: data.logoUrl,
+        profilePictureUrl: data.profilePictureUrl,
         primaryColor: data.primaryColor,
         secondaryColor: data.secondaryColor
       })

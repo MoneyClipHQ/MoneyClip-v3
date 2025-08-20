@@ -46,10 +46,12 @@ export default function Settings() {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [contrastWarning, setContrastWarning] = useState<string | null>(null);
   const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [profilePictureFile, setProfilePictureFile] = useState<File | null>(null);
   
   // Get authenticated user
   const { user } = useAuth();
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [profilePicturePreview, setProfilePicturePreview] = useState<string | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -89,6 +91,7 @@ export default function Settings() {
     calendarLink: null,
     disclosureText: defaultDisclosure,
     logoUrl: null,
+    profilePictureUrl: null,
     primaryColor: "#2563eb",
     secondaryColor: "#1e40af",
     updatedAt: new Date()
@@ -119,6 +122,7 @@ export default function Settings() {
     resolver: zodResolver(updateBrandingSchema),
     defaultValues: {
       logoUrl: "",
+      profilePictureUrl: "",
       primaryColor: "#2563eb",
       secondaryColor: "#1e40af",
     },
@@ -152,6 +156,7 @@ export default function Settings() {
       
       brandingForm.reset({
         logoUrl: settings.logoUrl || "",
+        profilePictureUrl: settings.profilePictureUrl || "",
         primaryColor: settings.primaryColor || "#2563eb",
         secondaryColor: settings.secondaryColor || "#1e40af",
       });
@@ -160,6 +165,12 @@ export default function Settings() {
       if (settings.logoUrl) {
         console.log("Setting logo preview from saved settings");
         setLogoPreview(settings.logoUrl);
+      }
+
+      // Set profile picture preview if profilePictureUrl exists
+      if (settings.profilePictureUrl) {
+        console.log("Setting profile picture preview from saved settings");
+        setProfilePicturePreview(settings.profilePictureUrl);
       }
     }
   }, [settingsData, advisor, contactForm, complianceForm, brandingForm]);
@@ -271,7 +282,7 @@ export default function Settings() {
     onSuccess: () => {
       toast({
         title: "Branding Saved",
-        description: "Your brand colors and logo have been updated successfully",
+        description: "Your brand colors, logo, and profile picture have been updated successfully",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/settings"] });
     },
@@ -316,6 +327,7 @@ export default function Settings() {
     const formData = brandingForm.getValues();
     console.log("Manual branding save triggered with:", {
       logoUrl: formData.logoUrl ? `${formData.logoUrl.substring(0, 50)}...` : "null",
+      profilePictureUrl: formData.profilePictureUrl ? `${formData.profilePictureUrl.substring(0, 50)}...` : "null",
       primaryColor: formData.primaryColor,
       secondaryColor: formData.secondaryColor,
       formValid: brandingForm.formState.isValid,
@@ -370,6 +382,52 @@ export default function Settings() {
     setLogoPreview(null);
     brandingForm.setValue("logoUrl", "");
     // Note: User needs to click Save to persist logo removal
+  };
+
+  // Profile picture upload handler
+  const handleProfilePictureUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Invalid file type",
+        description: "Please upload an image file (PNG, JPG, etc.)",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "File too large",
+        description: "Please upload an image smaller than 5MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setProfilePictureFile(file);
+    
+    // Create preview
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const result = e.target?.result as string;
+      console.log("Profile picture uploaded, data URL length:", result.length);
+      setProfilePicturePreview(result);
+      brandingForm.setValue("profilePictureUrl", result);
+      // Note: User needs to click Save to persist profile picture
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const removeProfilePicture = () => {
+    setProfilePictureFile(null);
+    setProfilePicturePreview(null);
+    brandingForm.setValue("profilePictureUrl", "");
+    // Note: User needs to click Save to persist profile picture removal
   };
 
   // Color contrast check
@@ -761,6 +819,72 @@ export default function Settings() {
                         type="file"
                         accept="image/*"
                         onChange={handleLogoUpload}
+                        className="hidden"
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Profile Picture</CardTitle>
+                    <p className="text-sm text-gray-600">
+                      This picture will appear in the corner of your videos to help clients identify you.
+                    </p>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                      {profilePicturePreview || displaySettings?.profilePictureUrl ? (
+                        <div className="space-y-4">
+                          <div className="mx-auto w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center overflow-hidden">
+                            <img
+                              src={profilePicturePreview || displaySettings?.profilePictureUrl!}
+                              alt="Profile picture preview"
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                          <div className="space-x-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => document.getElementById('profile-picture-upload')?.click()}
+                              data-testid="button-replace-profile-picture"
+                            >
+                              Replace
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={removeProfilePicture}
+                              data-testid="button-remove-profile-picture"
+                            >
+                              <X className="h-4 w-4 mr-1" />
+                              Remove
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          <Upload className="h-8 w-8 text-gray-400 mx-auto" />
+                          <div>
+                            <Button
+                              variant="outline"
+                              onClick={() => document.getElementById('profile-picture-upload')?.click()}
+                              data-testid="button-upload-profile-picture"
+                            >
+                              Upload Profile Picture
+                            </Button>
+                            <p className="text-xs text-gray-500 mt-2">
+                              PNG, JPG up to 5MB. Square images work best.
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                      <input
+                        id="profile-picture-upload"
+                        type="file"
+                        accept="image/*"
+                        onChange={handleProfilePictureUpload}
                         className="hidden"
                       />
                     </div>
