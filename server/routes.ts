@@ -7,7 +7,10 @@ import {
   PLANS, 
   updateContactInfoSchema, 
   updateComplianceSchema, 
-  updateBrandingSchema 
+  updateBrandingSchema,
+  insertVideoSchema,
+  updateVideoSchema,
+  insertRecordingEventSchema
 } from "@shared/schema";
 import { z } from "zod";
 import { format } from "date-fns";
@@ -447,6 +450,270 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.status(500).json({
         error: "Failed to update branding"
+      });
+    }
+  });
+
+  // Video API Routes
+  
+  // Create a new video
+  app.post("/api/videos", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const advisorId = req.session.advisorId!;
+      const videoData = {
+        ...req.body,
+        advisorId,
+        shareLink: req.body.shareLink || `moneyclip-${Date.now()}-${Math.random().toString(36).substring(7)}`
+      };
+      
+      const validatedData = insertVideoSchema.parse(videoData);
+      const video = await storage.createVideo(validatedData);
+      
+      // Log event
+      await storage.logRecordingEvent({
+        advisorId,
+        videoId: video.id,
+        event: "VIDEO_SAVED",
+        metadata: JSON.stringify({
+          hasPassword: !!video.password,
+          hasClientName: !!video.clientName,
+          captionsEnabled: video.captionsEnabled
+        })
+      });
+      
+      res.json(video);
+    } catch (error) {
+      console.error("Create video error:", error);
+      
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({
+          error: "VALIDATION_ERROR",
+          message: "Invalid video data",
+          errors: error.errors
+        });
+      }
+      
+      res.status(500).json({
+        error: "Failed to create video"
+      });
+    }
+  });
+  
+  // Get recent videos for the logged-in advisor
+  app.get("/api/videos/recent", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const advisorId = req.session.advisorId!;
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 3;
+      const videos = await storage.getRecentVideos(advisorId, limit);
+      res.json(videos);
+    } catch (error) {
+      console.error("Get recent videos error:", error);
+      res.status(500).json({
+        error: "Failed to retrieve recent videos"
+      });
+    }
+  });
+  
+  // Get all videos for the logged-in advisor
+  app.get("/api/videos", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const advisorId = req.session.advisorId!;
+      const videos = await storage.getAllVideos(advisorId);
+      res.json(videos);
+    } catch (error) {
+      console.error("Get all videos error:", error);
+      res.status(500).json({
+        error: "Failed to retrieve videos"
+      });
+    }
+  });
+  
+  // Get a specific video
+  app.get("/api/videos/:id", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const video = await storage.getVideo(req.params.id);
+      
+      if (!video) {
+        return res.status(404).json({
+          error: "VIDEO_NOT_FOUND",
+          message: "Video not found"
+        });
+      }
+      
+      // Check if the advisor owns this video
+      if (video.advisorId !== req.session.advisorId) {
+        return res.status(403).json({
+          error: "FORBIDDEN",
+          message: "You don't have permission to view this video"
+        });
+      }
+      
+      res.json(video);
+    } catch (error) {
+      console.error("Get video error:", error);
+      res.status(500).json({
+        error: "Failed to retrieve video"
+      });
+    }
+  });
+  
+  // Update a video
+  app.patch("/api/videos/:id", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const video = await storage.getVideo(req.params.id);
+      
+      if (!video) {
+        return res.status(404).json({
+          error: "VIDEO_NOT_FOUND",
+          message: "Video not found"
+        });
+      }
+      
+      // Check if the advisor owns this video
+      if (video.advisorId !== req.session.advisorId) {
+        return res.status(403).json({
+          error: "FORBIDDEN",
+          message: "You don't have permission to update this video"
+        });
+      }
+      
+      const validatedData = updateVideoSchema.parse(req.body);
+      const updatedVideo = await storage.updateVideo(req.params.id, validatedData);
+      
+      res.json(updatedVideo);
+    } catch (error) {
+      console.error("Update video error:", error);
+      
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({
+          error: "VALIDATION_ERROR",
+          message: "Invalid video data",
+          errors: error.errors
+        });
+      }
+      
+      res.status(500).json({
+        error: "Failed to update video"
+      });
+    }
+  });
+  
+  // Delete a video
+  app.delete("/api/videos/:id", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const video = await storage.getVideo(req.params.id);
+      
+      if (!video) {
+        return res.status(404).json({
+          error: "VIDEO_NOT_FOUND",
+          message: "Video not found"
+        });
+      }
+      
+      // Check if the advisor owns this video
+      if (video.advisorId !== req.session.advisorId) {
+        return res.status(403).json({
+          error: "FORBIDDEN",
+          message: "You don't have permission to delete this video"
+        });
+      }
+      
+      await storage.deleteVideo(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Delete video error:", error);
+      res.status(500).json({
+        error: "Failed to delete video"
+      });
+    }
+  });
+  
+  // Public route to get video by share link (for sharing with clients)
+  app.get("/api/share/:shareLink", async (req: Request, res: Response) => {
+    try {
+      const video = await storage.getVideoByShareLink(req.params.shareLink);
+      
+      if (!video) {
+        return res.status(404).json({
+          error: "VIDEO_NOT_FOUND",
+          message: "Video not found or link has expired"
+        });
+      }
+      
+      // Don't send the password itself, just indicate if it's protected
+      const publicVideo = {
+        ...video,
+        password: undefined,
+        passwordProtected: !!video.password
+      };
+      
+      res.json(publicVideo);
+    } catch (error) {
+      console.error("Get shared video error:", error);
+      res.status(500).json({
+        error: "Failed to retrieve video"
+      });
+    }
+  });
+  
+  // Verify password for password-protected videos
+  app.post("/api/share/:shareLink/verify", async (req: Request, res: Response) => {
+    try {
+      const video = await storage.getVideoByShareLink(req.params.shareLink);
+      
+      if (!video) {
+        return res.status(404).json({
+          error: "VIDEO_NOT_FOUND",
+          message: "Video not found"
+        });
+      }
+      
+      if (!video.password) {
+        return res.json({ success: true });
+      }
+      
+      if (req.body.password !== video.password) {
+        return res.status(401).json({
+          error: "INVALID_PASSWORD",
+          message: "Incorrect password"
+        });
+      }
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Verify video password error:", error);
+      res.status(500).json({
+        error: "Failed to verify password"
+      });
+    }
+  });
+  
+  // Log recording events
+  app.post("/api/recording-events", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const advisorId = req.session.advisorId!;
+      const eventData = {
+        ...req.body,
+        advisorId
+      };
+      
+      const validatedData = insertRecordingEventSchema.parse(eventData);
+      const event = await storage.logRecordingEvent(validatedData);
+      
+      res.json(event);
+    } catch (error) {
+      console.error("Log recording event error:", error);
+      
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({
+          error: "VALIDATION_ERROR",
+          message: "Invalid event data",
+          errors: error.errors
+        });
+      }
+      
+      res.status(500).json({
+        error: "Failed to log event"
       });
     }
   });

@@ -6,6 +6,19 @@ MoneyClip is a web application designed specifically for financial advisors to c
 
 ## Recent Changes (August 20, 2025)
 
+### Video Recording System Implementation - In Progress (August 20)
+- **Recording flow**: Built comprehensive Loom-like recording system tailored for financial advisors
+- **Capture chooser modal**: Screen, window, or browser tab selection with microphone and webcam options
+- **Recording interface**: Floating overlay controls with pause/resume, stop, mute, camera toggle, and live captions
+- **Preview and editing**: After recording, advisors can add client name, edit AI-generated title/description, set password, toggle captions
+- **Secure sharing**: Generates unique shareable links with optional password protection
+- **Database schema**: Extended videos table with clientName, password, shareLink, transcriptUrl, captionsEnabled, showWebcam fields
+- **Backend APIs**: Complete CRUD operations for videos, share link access, password verification
+- **Compliance tracking**: Recording events logged for audit trail (RECORDING_STARTED, PAUSED, RESUMED, STOPPED, etc.)
+- **Integration**: Connected to dashboard with "Start Recording" button routing to /record page
+
+## Recent Changes (August 20, 2025)
+
 ### Settings Page Implementation - Complete (August 20)
 - **Complete Settings page**: Implemented minimalist Settings page accessible via dashboard dropdown
 - **Three main sections**: Contact Info (advisor details, phone, calendar), Compliance (disclosure text), and Branding (logo, colors)

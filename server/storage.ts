@@ -6,8 +6,10 @@ import {
   type AdvisorSettings, type InsertAdvisorSettings,
   type UpdateContactInfo, type UpdateCompliance, type UpdateBranding,
   type SettingsEvent, type InsertSettingsEvent,
+  type Video, type InsertVideo, type UpdateVideo,
+  type RecordingEvent, type InsertRecordingEvent,
   PLANS,
-  advisors, advisorSettings, settingsEvents, signupEvents, subscriptions
+  advisors, advisorSettings, settingsEvents, signupEvents, subscriptions, videos, recordingEvents
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { addDays } from "date-fns";
@@ -50,6 +52,16 @@ export interface IStorage {
   updateCompliance(advisorId: string, data: UpdateCompliance): Promise<void>;
   updateBranding(advisorId: string, data: UpdateBranding): Promise<void>;
   logSettingsEvent(event: InsertSettingsEvent): Promise<SettingsEvent>;
+  
+  // Video methods
+  createVideo(video: InsertVideo): Promise<Video>;
+  updateVideo(id: string, data: UpdateVideo): Promise<Video | undefined>;
+  getVideo(id: string): Promise<Video | undefined>;
+  getVideoByShareLink(shareLink: string): Promise<Video | undefined>;
+  getRecentVideos(advisorId: string, limit?: number): Promise<Video[]>;
+  getAllVideos(advisorId: string): Promise<Video[]>;
+  deleteVideo(id: string): Promise<void>;
+  logRecordingEvent(event: InsertRecordingEvent): Promise<RecordingEvent>;
 }
 
 export class MemStorage implements IStorage {
@@ -371,6 +383,76 @@ export class MemStorage implements IStorage {
 
 // Database Storage Implementation
 export class DatabaseStorage implements IStorage {
+  // Video methods
+  async createVideo(video: InsertVideo): Promise<Video> {
+    const [newVideo] = await db
+      .insert(videos)
+      .values(video)
+      .returning();
+    return newVideo;
+  }
+
+  async updateVideo(id: string, data: UpdateVideo): Promise<Video | undefined> {
+    const [updated] = await db
+      .update(videos)
+      .set({
+        ...data,
+        updatedAt: new Date()
+      })
+      .where(eq(videos.id, id))
+      .returning();
+    return updated;
+  }
+
+  async getVideo(id: string): Promise<Video | undefined> {
+    const [video] = await db
+      .select()
+      .from(videos)
+      .where(eq(videos.id, id));
+    return video;
+  }
+
+  async getVideoByShareLink(shareLink: string): Promise<Video | undefined> {
+    const [video] = await db
+      .select()
+      .from(videos)
+      .where(eq(videos.shareLink, shareLink));
+    return video;
+  }
+
+  async getRecentVideos(advisorId: string, limit: number = 3): Promise<Video[]> {
+    const recentVideos = await db
+      .select()
+      .from(videos)
+      .where(eq(videos.advisorId, advisorId))
+      .orderBy(videos.createdAt)
+      .limit(limit);
+    return recentVideos;
+  }
+
+  async getAllVideos(advisorId: string): Promise<Video[]> {
+    const allVideos = await db
+      .select()
+      .from(videos)
+      .where(eq(videos.advisorId, advisorId))
+      .orderBy(videos.createdAt);
+    return allVideos;
+  }
+
+  async deleteVideo(id: string): Promise<void> {
+    await db.delete(videos).where(eq(videos.id, id));
+  }
+
+  async logRecordingEvent(event: InsertRecordingEvent): Promise<RecordingEvent> {
+    const [newEvent] = await db
+      .insert(recordingEvents)
+      .values({
+        ...event,
+        metadata: typeof event.metadata === 'object' ? JSON.stringify(event.metadata) : event.metadata
+      })
+      .returning();
+    return newEvent;
+  }
   async getUser(id: string): Promise<User | undefined> {
     // Legacy user support - not needed for advisor authentication
     return undefined;

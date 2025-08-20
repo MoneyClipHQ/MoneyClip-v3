@@ -70,8 +70,7 @@ export default function Dashboard() {
   });
 
   const handleRecord = () => {
-    // TODO: Navigate to recording flow
-    console.log("Starting recording flow");
+    navigate("/record");
   };
 
   const handleVideoClick = (videoId: string) => {
@@ -94,6 +93,7 @@ export default function Dashboard() {
     {
       id: "video-1",
       advisorId: "advisor-1",
+      clientName: "John Smith",
       title: "Q4 Portfolio Review",
       description: "Quarterly portfolio performance analysis",
       fileUrl: "/videos/q4-review.mp4",
@@ -101,12 +101,18 @@ export default function Dashboard() {
       duration: "360",
       status: "published",
       viewCount: "12",
+      password: null,
+      shareLink: "moneyclip-q4-review-2025",
+      transcriptUrl: null,
+      captionsEnabled: true,
+      showWebcam: true,
       createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // 2 days ago
       updatedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
     },
     {
       id: "video-2",
       advisorId: "advisor-1",
+      clientName: null,
       title: "Market Update - December 2025",
       description: "Latest market trends and outlook",
       fileUrl: "/videos/market-update.mp4",
@@ -114,12 +120,18 @@ export default function Dashboard() {
       duration: "240",
       status: "published",
       viewCount: "8",
+      password: "secure123",
+      shareLink: "moneyclip-market-update-dec",
+      transcriptUrl: null,
+      captionsEnabled: true,
+      showWebcam: false,
       createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), // 5 days ago
       updatedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
     },
     {
       id: "video-3",
       advisorId: "advisor-1",
+      clientName: "Sarah Johnson",
       title: "Retirement Planning Basics",
       description: "Introduction to retirement planning strategies",
       fileUrl: "/videos/retirement-basics.mp4",
@@ -127,6 +139,11 @@ export default function Dashboard() {
       duration: "480",
       status: "draft",
       viewCount: "0",
+      password: null,
+      shareLink: "moneyclip-retirement-basics",
+      transcriptUrl: null,
+      captionsEnabled: false,
+      showWebcam: true,
       createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // 1 week ago
       updatedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
     },

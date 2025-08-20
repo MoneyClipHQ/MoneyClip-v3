@@ -144,6 +144,7 @@ export type SignupEvent = typeof signupEvents.$inferSelect;
 export const videos = pgTable("videos", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   advisorId: varchar("advisor_id").notNull().references(() => advisors.id),
+  clientName: text("client_name"), // Client name for personalization
   title: text("title").notNull(),
   description: text("description"),
   fileUrl: text("file_url"), // URL to the recorded video file
@@ -151,6 +152,11 @@ export const videos = pgTable("videos", {
   duration: numeric("duration"), // Duration in seconds
   status: text("status").notNull().default("draft"), // draft, published, archived
   viewCount: numeric("view_count").default("0"),
+  password: text("password"), // Optional password protection
+  shareLink: text("share_link"), // Unique shareable link
+  transcriptUrl: text("transcript_url"), // URL to the transcript file
+  captionsEnabled: boolean("captions_enabled").default(true), // Whether captions are enabled
+  showWebcam: boolean("show_webcam").default(true), // Whether to show webcam/profile photo
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -158,15 +164,24 @@ export const videos = pgTable("videos", {
 // Video schemas
 export const insertVideoSchema = createInsertSchema(videos).pick({
   advisorId: true,
+  clientName: true,
   title: true,
   description: true,
   fileUrl: true,
   thumbnailUrl: true,
   duration: true,
   status: true,
+  password: true,
+  shareLink: true,
+  transcriptUrl: true,
+  captionsEnabled: true,
+  showWebcam: true,
 });
 
+export const updateVideoSchema = insertVideoSchema.partial();
+
 export type InsertVideo = z.infer<typeof insertVideoSchema>;
+export type UpdateVideo = z.infer<typeof updateVideoSchema>;
 export type Video = typeof videos.$inferSelect;
 
 // Settings tables for advisor configuration
@@ -191,6 +206,16 @@ export const settingsEvents = pgTable("settings_events", {
   advisorId: varchar("advisor_id").notNull().references(() => advisors.id),
   event: text("event").notNull(), // SETTINGS_OPENED, CONTACT_INFO_UPDATED, etc.
   fieldName: text("field_name"), // Which field was updated
+  metadata: text("metadata"), // JSON string for additional event data
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+});
+
+// Recording event logging for compliance
+export const recordingEvents = pgTable("recording_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  advisorId: varchar("advisor_id").notNull().references(() => advisors.id),
+  videoId: varchar("video_id").references(() => videos.id),
+  event: text("event").notNull(), // RECORDING_STARTED, CAPTIONS_ENABLED, PAUSED, RESUMED, STOPPED, etc.
   metadata: text("metadata"), // JSON string for additional event data
   timestamp: timestamp("timestamp").defaultNow().notNull(),
 });
@@ -249,6 +274,17 @@ export type UpdateCompliance = z.infer<typeof updateComplianceSchema>;
 export type UpdateBranding = z.infer<typeof updateBrandingSchema>;
 export type InsertSettingsEvent = z.infer<typeof insertSettingsEventSchema>;
 export type SettingsEvent = typeof settingsEvents.$inferSelect;
+
+// Recording event schemas
+export const insertRecordingEventSchema = createInsertSchema(recordingEvents).pick({
+  advisorId: true,
+  videoId: true,
+  event: true,
+  metadata: true,
+});
+
+export type InsertRecordingEvent = z.infer<typeof insertRecordingEventSchema>;
+export type RecordingEvent = typeof recordingEvents.$inferSelect;
 
 // Legacy user table (keeping for backward compatibility)
 export const users = pgTable("users", {

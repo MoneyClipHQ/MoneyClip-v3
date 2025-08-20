@@ -15,6 +15,8 @@ import Settings from "@/pages/settings";
 import Terms from "@/pages/terms";
 import Billing from "@/pages/billing";
 import Contact from "@/pages/contact";
+import RecordPage from "@/pages/record";
+import RecordPreviewPage from "@/pages/record-preview";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -53,6 +55,12 @@ function Router() {
       </Route>
       <Route path="/billing">
         {isAuthenticated ? <Billing /> : <Login />}
+      </Route>
+      <Route path="/record">
+        {isAuthenticated ? <RecordPage /> : <Login />}
+      </Route>
+      <Route path="/record/preview">
+        {isAuthenticated ? <RecordPreviewPage /> : <Login />}
       </Route>
       
       <Route component={NotFound} />
