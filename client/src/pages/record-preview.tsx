@@ -37,6 +37,7 @@ export default function RecordPreviewPage() {
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [shareLink, setShareLink] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [captionBlobUrl, setCaptionBlobUrl] = useState<string | null>(null);
 
   // Load recorded video from session storage
   useEffect(() => {
@@ -61,16 +62,64 @@ export default function RecordPreviewPage() {
     }
   }, [navigate]);
 
-  // Update duration when video loads
+  // Update duration when video loads and generate preview captions
   useEffect(() => {
     if (videoRef.current && videoUrl) {
       videoRef.current.onloadedmetadata = () => {
         const duration = videoRef.current?.duration || 0;
         setVideoDuration(duration);
         setTrimRange({ start: 0, end: duration });
+        generatePreviewCaptions(duration);
       };
     }
   }, [videoUrl]);
+
+  // Generate preview captions for demo purposes
+  const generatePreviewCaptions = (duration: number) => {
+    // Create mock captions for preview
+    const mockTranscript = "Welcome to your financial review. Today we'll be discussing your portfolio performance and investment strategy. Let's start by examining your current asset allocation. Your diversified portfolio shows strong growth potential. We recommend maintaining this balanced approach for long-term success.";
+    
+    const captions = generateCaptionsSRT(mockTranscript, duration);
+    if (captions) {
+      const blob = new Blob([captions], { type: 'text/vtt' });
+      const blobUrl = URL.createObjectURL(blob);
+      setCaptionBlobUrl(blobUrl);
+    }
+  };
+
+  // Generate SRT captions from text (client-side version)
+  const generateCaptionsSRT = (text: string, duration: number): string => {
+    if (!text) return "";
+
+    const words = text.split(' ');
+    const wordsPerSegment = 8;
+    const segmentDuration = Math.max(3, duration / Math.ceil(words.length / wordsPerSegment));
+    
+    let captions = "WEBVTT\n\n";
+    let segmentNumber = 1;
+    
+    for (let i = 0; i < words.length; i += wordsPerSegment) {
+      const segmentWords = words.slice(i, i + wordsPerSegment);
+      const startTime = (segmentNumber - 1) * segmentDuration;
+      const endTime = Math.min(segmentNumber * segmentDuration, duration);
+      
+      // Format time as WebVTT timestamp (HH:MM:SS.mmm)
+      const formatTime = (seconds: number) => {
+        const hours = Math.floor(seconds / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+        const secs = Math.floor(seconds % 60);
+        const milliseconds = Math.floor((seconds % 1) * 1000);
+        return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}.${milliseconds.toString().padStart(3, '0')}`;
+      };
+      
+      captions += `${formatTime(startTime)} --> ${formatTime(endTime)}\n`;
+      captions += `${segmentWords.join(' ')}\n\n`;
+      
+      segmentNumber++;
+    }
+    
+    return captions;
+  };
 
   const generateAIContent = async () => {
     // Set initial placeholder content while processing
@@ -91,7 +140,7 @@ export default function RecordPreviewPage() {
         duration: videoDuration
       });
 
-      if (response.video) {
+      if (response?.video) {
         setTitle(response.video.title);
         setDescription(response.video.description || "");
         
@@ -156,7 +205,7 @@ export default function RecordPreviewPage() {
       const response = await apiRequest("/api/videos", 'POST', videoData);
 
       // Start AI processing in background if we have video data
-      if (videoBlob && response.id) {
+      if (videoBlob && response?.id) {
         // Process in background without blocking UI
         processVideoWithAI(response.id, videoBlob);
       }
@@ -164,12 +213,12 @@ export default function RecordPreviewPage() {
       return response;
     },
     onSuccess: (data) => {
-      const link = `${window.location.origin}/share/${data.shareLink}`;
+      const link = `${window.location.origin}/share/${data?.shareLink}`;
       setShareLink(link);
       
       // Log compliance event
       logEvent("SAVED", {
-        videoId: data.id,
+        videoId: data?.id,
         hasPassword: showPassword && !!password,
         hasClientName: !!clientName,
       });
@@ -179,10 +228,15 @@ export default function RecordPreviewPage() {
         description: "Your recording has been saved successfully.",
       });
       
-      // Clean up session storage
+      // Clean up session storage and blob URLs
       sessionStorage.removeItem("recordedVideo");
       sessionStorage.removeItem("recordedVideoBlob");
       sessionStorage.removeItem("recordingSettings");
+      
+      // Clean up blob URL
+      if (captionBlobUrl) {
+        URL.revokeObjectURL(captionBlobUrl);
+      }
     },
     onError: (error) => {
       console.error("Save error:", error);
@@ -223,6 +277,12 @@ export default function RecordPreviewPage() {
       sessionStorage.removeItem("recordedVideo");
       sessionStorage.removeItem("recordedVideoBlob");
       sessionStorage.removeItem("recordingSettings");
+      
+      // Clean up blob URL
+      if (captionBlobUrl) {
+        URL.revokeObjectURL(captionBlobUrl);
+      }
+      
       navigate("/dashboard");
     }
   };
@@ -302,7 +362,18 @@ export default function RecordPreviewPage() {
                         controls
                         className="w-full rounded-lg bg-black"
                         data-testid="video-preview"
-                      />
+                        crossOrigin="anonymous"
+                      >
+                        {captionsEnabled && captionBlobUrl && (
+                          <track
+                            kind="subtitles"
+                            src={captionBlobUrl}
+                            srcLang="en"
+                            label="English"
+                            default
+                          />
+                        )}
+                      </video>
                       
                       {/* Trim Controls */}
                       <div className="space-y-2">
