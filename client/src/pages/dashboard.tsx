@@ -5,7 +5,13 @@ import { Button } from "@/components/ui/button";
 import { VideoIcon, FolderOpen, FileText, Plus } from "lucide-react";
 import AdvisorDropdown from "@/components/advisor-dropdown";
 import VideoThumbnail from "@/components/video-thumbnail";
-import type { Video } from "@shared/schema";
+import type { Video, Advisor, AdvisorSettings } from "@shared/schema";
+
+// Type for the settings API response
+type SettingsResponse = {
+  advisor: Pick<Advisor, 'id' | 'advisorName' | 'companyName' | 'email'>;
+  settings: AdvisorSettings;
+};
 
 // Mock advisor data - in a real app, this would come from auth context
 const mockAdvisor = {
@@ -17,6 +23,18 @@ const mockAdvisor = {
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<"library" | "scripted" | null>(null);
   const [, navigate] = useLocation();
+
+  // Fetch advisor data
+  const { data: advisorData } = useQuery<SettingsResponse>({
+    queryKey: ["/api/settings", "advisor-1"]
+  });
+
+  // Use real advisor data if available, fallback to mock
+  const advisor = advisorData ? {
+    id: advisorData.advisor.id || "advisor-1",
+    name: advisorData.advisor.advisorName,
+    company: advisorData.advisor.companyName
+  } : mockAdvisor;
 
   // Fetch recent videos
   const { data: recentVideos = [], isLoading } = useQuery({
@@ -128,7 +146,7 @@ export default function Dashboard() {
               </nav>
             </div>
             <AdvisorDropdown
-              advisorName={mockAdvisor.name}
+              advisorName={advisor.name}
               onSettings={() => navigate("/settings")}
               onSignOut={() => console.log("Sign out clicked")}
             />

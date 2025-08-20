@@ -29,6 +29,12 @@ import {
   updateBrandingSchema 
 } from "@shared/schema";
 
+// Type for the settings API response
+type SettingsResponse = {
+  advisor: Pick<Advisor, 'id' | 'advisorName' | 'companyName' | 'email'>;
+  settings: AdvisorSettings;
+};
+
 // Mock advisor data - in a real app, this would come from auth context
 const mockAdvisor: Advisor = {
   id: "advisor-1",
@@ -52,13 +58,13 @@ export default function Settings() {
   const queryClient = useQueryClient();
 
   // Fetch advisor settings
-  const { data: settingsData, isLoading } = useQuery({
+  const { data: settingsData, isLoading } = useQuery<SettingsResponse>({
     queryKey: ["/api/settings", mockAdvisor.id]
   });
 
   // Use data from API, fallback to defaults if not available
-  const advisor = settingsData?.advisor || mockAdvisor;
-  const displaySettings = settingsData?.settings || {
+  const advisor = settingsData ? settingsData.advisor : mockAdvisor;
+  const displaySettings = settingsData ? settingsData.settings : {
     phone: null,
     calendarLink: null,
     disclosureText: defaultDisclosure,
@@ -75,8 +81,8 @@ export default function Settings() {
       advisorName: advisor.advisorName,
       companyName: advisor.companyName,
       email: advisor.email,
-      phone: displaySettings?.phone || "",
-      calendarLink: displaySettings?.calendarLink || "",
+      phone: displaySettings.phone || "",
+      calendarLink: displaySettings.calendarLink || "",
     },
   });
 
@@ -84,7 +90,7 @@ export default function Settings() {
   const complianceForm = useForm<UpdateCompliance>({
     resolver: zodResolver(updateComplianceSchema),
     defaultValues: {
-      disclosureText: displaySettings?.disclosureText || defaultDisclosure,
+      disclosureText: displaySettings.disclosureText || defaultDisclosure,
     },
   });
 
@@ -92,9 +98,9 @@ export default function Settings() {
   const brandingForm = useForm<UpdateBranding>({
     resolver: zodResolver(updateBrandingSchema),
     defaultValues: {
-      logoUrl: displaySettings?.logoUrl || "",
-      primaryColor: displaySettings?.primaryColor || "#2563eb",
-      secondaryColor: displaySettings?.secondaryColor || "#1e40af",
+      logoUrl: displaySettings.logoUrl || "",
+      primaryColor: displaySettings.primaryColor || "#2563eb",
+      secondaryColor: displaySettings.secondaryColor || "#1e40af",
     },
   });
 
