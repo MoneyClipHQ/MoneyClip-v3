@@ -121,10 +121,21 @@ export default function RecordPage() {
 
       // Get webcam stream if enabled
       if (settings.showWebcam) {
-        const videoConstraints: MediaStreamConstraints = {
-          video: { width: 1280, height: 720 },
+        const webcamConstraints: MediaStreamConstraints = {
+          video: {
+            width: { ideal: 320 },
+            height: { ideal: 240 },
+            facingMode: "user"
+          },
+          audio: false, // Audio already handled above
         };
-        webcamStreamRef.current = await navigator.mediaDevices.getUserMedia(videoConstraints);
+        webcamStreamRef.current = await navigator.mediaDevices.getUserMedia(webcamConstraints);
+        
+        // Show webcam preview
+        if (videoPreviewRef.current) {
+          videoPreviewRef.current.srcObject = webcamStreamRef.current;
+          videoPreviewRef.current.play();
+        }
       }
 
       // Combine streams
@@ -214,6 +225,11 @@ export default function RecordPage() {
         webcamStreamRef.current.getTracks().forEach(track => track.stop());
       }
       
+      // Clear webcam preview
+      if (videoPreviewRef.current) {
+        videoPreviewRef.current.srcObject = null;
+      }
+      
       setRecordingState("stopped");
       logRecordingEvent("STOPPED", { duration: recordingTime });
     }
@@ -236,6 +252,15 @@ export default function RecordPage() {
         track.enabled = !isCameraOn;
       });
       setIsCameraOn(!isCameraOn);
+      
+      // Also update the preview video element
+      if (videoPreviewRef.current) {
+        if (!isCameraOn) {
+          // Re-enable and show preview
+          videoPreviewRef.current.srcObject = webcamStreamRef.current;
+          videoPreviewRef.current.play();
+        }
+      }
     }
   };
 
@@ -434,6 +459,42 @@ export default function RecordPage() {
               >
                 CC
               </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Webcam Preview Window */}
+      {recordingState === "recording" && settings.showWebcam && isCameraOn && (
+        <div className="fixed bottom-4 right-4 z-50">
+          <div className="bg-white rounded-lg shadow-lg overflow-hidden border-2 border-gray-200">
+            <div className="bg-gray-100 px-3 py-1 flex items-center justify-between">
+              <span className="text-xs font-medium text-gray-700">You</span>
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={toggleCamera}
+                className="h-6 w-6 hover:bg-gray-200"
+                data-testid="button-webcam-toggle"
+              >
+                <CameraOff className="h-3 w-3" />
+              </Button>
+            </div>
+            <div className="relative">
+              <video
+                ref={videoPreviewRef}
+                autoPlay
+                muted
+                playsInline
+                className="w-48 h-36 object-cover"
+                data-testid="webcam-preview"
+                style={{ transform: 'scaleX(-1)' }} // Mirror the video
+              />
+              {!isCameraOn && (
+                <div className="absolute inset-0 bg-black flex items-center justify-center">
+                  <CameraOff className="h-8 w-8 text-white opacity-50" />
+                </div>
+              )}
             </div>
           </div>
         </div>
