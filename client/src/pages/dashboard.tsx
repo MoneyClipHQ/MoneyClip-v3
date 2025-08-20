@@ -129,9 +129,7 @@ export default function Dashboard() {
             </div>
             <AdvisorDropdown
               advisorName={mockAdvisor.name}
-              onBranding={() => console.log("Branding clicked")}
-              onCompliance={() => console.log("Compliance clicked")}
-              onSettings={() => console.log("Settings clicked")}
+              onSettings={() => navigate("/settings")}
               onSignOut={() => console.log("Sign out clicked")}
             />
           </div>

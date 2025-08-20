@@ -169,6 +169,87 @@ export const insertVideoSchema = createInsertSchema(videos).pick({
 export type InsertVideo = z.infer<typeof insertVideoSchema>;
 export type Video = typeof videos.$inferSelect;
 
+// Settings tables for advisor configuration
+export const advisorSettings = pgTable("advisor_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  advisorId: varchar("advisor_id").notNull().references(() => advisors.id).unique(),
+  // Contact Info
+  phone: text("phone"),
+  calendarLink: text("calendar_link"),
+  // Compliance
+  disclosureText: text("disclosure_text").default("By accessing this video, you acknowledge that the information provided is for educational purposes only and does not constitute financial advice. Please consult with a qualified financial professional before making any investment decisions."),
+  // Branding
+  logoUrl: text("logo_url"),
+  primaryColor: text("primary_color").default("#2563eb"), // Default blue
+  secondaryColor: text("secondary_color").default("#1e40af"), // Default darker blue
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Settings event logging for compliance
+export const settingsEvents = pgTable("settings_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  advisorId: varchar("advisor_id").notNull().references(() => advisors.id),
+  event: text("event").notNull(), // SETTINGS_OPENED, CONTACT_INFO_UPDATED, etc.
+  fieldName: text("field_name"), // Which field was updated
+  metadata: text("metadata"), // JSON string for additional event data
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+});
+
+// Settings schemas
+export const insertAdvisorSettingsSchema = createInsertSchema(advisorSettings, {
+  phone: z.string().optional().refine((val) => {
+    if (!val) return true;
+    // Basic phone validation (can be enhanced)
+    return /^[\+]?[1-9][\d]{0,15}$/.test(val.replace(/[\s\-\(\)]/g, ''));
+  }, "Please enter a valid phone number"),
+  calendarLink: z.string().url("Please enter a valid URL").optional().or(z.literal("")),
+  primaryColor: z.string().regex(/^#[0-9A-F]{6}$/i, "Please enter a valid hex color (e.g., #2563eb)"),
+  secondaryColor: z.string().regex(/^#[0-9A-F]{6}$/i, "Please enter a valid hex color (e.g., #1e40af)"),
+  disclosureText: z.string().min(1, "Disclosure text is required").max(5000, "Disclosure text must be under 5000 characters"),
+}).pick({
+  advisorId: true,
+  phone: true,
+  calendarLink: true,
+  disclosureText: true,
+  logoUrl: true,
+  primaryColor: true,
+  secondaryColor: true,
+});
+
+export const updateContactInfoSchema = insertAdvisorSettingsSchema.pick({
+  phone: true,
+  calendarLink: true,
+}).extend({
+  advisorName: z.string().min(1, "Advisor name is required"),
+  companyName: z.string().min(1, "Company name is required"),
+  email: z.string().email("Please enter a valid email address"),
+});
+
+export const updateComplianceSchema = insertAdvisorSettingsSchema.pick({
+  disclosureText: true,
+});
+
+export const updateBrandingSchema = insertAdvisorSettingsSchema.pick({
+  logoUrl: true,
+  primaryColor: true,
+  secondaryColor: true,
+});
+
+export const insertSettingsEventSchema = createInsertSchema(settingsEvents).pick({
+  advisorId: true,
+  event: true,
+  fieldName: true,
+  metadata: true,
+});
+
+export type InsertAdvisorSettings = z.infer<typeof insertAdvisorSettingsSchema>;
+export type AdvisorSettings = typeof advisorSettings.$inferSelect;
+export type UpdateContactInfo = z.infer<typeof updateContactInfoSchema>;
+export type UpdateCompliance = z.infer<typeof updateComplianceSchema>;
+export type UpdateBranding = z.infer<typeof updateBrandingSchema>;
+export type InsertSettingsEvent = z.infer<typeof insertSettingsEventSchema>;
+export type SettingsEvent = typeof settingsEvents.$inferSelect;
+
 // Legacy user table (keeping for backward compatibility)
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

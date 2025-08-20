@@ -1,21 +1,17 @@
 import { useState, useRef, useEffect } from "react";
-import { ChevronDownIcon, UserIcon, PaletteIcon, ShieldCheckIcon, SettingsIcon, LogOutIcon } from "lucide-react";
+import { ChevronDownIcon, UserIcon, SettingsIcon, LogOutIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface AdvisorDropdownProps {
   advisorName: string;
   onSignOut?: () => void;
   onSettings?: () => void;
-  onBranding?: () => void;
-  onCompliance?: () => void;
 }
 
 export default function AdvisorDropdown({ 
   advisorName, 
   onSignOut, 
-  onSettings, 
-  onBranding, 
-  onCompliance 
+  onSettings
 }: AdvisorDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -50,18 +46,6 @@ export default function AdvisorDropdown({
 
   const menuItems = [
     {
-      icon: PaletteIcon,
-      label: "Branding",
-      onClick: onBranding,
-      testId: "menu-branding"
-    },
-    {
-      icon: ShieldCheckIcon,
-      label: "Compliance",
-      onClick: onCompliance,
-      testId: "menu-compliance"
-    },
-    {
       icon: SettingsIcon,
       label: "Settings",
       onClick: onSettings,
@@ -69,7 +53,7 @@ export default function AdvisorDropdown({
     },
     {
       icon: LogOutIcon,
-      label: "Sign out",
+      label: "Log Out",
       onClick: onSignOut,
       testId: "menu-signout"
     }

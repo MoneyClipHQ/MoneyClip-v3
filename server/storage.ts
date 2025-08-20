@@ -3,6 +3,9 @@ import {
   type Advisor, type InsertAdvisor, type SignupData,
   type Subscription, type InsertSubscription,
   type SignupEvent, type InsertSignupEvent,
+  type AdvisorSettings, type InsertAdvisorSettings,
+  type UpdateContactInfo, type UpdateCompliance, type UpdateBranding,
+  type SettingsEvent, type InsertSettingsEvent,
   PLANS
 } from "@shared/schema";
 import { randomUUID } from "crypto";
@@ -34,6 +37,14 @@ export interface IStorage {
     advisor: Advisor;
     subscription: Subscription;
   }>;
+  
+  // Settings methods
+  getAdvisorSettings(advisorId: string): Promise<AdvisorSettings | undefined>;
+  createAdvisorSettings(settings: InsertAdvisorSettings): Promise<AdvisorSettings>;
+  updateContactInfo(advisorId: string, data: UpdateContactInfo): Promise<void>;
+  updateCompliance(advisorId: string, data: UpdateCompliance): Promise<void>;
+  updateBranding(advisorId: string, data: UpdateBranding): Promise<void>;
+  logSettingsEvent(event: InsertSettingsEvent): Promise<SettingsEvent>;
 }
 
 export class MemStorage implements IStorage {
@@ -41,12 +52,32 @@ export class MemStorage implements IStorage {
   private advisors: Map<string, Advisor>;
   private subscriptions: Map<string, Subscription>;
   private signupEvents: SignupEvent[];
+  private advisorSettings: Map<string, AdvisorSettings>;
+  private settingsEvents: SettingsEvent[];
 
   constructor() {
     this.users = new Map();
     this.advisors = new Map();
     this.subscriptions = new Map();
     this.signupEvents = [];
+    this.advisorSettings = new Map();
+    this.settingsEvents = [];
+    
+    // Initialize with mock advisor for demo
+    this.initializeMockData();
+  }
+  
+  private initializeMockData() {
+    // Create mock advisor
+    const mockAdvisor: Advisor = {
+      id: "advisor-1",
+      advisorName: "Sarah Chen",
+      companyName: "Chen Financial Advisory",
+      email: "sarah@chenfinancial.com",
+      password: "hashedpassword",
+      createdAt: new Date()
+    };
+    this.advisors.set("advisor-1", mockAdvisor);
   }
 
   // Legacy user methods
@@ -178,6 +209,144 @@ export class MemStorage implements IStorage {
     });
 
     return { advisor, subscription };
+  }
+
+  // Settings methods
+  async getAdvisorSettings(advisorId: string): Promise<AdvisorSettings | undefined> {
+    return this.advisorSettings.get(advisorId);
+  }
+
+  async createAdvisorSettings(insertSettings: InsertAdvisorSettings): Promise<AdvisorSettings> {
+    const id = randomUUID();
+    const settings: AdvisorSettings = { 
+      id,
+      advisorId: insertSettings.advisorId,
+      phone: insertSettings.phone || null,
+      calendarLink: insertSettings.calendarLink || null,
+      disclosureText: insertSettings.disclosureText || null,
+      logoUrl: insertSettings.logoUrl || null,
+      primaryColor: insertSettings.primaryColor || null,
+      secondaryColor: insertSettings.secondaryColor || null,
+      updatedAt: new Date()
+    };
+    this.advisorSettings.set(insertSettings.advisorId, settings);
+    return settings;
+  }
+
+  async updateContactInfo(advisorId: string, data: UpdateContactInfo): Promise<void> {
+    // Update advisor basic info
+    const advisor = this.advisors.get(advisorId);
+    if (advisor) {
+      advisor.advisorName = data.advisorName;
+      advisor.companyName = data.companyName;
+      advisor.email = data.email;
+      this.advisors.set(advisorId, advisor);
+    }
+
+    // Update or create settings with contact info
+    let settings = this.advisorSettings.get(advisorId);
+    if (!settings) {
+      settings = await this.createAdvisorSettings({
+        advisorId,
+        phone: data.phone,
+        calendarLink: data.calendarLink,
+        disclosureText: "By accessing this video, you acknowledge that the information provided is for educational purposes only and does not constitute financial advice. Please consult with a qualified financial professional before making any investment decisions.",
+        logoUrl: undefined,
+        primaryColor: "#2563eb",
+        secondaryColor: "#1e40af"
+      });
+    } else {
+      settings.phone = data.phone || null;
+      settings.calendarLink = data.calendarLink || null;
+      settings.updatedAt = new Date();
+      this.advisorSettings.set(advisorId, settings);
+    }
+
+    // Log event
+    await this.logSettingsEvent({
+      advisorId,
+      event: "CONTACT_INFO_UPDATED",
+      fieldName: "phone,calendarLink,advisorName,companyName,email",
+      metadata: JSON.stringify({
+        phone: data.phone,
+        calendarLink: data.calendarLink
+      })
+    });
+  }
+
+  async updateCompliance(advisorId: string, data: UpdateCompliance): Promise<void> {
+    let settings = this.advisorSettings.get(advisorId);
+    if (!settings) {
+      settings = await this.createAdvisorSettings({
+        advisorId,
+        phone: undefined,
+        calendarLink: undefined,
+        disclosureText: data.disclosureText,
+        logoUrl: undefined,
+        primaryColor: "#2563eb",
+        secondaryColor: "#1e40af"
+      });
+    } else {
+      settings.disclosureText = data.disclosureText;
+      settings.updatedAt = new Date();
+      this.advisorSettings.set(advisorId, settings);
+    }
+
+    // Log event
+    await this.logSettingsEvent({
+      advisorId,
+      event: "COMPLIANCE_UPDATED",
+      fieldName: "disclosureText",
+      metadata: JSON.stringify({
+        disclosureTextLength: data.disclosureText.length
+      })
+    });
+  }
+
+  async updateBranding(advisorId: string, data: UpdateBranding): Promise<void> {
+    let settings = this.advisorSettings.get(advisorId);
+    if (!settings) {
+      settings = await this.createAdvisorSettings({
+        advisorId,
+        phone: undefined,
+        calendarLink: undefined,
+        disclosureText: "By accessing this video, you acknowledge that the information provided is for educational purposes only and does not constitute financial advice. Please consult with a qualified financial professional before making any investment decisions.",
+        logoUrl: data.logoUrl,
+        primaryColor: data.primaryColor,
+        secondaryColor: data.secondaryColor
+      });
+    } else {
+      settings.logoUrl = data.logoUrl || null;
+      settings.primaryColor = data.primaryColor || null;
+      settings.secondaryColor = data.secondaryColor || null;
+      settings.updatedAt = new Date();
+      this.advisorSettings.set(advisorId, settings);
+    }
+
+    // Log event
+    await this.logSettingsEvent({
+      advisorId,
+      event: "BRANDING_UPDATED",
+      fieldName: "logoUrl,primaryColor,secondaryColor",
+      metadata: JSON.stringify({
+        logoUrl: data.logoUrl,
+        primaryColor: data.primaryColor,
+        secondaryColor: data.secondaryColor
+      })
+    });
+  }
+
+  async logSettingsEvent(insertEvent: InsertSettingsEvent): Promise<SettingsEvent> {
+    const id = randomUUID();
+    const event: SettingsEvent = { 
+      ...insertEvent, 
+      id,
+      timestamp: new Date(),
+      fieldName: insertEvent.fieldName || null,
+      metadata: insertEvent.metadata || null
+    };
+    this.settingsEvents.push(event);
+    return event;
   }
 }
 

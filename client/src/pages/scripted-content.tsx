@@ -132,8 +132,6 @@ export default function ScriptedContent() {
             </Link>
             <AdvisorDropdown
               advisorName={mockAdvisor.name}
-              onBranding={() => console.log("Branding clicked")}
-              onCompliance={() => console.log("Compliance clicked")}
               onSettings={() => console.log("Settings clicked")}
               onSignOut={() => console.log("Sign out clicked")}
             />

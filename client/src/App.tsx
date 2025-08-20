@@ -10,6 +10,7 @@ import Login from "@/pages/login";
 import Dashboard from "@/pages/dashboard";
 import VideoLibrary from "@/pages/video-library";
 import ScriptedContent from "@/pages/scripted-content";
+import Settings from "@/pages/settings";
 import Terms from "@/pages/terms";
 import Billing from "@/pages/billing";
 import Contact from "@/pages/contact";
@@ -25,6 +26,7 @@ function Router() {
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/video-library" component={VideoLibrary} />
       <Route path="/scripted-content" component={ScriptedContent} />
+      <Route path="/settings" component={Settings} />
       <Route path="/terms" component={Terms} />
       <Route path="/billing" component={Billing} />
       <Route path="/contact" component={Contact} />
