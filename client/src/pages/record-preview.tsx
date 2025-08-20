@@ -102,7 +102,7 @@ export default function RecordPreviewPage() {
         thumbnailUrl: "placeholder-thumbnail-url", // TODO: Generate thumbnail
         duration: videoDuration.toString(),
         status: "published",
-        password: password || undefined,
+        password: (showPassword && password) ? password : undefined,
         shareLink: `moneyclip-${Date.now()}`, // Generate unique share ID
         captionsEnabled,
         showWebcam,
@@ -118,7 +118,7 @@ export default function RecordPreviewPage() {
       // Log compliance event
       logEvent("SAVED", {
         videoId: data.id,
-        hasPassword: !!password,
+        hasPassword: showPassword && !!password,
         hasClientName: !!clientName,
       });
       
@@ -152,8 +152,17 @@ export default function RecordPreviewPage() {
       return;
     }
     
+    if (showPassword && !password.trim()) {
+      toast({
+        title: "Password Required",
+        description: "Please enter a password or turn off password protection.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     saveMutation.mutate();
-    logEvent("PREVIEWED", { hasClientName: !!clientName });
+    logEvent("PREVIEWED", { hasClientName: !!clientName, hasPassword: showPassword && !!password });
   };
 
   const handleDiscard = () => {
@@ -438,7 +447,7 @@ export default function RecordPreviewPage() {
                       <Copy className="h-4 w-4" />
                     </Button>
                   </div>
-                  {password && (
+                  {showPassword && password && (
                     <p className="text-sm text-amber-600">
                       🔒 Password protected - Share the password separately: <strong>{password}</strong>
                     </p>

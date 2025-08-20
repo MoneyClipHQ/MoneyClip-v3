@@ -17,6 +17,7 @@ import Billing from "@/pages/billing";
 import Contact from "@/pages/contact";
 import RecordPage from "@/pages/record";
 import RecordPreviewPage from "@/pages/record-preview";
+import SharePage from "@/pages/share";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -62,6 +63,9 @@ function Router() {
       <Route path="/record/preview">
         {isAuthenticated ? <RecordPreviewPage /> : <Login />}
       </Route>
+      
+      {/* Public share route - no authentication required */}
+      <Route path="/share/:shareLink" component={SharePage} />
       
       <Route component={NotFound} />
     </Switch>
