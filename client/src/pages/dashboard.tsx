@@ -168,10 +168,10 @@ export default function Dashboard() {
         {/* Primary Action - Record Button */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Turn Complex Ideas Into Clear Stories
+            Save Time. Build Trust.
           </h1>
           <p className="text-lg text-gray-600 mb-8 max-w-2xl mx-auto">
-            Record your screen and voice to explain portfolios, market updates, and financial strategies in a way your clients will actually understand.
+            Record quick videos to answer questions, explain updates, and keep clients engaged—without another meeting.
           </p>
           <Button
             size="lg"
