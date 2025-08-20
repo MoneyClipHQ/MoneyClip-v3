@@ -104,7 +104,7 @@ export default function RecordPreviewPage() {
         status: "published",
         password: (showPassword && password) ? password : undefined,
         shareLink: `moneyclip-${Date.now()}`, // Generate unique share ID
-        captionsEnabled,
+        captionsEnabled: true, // Always enabled by default, advisor can toggle in preview
         showWebcam,
       };
 

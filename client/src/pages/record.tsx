@@ -17,8 +17,6 @@ type RecordingState = "idle" | "setup" | "countdown" | "recording" | "paused" | 
 interface RecordingSettings {
   microphone: string | null;
   showWebcam: boolean;
-  countdown: boolean;
-  captionsEnabled: boolean;
 }
 
 export default function RecordPage() {
@@ -32,13 +30,11 @@ export default function RecordPage() {
   const [recordingTime, setRecordingTime] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
   const [isCameraOn, setIsCameraOn] = useState(true);
-  const [captionsOn, setCaptionsOn] = useState(true);
+
   
   const [settings, setSettings] = useState<RecordingSettings>({
     microphone: "default",
     showWebcam: true,
-    countdown: true,
-    captionsEnabled: true,
   });
 
   const [availableMicrophones, setAvailableMicrophones] = useState<MediaDeviceInfo[]>([]);
@@ -90,11 +86,10 @@ export default function RecordPage() {
     setRecordingState("countdown");
     setShowCaptureModal(false);
     
-    if (settings.countdown) {
-      for (let i = 3; i > 0; i--) {
-        setCountdownValue(i);
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      }
+    // Always show 3-second countdown
+    for (let i = 3; i > 0; i--) {
+      setCountdownValue(i);
+      await new Promise(resolve => setTimeout(resolve, 1000));
     }
     
     startRecording();
@@ -183,7 +178,7 @@ export default function RecordPage() {
         captureMode: "screen", // Will be chosen in overlay
         hasAudio: !!audioStream,
         hasWebcam: settings.showWebcam,
-        captionsEnabled: settings.captionsEnabled,
+        captionsEnabled: true, // Always enabled, can be disabled in preview
       });
 
     } catch (error) {
@@ -264,10 +259,7 @@ export default function RecordPage() {
     }
   };
 
-  const toggleCaptions = () => {
-    setCaptionsOn(!captionsOn);
-    logRecordingEvent(captionsOn ? "CAPTIONS_DISABLED" : "CAPTIONS_ENABLED", { time: recordingTime });
-  };
+
 
   const logRecordingEvent = async (event: string, metadata: any) => {
     // TODO: Send to backend API
@@ -334,22 +326,9 @@ export default function RecordPage() {
                 />
               </div>
               
-              <div className="flex items-center justify-between">
-                <Label htmlFor="countdown" className="text-sm font-medium">3-second countdown</Label>
-                <Switch
-                  id="countdown"
-                  checked={settings.countdown}
-                  onCheckedChange={(checked) => setSettings({...settings, countdown: checked})}
-                />
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <Label htmlFor="captions" className="text-sm font-medium">Enable captions</Label>
-                <Switch
-                  id="captions"
-                  checked={settings.captionsEnabled}
-                  onCheckedChange={(checked) => setSettings({...settings, captionsEnabled: checked})}
-                />
+              <div className="text-sm text-gray-500 space-y-1">
+                <p>• 3-second countdown will be shown before recording starts</p>
+                <p>• AI captions will be automatically generated (can be disabled in preview)</p>
               </div>
             </div>
 
@@ -450,15 +429,7 @@ export default function RecordPage() {
                 </Button>
               )}
 
-              <Button
-                size="icon"
-                variant={captionsOn ? "default" : "ghost"}
-                onClick={toggleCaptions}
-                className={captionsOn ? "" : "hover:bg-gray-100"}
-                data-testid="button-toggle-captions"
-              >
-                CC
-              </Button>
+
             </div>
           </div>
         </div>
