@@ -222,16 +222,29 @@ export default function Settings() {
   });
 
   const updateBrandingMutation = useMutation({
-    mutationFn: (data: UpdateBranding) => {
-      return fetch("/api/settings/branding", {
+    mutationFn: async (data: UpdateBranding) => {
+      console.log("Making branding API call with data:", {
+        logoUrl: data.logoUrl ? `${data.logoUrl.substring(0, 50)}...` : "null",
+        primaryColor: data.primaryColor,
+        secondaryColor: data.secondaryColor
+      });
+      
+      const response = await fetch("/api/settings/branding", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
         credentials: "include"
-      }).then(res => {
-        if (!res.ok) throw new Error(`${res.status}: ${res.statusText}`);
-        return res.json();
       });
+      
+      console.log("Branding API response:", response.status, response.statusText);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Branding API error:", errorText);
+        throw new Error(`${response.status}: ${response.statusText}`);
+      }
+      
+      return response.json();
     },
     onSuccess: () => {
       toast({
@@ -269,12 +282,13 @@ export default function Settings() {
     console.log("Manual branding save triggered with:", {
       logoUrl: formData.logoUrl ? `${formData.logoUrl.substring(0, 50)}...` : "null",
       primaryColor: formData.primaryColor,
-      secondaryColor: formData.secondaryColor
+      secondaryColor: formData.secondaryColor,
+      formValid: brandingForm.formState.isValid,
+      formErrors: brandingForm.formState.errors
     });
     
-    if (brandingForm.formState.isValid) {
-      updateBrandingMutation.mutate(formData);
-    }
+    // Always attempt the save - let backend validation handle any issues
+    updateBrandingMutation.mutate(formData);
   };
 
   // Logo upload handler
