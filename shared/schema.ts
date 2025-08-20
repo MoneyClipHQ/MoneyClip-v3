@@ -55,7 +55,63 @@ export const signupSchema = insertAdvisorSchema.extend({
     message: "You must agree to the Terms and Privacy Policy"
   }),
   marketingEmails: z.boolean().default(false),
+  selectedPlan: z.enum(["starter", "professional", "premium"]).default("starter"),
 });
+
+// Plan definitions
+export const PLANS = {
+  starter: {
+    id: "starter",
+    name: "Starter",
+    price: 20,
+    description: "Record your screen and share securely with clients.",
+    features: [
+      "Screen recording + secure sharing",
+      "Password-protected links",
+      "Basic captions",
+      "Basic analytics"
+    ],
+    notIncluded: [
+      "Advisor branding",
+      "Scripted content"
+    ]
+  },
+  professional: {
+    id: "professional", 
+    name: "Professional",
+    price: 45,
+    description: "Add your firm's logo and colors for a branded client experience.",
+    features: [
+      "Screen recording + secure sharing",
+      "Advisor branding (logo, colors)",
+      "Custom viewer page styling",
+      "Password-protected links",
+      "Basic captions",
+      "Basic analytics"
+    ],
+    notIncluded: [
+      "Scripted content"
+    ]
+  },
+  premium: {
+    id: "premium",
+    name: "Premium", 
+    price: 60,
+    description: "Everything in Professional, plus ready-made advisor scripts to save time.",
+    features: [
+      "Screen recording + secure sharing",
+      "Advisor branding (logo, colors)",
+      "Custom viewer page styling", 
+      "Scripted content templates",
+      "Password-protected links",
+      "Basic captions", 
+      "Basic analytics"
+    ],
+    notIncluded: []
+  }
+} as const;
+
+export type PlanId = keyof typeof PLANS;
 
 // Subscription schemas
 export const insertSubscriptionSchema = createInsertSchema(subscriptions).pick({

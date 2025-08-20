@@ -5,10 +5,12 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Home from "@/pages/home";
 import SignUp from "@/pages/signup";
+import Pricing from "@/pages/pricing";
 import Login from "@/pages/login";
 import Dashboard from "@/pages/dashboard";
 import Terms from "@/pages/terms";
 import Billing from "@/pages/billing";
+import Contact from "@/pages/contact";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -16,10 +18,12 @@ function Router() {
     <Switch>
       <Route path="/" component={Home} />
       <Route path="/signup" component={SignUp} />
+      <Route path="/pricing" component={Pricing} />
       <Route path="/login" component={Login} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/terms" component={Terms} />
       <Route path="/billing" component={Billing} />
+      <Route path="/contact" component={Contact} />
       <Route component={NotFound} />
     </Switch>
   );

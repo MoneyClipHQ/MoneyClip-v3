@@ -1,0 +1,135 @@
+Create a minimalist Pricing page for MoneyClip, accessible from the Landing Page. The page presents three monthly plans and routes the user into Sign Up with the selected plan pre-filled.
+
+Placement & navigation
+
+Add a clear “Pricing” link/button to the Landing Page header that navigates here.
+
+Each plan has a Choose plan button that continues to Sign Up with that plan selected.
+
+Plans (monthly, no toggles)
+
+Starter — $20/month
+
+Includes: Screen recording + secure sharing
+
+Not included: Advisor branding, Scripted content
+
+Professional — $45/month
+
+Includes: Screen recording + secure sharing
+
+Includes: Advisor branding (logo, colors, viewer page styling)
+
+Not included: Scripted content
+
+Premium — $60/month
+
+Includes: Screen recording + secure sharing
+
+Includes: Advisor branding
+
+Includes: Scripted content (pre-written advisor scripts/templates for common explainer videos)
+
+Layout & content
+
+Minimalist, fintech aesthetic. Three plan cards side-by-side on desktop; stacked on mobile.
+
+Each card shows:
+
+Plan name
+
+Price per month (big, clear)
+
+Short feature list (3–6 bullets)
+
+“Choose plan” primary button
+
+Add a simple feature comparison row below cards (checkboxes or short labels) for:
+
+Screen recording + sharing
+
+Advisor branding
+
+Scripted content
+
+Small note under the grid: “All plans include: password-protected links, captions, Terms gate, and basic analytics.”
+
+Footer links: Terms, Privacy, Contact.
+
+Behavior
+
+Clicking Choose plan routes to Sign Up and pre-selects that plan (Starter $20, Professional $45, Premium $60).
+
+If Sign Up currently supports only one plan in MVP, still pass the selected plan value so the backend can honor it as plans are enabled.
+
+If user returns from Sign Up, the previously selected plan remains highlighted on Pricing when they navigate back (nice-to-have).
+
+Copy (example text you can use or adjust)
+
+Starter: “Record your screen and share securely with clients.”
+
+Professional: “Add your firm’s logo and colors for a branded client experience.”
+
+Premium: “Everything in Professional, plus ready-made advisor scripts to save time.”
+
+Trust & clarity
+
+Under each price: “Billed monthly. Cancel anytime.”
+
+Link small “What’s included?” helper that anchors to the comparison row.
+
+Keep language plain and compliant (no performance claims).
+
+Accessibility & responsiveness
+
+Fully keyboard navigable; visible focus states on cards and buttons.
+
+Cards reflow gracefully on tablet/mobile; touch targets large enough.
+
+Compliance & audit
+
+Log events: PRICING_PAGE_VIEWED, PLAN_SELECTED (Starter/Professional/Premium), PRICING_NAVIGATE_TO_SIGNUP.
+
+No PII captured on this page.
+
+Error/edge cases
+
+If Sign Up cannot accept the selected plan (temporary), show a friendly message on Sign Up and default to Starter; preserve choice for later upgrade.
+
+If network issues when navigating, show a retry option.
+
+Acceptance criteria
+
+Landing Page links to Pricing; Pricing displays three plans with correct prices and features.
+
+“Choose plan” passes the selected plan into Sign Up so it’s pre-filled/visible.
+
+Feature comparison row clearly indicates which features each plan includes.
+
+Copy shows “Billed monthly. Cancel anytime.”
+
+Page is minimalist, responsive, accessible, and consistent with MoneyClip styling.
+
+Audit events for page view and plan selection are recorded.
+
+Manual test steps
+
+Open Pricing from the Landing Page; confirm three plans and pricing match spec.
+
+Click “Choose plan” on each tier; confirm Sign Up shows the selected plan.
+
+On mobile width, confirm cards stack cleanly and buttons are easy to tap.
+
+Navigate back from Sign Up to Pricing; confirm prior selection can re-highlight (if implemented).
+
+Verify audit events for PRICING_PAGE_VIEWED and PLAN_SELECTED fire.
+
+Guardrails
+
+Monthly pricing only; no annual toggle for MVP.
+
+Do not add extra plans, trials, coupons, or discounts unless requested.
+
+No stack/library recommendations or vendor lock-in decisions.
+
+Keep copy simple and advisor-appropriate.

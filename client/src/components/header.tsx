@@ -12,6 +12,13 @@ export default function Header() {
               <span className="text-2xl font-bold text-primary">MoneyClip</span>
             </div>
           </div>
+          <nav className="hidden md:flex items-center space-x-8">
+            <Link href="/pricing">
+              <span className="text-secondary hover:text-primary transition-colors duration-200 font-medium cursor-pointer">
+                Pricing
+              </span>
+            </Link>
+          </nav>
           <div className="flex items-center space-x-4">
             <Link href="/login">
               <Button

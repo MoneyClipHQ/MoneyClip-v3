@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Link, useLocation } from "wouter";
-import { signupSchema, type SignupData } from "@shared/schema";
+import { Link, useLocation, useSearch } from "wouter";
+import { signupSchema, type SignupData, PLANS, type PlanId } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
@@ -40,6 +40,12 @@ export default function SignUp() {
   const [confirmationData, setConfirmationData] = useState<SignupResponse | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const searchParams = useSearch();
+
+  // Get selected plan from URL params
+  const urlParams = new URLSearchParams(searchParams);
+  const preselectedPlan = urlParams.get('plan') as PlanId | null;
+  const selectedPlanData = preselectedPlan && PLANS[preselectedPlan] ? PLANS[preselectedPlan] : PLANS.starter;
 
   const form = useForm<SignupData>({
     resolver: zodResolver(signupSchema),
@@ -56,6 +62,7 @@ export default function SignUp() {
       postalCode: "",
       agreeToTerms: false,
       marketingEmails: false,
+      selectedPlan: preselectedPlan || "starter",
     },
   });
 
@@ -215,9 +222,19 @@ export default function SignUp() {
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
             <div className="flex items-center gap-3">
               <CreditCardIcon className="h-5 w-5 text-blue-600" />
-              <div>
-                <p className="font-semibold text-blue-900">MVP plan • $20/month • All features included</p>
-                <p className="text-sm text-blue-700">Billing monthly. Cancel anytime.</p>
+              <div className="flex-1">
+                <div className="flex items-center justify-between">
+                  <p className="font-semibold text-blue-900">
+                    {selectedPlanData.name} plan • ${selectedPlanData.price}/month
+                  </p>
+                  <Link href="/pricing">
+                    <Button variant="ghost" size="sm" className="text-blue-600 hover:text-blue-800">
+                      Change plan
+                    </Button>
+                  </Link>
+                </div>
+                <p className="text-sm text-blue-700">{selectedPlanData.description}</p>
+                <p className="text-sm text-blue-700 mt-1">Billing monthly. Cancel anytime.</p>
               </div>
             </div>
           </div>

@@ -2,7 +2,8 @@ import {
   type User, type InsertUser, 
   type Advisor, type InsertAdvisor, type SignupData,
   type Subscription, type InsertSubscription,
-  type SignupEvent, type InsertSignupEvent
+  type SignupEvent, type InsertSignupEvent,
+  PLANS
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { addDays } from "date-fns";
@@ -133,18 +134,22 @@ export class MemStorage implements IStorage {
       throw new Error("EMAIL_ALREADY_EXISTS");
     }
 
-    // Create advisor (excluding payment fields)
-    const { cardholderName, cardNumber, expiryMonth, expiryYear, cvc, postalCode, agreeToTerms, marketingEmails, ...advisorData } = signupData;
+    // Create advisor (excluding payment fields and plan info)
+    const { cardholderName, cardNumber, expiryMonth, expiryYear, cvc, postalCode, agreeToTerms, marketingEmails, selectedPlan, ...advisorData } = signupData;
     
     const advisor = await this.createAdvisor(advisorData);
 
+    // Get selected plan details
+    const selectedPlanData = PLANS[selectedPlan];
+    
     // Log signup event
     await this.logSignupEvent({
       advisorId: advisor.id,
       event: "SIGNUP_SUBMITTED",
       metadata: JSON.stringify({
-        planName: "MoneyClip MVP",
-        amount: "20.00",
+        planId: selectedPlan,
+        planName: selectedPlanData.name,
+        amount: selectedPlanData.price.toString(),
         marketingEmails: marketingEmails
       })
     });
@@ -152,11 +157,11 @@ export class MemStorage implements IStorage {
     // Simulate payment processing (in real app, this would call payment provider)
     const paymentToken = `tok_${randomUUID()}`;
 
-    // Create subscription
+    // Create subscription with selected plan
     const subscription = await this.createSubscription({
       advisorId: advisor.id,
-      planName: "MoneyClip MVP",
-      amount: "20.00",
+      planName: selectedPlanData.name,
+      amount: selectedPlanData.price.toString(),
       nextBillingDate: addDays(new Date(), 30),
       paymentToken: paymentToken
     });

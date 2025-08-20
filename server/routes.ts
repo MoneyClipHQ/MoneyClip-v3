@@ -1,7 +1,7 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { signupSchema } from "@shared/schema";
+import { signupSchema, PLANS } from "@shared/schema";
 import { z } from "zod";
 import { format } from "date-fns";
 
@@ -112,6 +112,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Email check error:", error);
       res.status(500).json({
         error: "Failed to check email"
+      });
+    }
+  });
+
+  // Pricing page view event
+  app.post("/api/pricing/view", async (req: Request, res: Response) => {
+    try {
+      await storage.logSignupEvent({
+        event: "PRICING_PAGE_VIEWED",
+        metadata: JSON.stringify({
+          userAgent: req.get("User-Agent"),
+          timestamp: new Date().toISOString()
+        })
+      });
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Pricing view logging error:", error);
+      res.status(500).json({
+        error: "Failed to log pricing view"
+      });
+    }
+  });
+
+  // Plan selection event
+  app.post("/api/pricing/select", async (req: Request, res: Response) => {
+    try {
+      const { planId } = req.body;
+      
+      if (!planId || !PLANS[planId as keyof typeof PLANS]) {
+        return res.status(400).json({
+          error: "Invalid plan ID"
+        });
+      }
+
+      await storage.logSignupEvent({
+        event: "PLAN_SELECTED",
+        metadata: JSON.stringify({
+          planId,
+          planName: PLANS[planId as keyof typeof PLANS].name,
+          price: PLANS[planId as keyof typeof PLANS].price,
+          timestamp: new Date().toISOString()
+        })
+      });
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Plan selection logging error:", error);
+      res.status(500).json({
+        error: "Failed to log plan selection"
+      });
+    }
+  });
+
+  // Navigation to signup from pricing
+  app.post("/api/pricing/navigate-signup", async (req: Request, res: Response) => {
+    try {
+      const { planId } = req.body;
+      
+      await storage.logSignupEvent({
+        event: "PRICING_NAVIGATE_TO_SIGNUP",
+        metadata: JSON.stringify({
+          planId,
+          timestamp: new Date().toISOString()
+        })
+      });
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Pricing navigation logging error:", error);
+      res.status(500).json({
+        error: "Failed to log pricing navigation"
       });
     }
   });
