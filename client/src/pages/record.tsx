@@ -4,10 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Mic, MicOff, Camera, CameraOff, Monitor, Square, Globe, Pause, Play, StopCircle, Settings } from "lucide-react";
+import { Mic, MicOff, Camera, CameraOff, Pause, Play, StopCircle, Settings } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -15,10 +15,8 @@ type CaptureMode = "screen" | "window" | "tab";
 type RecordingState = "idle" | "setup" | "countdown" | "recording" | "paused" | "stopped";
 
 interface RecordingSettings {
-  captureMode: CaptureMode;
   microphone: string | null;
   showWebcam: boolean;
-  showCursor: boolean;
   countdown: boolean;
   captionsEnabled: boolean;
 }
@@ -37,10 +35,8 @@ export default function RecordPage() {
   const [captionsOn, setCaptionsOn] = useState(true);
   
   const [settings, setSettings] = useState<RecordingSettings>({
-    captureMode: "screen",
     microphone: "default",
     showWebcam: true,
-    showCursor: true,
     countdown: true,
     captionsEnabled: true,
   });
@@ -173,7 +169,7 @@ export default function RecordPage() {
       
       // Log compliance event
       logRecordingEvent("RECORDING_STARTED", {
-        captureMode: settings.captureMode,
+        captureMode: "screen", // Will be chosen in overlay
         hasAudio: !!audioStream,
         hasWebcam: settings.showWebcam,
         captionsEnabled: settings.captionsEnabled,
@@ -282,49 +278,6 @@ export default function RecordPage() {
           </DialogHeader>
           
           <div className="space-y-6 py-4">
-            {/* Capture Mode Selection */}
-            <div>
-              <Label className="text-base font-medium mb-3 block">What do you want to record?</Label>
-              <RadioGroup 
-                value={settings.captureMode} 
-                onValueChange={(value: CaptureMode) => setSettings({...settings, captureMode: value})}
-              >
-                <div className="grid grid-cols-3 gap-3">
-                  <label
-                    htmlFor="screen"
-                    className={`flex flex-col items-center p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                      settings.captureMode === "screen" ? "border-primary bg-primary/5" : "border-gray-200 hover:border-gray-300"
-                    }`}
-                  >
-                    <RadioGroupItem value="screen" id="screen" className="sr-only" />
-                    <Monitor className="h-8 w-8 mb-2" />
-                    <span className="text-sm font-medium">Entire Screen</span>
-                  </label>
-                  
-                  <label
-                    htmlFor="window"
-                    className={`flex flex-col items-center p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                      settings.captureMode === "window" ? "border-primary bg-primary/5" : "border-gray-200 hover:border-gray-300"
-                    }`}
-                  >
-                    <RadioGroupItem value="window" id="window" className="sr-only" />
-                    <Square className="h-8 w-8 mb-2" />
-                    <span className="text-sm font-medium">Window</span>
-                  </label>
-                  
-                  <label
-                    htmlFor="tab"
-                    className={`flex flex-col items-center p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                      settings.captureMode === "tab" ? "border-primary bg-primary/5" : "border-gray-200 hover:border-gray-300"
-                    }`}
-                  >
-                    <RadioGroupItem value="tab" id="tab" className="sr-only" />
-                    <Globe className="h-8 w-8 mb-2" />
-                    <span className="text-sm font-medium">Browser Tab</span>
-                  </label>
-                </div>
-              </RadioGroup>
-            </div>
 
             {/* Microphone Selection */}
             <div>
@@ -353,15 +306,6 @@ export default function RecordPage() {
                   id="webcam"
                   checked={settings.showWebcam}
                   onCheckedChange={(checked) => setSettings({...settings, showWebcam: checked})}
-                />
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <Label htmlFor="cursor" className="text-sm font-medium">Show cursor highlights</Label>
-                <Switch
-                  id="cursor"
-                  checked={settings.showCursor}
-                  onCheckedChange={(checked) => setSettings({...settings, showCursor: checked})}
                 />
               </div>
               
