@@ -602,6 +602,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateBranding(advisorId: string, data: UpdateBranding): Promise<void> {
+    console.log("Updating branding for advisor:", advisorId, {
+      logoUrl: data.logoUrl ? `${data.logoUrl.substring(0, 50)}...` : "null",
+      primaryColor: data.primaryColor,
+      secondaryColor: data.secondaryColor
+    });
+    
     const existingSettings = await this.getAdvisorSettings(advisorId);
     
     if (!existingSettings) {
@@ -614,6 +620,7 @@ export class DatabaseStorage implements IStorage {
         primaryColor: data.primaryColor,
         secondaryColor: data.secondaryColor
       });
+      console.log("Created new branding settings");
     } else {
       await db
         .update(advisorSettings)
@@ -624,6 +631,7 @@ export class DatabaseStorage implements IStorage {
           updatedAt: new Date(),
         })
         .where(eq(advisorSettings.advisorId, advisorId));
+      console.log("Updated existing branding settings");
     }
 
     // Log event

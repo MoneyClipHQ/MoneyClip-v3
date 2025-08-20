@@ -144,6 +144,12 @@ export default function Settings() {
       });
 
       // Update branding form with actual saved values
+      console.log("Loading settings for branding:", {
+        logoUrl: settings.logoUrl ? `${settings.logoUrl.substring(0, 50)}...` : "null",
+        primaryColor: settings.primaryColor,
+        secondaryColor: settings.secondaryColor
+      });
+      
       brandingForm.reset({
         logoUrl: settings.logoUrl || "",
         primaryColor: settings.primaryColor || "#2563eb",
@@ -152,6 +158,7 @@ export default function Settings() {
 
       // Set logo preview if logoUrl exists
       if (settings.logoUrl) {
+        console.log("Setting logo preview from saved settings");
         setLogoPreview(settings.logoUrl);
       }
     }
@@ -316,6 +323,7 @@ export default function Settings() {
     const reader = new FileReader();
     reader.onload = (e) => {
       const result = e.target?.result as string;
+      console.log("Logo uploaded, data URL length:", result.length);
       setLogoPreview(result);
       brandingForm.setValue("logoUrl", result);
       handleBrandingChange("logoUrl");
