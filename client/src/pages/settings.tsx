@@ -98,11 +98,11 @@ export default function Settings() {
   const contactForm = useForm<UpdateContactInfo>({
     resolver: zodResolver(updateContactInfoSchema),
     defaultValues: {
-      advisorName: advisor?.advisorName || "",
-      companyName: advisor?.companyName || "",
-      email: advisor?.email || "",
-      phone: displaySettings.phone || "",
-      calendarLink: displaySettings.calendarLink || "",
+      advisorName: "",
+      companyName: "",
+      email: "",
+      phone: "",
+      calendarLink: "",
     },
   });
 
@@ -110,7 +110,7 @@ export default function Settings() {
   const complianceForm = useForm<UpdateCompliance>({
     resolver: zodResolver(updateComplianceSchema),
     defaultValues: {
-      disclosureText: displaySettings.disclosureText || defaultDisclosure,
+      disclosureText: defaultDisclosure,
     },
   });
 
@@ -118,11 +118,44 @@ export default function Settings() {
   const brandingForm = useForm<UpdateBranding>({
     resolver: zodResolver(updateBrandingSchema),
     defaultValues: {
-      logoUrl: displaySettings.logoUrl || "",
-      primaryColor: displaySettings.primaryColor || "#2563eb",
-      secondaryColor: displaySettings.secondaryColor || "#1e40af",
+      logoUrl: "",
+      primaryColor: "#2563eb",
+      secondaryColor: "#1e40af",
     },
   });
+
+  // Update form values when settings data is loaded
+  useEffect(() => {
+    if (settingsData?.settings) {
+      const settings = settingsData.settings;
+      
+      // Update contact form
+      contactForm.reset({
+        advisorName: advisor?.advisorName || "",
+        companyName: advisor?.companyName || "",
+        email: advisor?.email || "",
+        phone: settings.phone || "",
+        calendarLink: settings.calendarLink || "",
+      });
+
+      // Update compliance form
+      complianceForm.reset({
+        disclosureText: settings.disclosureText || defaultDisclosure,
+      });
+
+      // Update branding form with actual saved values
+      brandingForm.reset({
+        logoUrl: settings.logoUrl || "",
+        primaryColor: settings.primaryColor || "#2563eb",
+        secondaryColor: settings.secondaryColor || "#1e40af",
+      });
+
+      // Set logo preview if logoUrl exists
+      if (settings.logoUrl) {
+        setLogoPreview(settings.logoUrl);
+      }
+    }
+  }, [settingsData, advisor, contactForm, complianceForm, brandingForm]);
 
   // Mutations for autosave
   const updateContactMutation = useMutation({
