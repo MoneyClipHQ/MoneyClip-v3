@@ -55,6 +55,35 @@
   --spacing: 0.25rem;
 }
 
+/* Custom animations for Record button */
+@keyframes gradient-shift {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes glow-pulse {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.3), 0 0 40px rgba(59, 130, 246, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(59, 130, 246, 0.5), 0 0 60px rgba(59, 130, 246, 0.2);
+  }
+}
+
+.record-button-gradient {
+  background: linear-gradient(-45deg, #3b82f6, #2563eb, #1d4ed8, #1e40af);
+  background-size: 400% 400%;
+  animation: gradient-shift 4s ease infinite;
+}
+
+.record-button-glow {
+  animation: glow-pulse 2s ease-in-out infinite;
+}
+
 .dark {
   --background: hsl(0 0% 0%);
   --foreground: hsl(200 6.6667% 91.1765%);
