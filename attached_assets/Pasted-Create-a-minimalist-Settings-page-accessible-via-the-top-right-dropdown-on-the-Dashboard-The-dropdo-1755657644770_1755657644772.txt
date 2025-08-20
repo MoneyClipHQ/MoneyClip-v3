@@ -1,0 +1,171 @@
+Create a minimalist Settings page accessible via the top-right dropdown on the Dashboard. The dropdown contains only Settings and Log Out. The Settings page has three sections: Contact Info, Compliance, and Branding. Changes autosave with clear feedback. Keep the UI clean and professional (advisor fintech aesthetic).
+
+Navigation & Access
+
+Header dropdown (top right): “Settings” and “Log Out”.
+
+Clicking Settings opens this page.
+
+Provide a simple sub-nav (tabs or side menu): Contact Info, Compliance, Branding.
+
+Section 1: Contact Info
+
+Fields (all editable, autosave):
+
+Advisor Name
+
+Company Name
+
+Email (validate format)
+
+Phone (validate format; store in E.164 or clearly labeled)
+
+Calendar/Scheduler Link (e.g., Calendly; validate as URL)
+
+Behavior:
+
+Autosave on field blur with “Saved” toast/state.
+
+These fields feed the Viewer Page CTAs (Email, Call, Schedule).
+
+Acceptance:
+
+Updating any field updates what appears on the Viewer Page (after refresh) and in share flows.
+
+Section 2: Compliance
+
+Purpose: Manage disclosure text for the Terms Gate shown on the Viewer Page.
+
+UI:
+
+Text area labeled “Terms & Disclosure (shown to viewers before playback)”.
+
+Character counter and basic formatting help (plain text MVP is fine).
+
+“Restore default disclosure” action with confirmation.
+
+Behavior:
+
+Autosave on change/blur.
+
+Preview Gate button opens a modal showing how the Terms gate will look to viewers.
+
+Acceptance:
+
+Editing and saving here updates the disclosure used by the Terms gate across all viewer links (global).
+
+Preview accurately reflects the current text.
+
+Section 3: Branding
+
+Fields/Controls:
+
+Company Logo: upload, replace, remove.
+
+Validate file type and size; show error for invalid uploads.
+
+Generate and store appropriate sizes/thumbnails.
+
+Primary Color: input as HEX; show inline color swatch.
+
+Secondary Color: input as HEX; show inline color swatch.
+
+Preview:
+
+Live Viewer Header Preview showing:
+
+White header with logo (left) and a placeholder client name (right).
+
+Page background block using Primary Color.
+
+Secondary accents visible where appropriate (e.g., buttons/links in preview).
+
+Accessibility:
+
+Run a contrast check for text on the selected colors.
+
+If contrast fails, show a non-blocking warning with recommended adjustments.
+
+Behavior:
+
+Autosave on upload/change.
+
+These values drive the Viewer Page styling and header instantly (after refresh).
+
+Acceptance:
+
+Uploading a logo updates the preview and persists.
+
+Updating colors updates the preview and passes (or warns about) contrast.
+
+Global Behavior
+
+Autosave everywhere with subtle “Saved” confirmation and last-updated timestamp.
+
+Discard safety: if a field is mid-edit and the user navigates away with unsaved changes (e.g., long disclosure), show a lightweight warning.
+
+Validation: clear error states for invalid email, phone, or URL; prevent saving invalid data until fixed.
+
+Responsive: tabs/side menu and forms work on desktop and mobile.
+
+Compliance & Audit
+
+Log append-only events:
+
+SETTINGS_OPENED
+
+CONTACT_INFO_UPDATED (field name included)
+
+DISCLOSURE_UPDATED
+
+DISCLOSURE_RESTORED_DEFAULT
+
+BRAND_LOGO_UPLOADED / BRAND_LOGO_REMOVED / BRAND_LOGO_REPLACED
+
+BRAND_PRIMARY_COLOR_UPDATED
+
+BRAND_SECONDARY_COLOR_UPDATED
+
+No raw IPs; store minimal necessary metadata.
+
+Acceptance Criteria
+
+Dropdown shows Settings and Log Out only; Settings opens this page.
+
+Contact Info: all fields editable; autosave works; invalid inputs show errors; updated values flow to Viewer CTAs.
+
+Compliance: editing disclosure autosaves; Preview shows the enforced Terms gate; restoring default works with confirmation.
+
+Branding: logo upload/replace/remove works with validation; primary/secondary color inputs accept HEX, show swatches; live preview reflects changes; contrast warnings appear when needed.
+
+All changes persist after refresh and are reflected in dependent pages (Viewer Page branding/CTAs and Terms gate).
+
+Page is minimalist, responsive, and keyboard-accessible with visible focus.
+
+Manual Test Steps
+
+Open dropdown → click Settings.
+
+Contact Info: change email to invalid → see error; fix to valid → autosave success. Update phone and scheduler link; confirm CTAs on a Viewer Page reflect changes after refresh.
+
+Compliance: edit disclosure, autosave, then click Preview Gate → confirm modal shows updated text and Accept requirement.
+
+Click Restore default disclosure → confirm prompt and successful restore.
+
+Branding: upload an invalid file (expect error), then a valid logo (preview updates). Change primary/secondary colors; see live preview update and any contrast warnings. Refresh page → changes persist.
+
+Navigate away mid-edit in disclosure → confirm unsaved warning if applicable.
+
+Confirm audit log entries exist for each action (via the Video Detail page or audit endpoint if available).
+
+Guardrails
+
+No stack/framework/library recommendations.
+
+No paid vendor lock-in decisions.
+
+Minimalist UI; avoid marketing content.
+
+Strong validation and clear, non-intrusive errors.
+
+Accessibility: all controls keyboard-navigable with visible focus states.
