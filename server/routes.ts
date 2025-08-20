@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { 
   signupSchema, 
+  loginSchema,
   PLANS, 
   updateContactInfoSchema, 
   updateComplianceSchema, 
@@ -11,7 +12,105 @@ import {
 import { z } from "zod";
 import { format } from "date-fns";
 
+// Auth middleware
+function requireAuth(req: any, res: any, next: any) {
+  if (!req.session?.advisorId) {
+    return res.status(401).json({
+      error: "UNAUTHORIZED",
+      message: "Please log in to access this resource"
+    });
+  }
+  next();
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Login route
+  app.post("/api/auth/login", async (req: Request, res: Response) => {
+    try {
+      const validatedData = loginSchema.parse(req.body);
+      
+      const advisor = await storage.authenticateAdvisor(validatedData.email, validatedData.password);
+      
+      if (!advisor) {
+        return res.status(401).json({
+          success: false,
+          error: "INVALID_CREDENTIALS",
+          message: "Invalid email or password"
+        });
+      }
+
+      // Set session
+      req.session.advisorId = advisor.id;
+      req.session.advisor = {
+        id: advisor.id,
+        advisorName: advisor.advisorName,
+        companyName: advisor.companyName,
+        email: advisor.email
+      };
+
+      res.json({
+        success: true,
+        advisor: {
+          id: advisor.id,
+          advisorName: advisor.advisorName,
+          companyName: advisor.companyName,
+          email: advisor.email
+        }
+      });
+
+    } catch (error) {
+      console.error("Login error:", error);
+      
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({
+          success: false,
+          error: "VALIDATION_ERROR",
+          message: "Please check your form data.",
+          errors: error.errors
+        });
+      }
+      
+      res.status(500).json({
+        success: false,
+        error: "INTERNAL_ERROR",
+        message: "Something went wrong. Please try again."
+      });
+    }
+  });
+
+  // Logout route
+  app.post("/api/auth/logout", (req: Request, res: Response) => {
+    req.session.destroy((err) => {
+      if (err) {
+        console.error("Logout error:", err);
+        return res.status(500).json({
+          success: false,
+          error: "LOGOUT_ERROR",
+          message: "Failed to log out"
+        });
+      }
+      
+      res.json({
+        success: true,
+        message: "Logged out successfully"
+      });
+    });
+  });
+
+  // Get current user
+  app.get("/api/auth/me", (req: Request, res: Response) => {
+    if (!req.session?.advisorId) {
+      return res.status(401).json({
+        error: "UNAUTHORIZED",
+        message: "Not logged in"
+      });
+    }
+
+    res.json({
+      advisor: req.session.advisor
+    });
+  });
+
   // Signup route
   app.post("/api/signup", async (req: Request, res: Response) => {
     try {
@@ -196,7 +295,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Settings API Routes
   // Get advisor settings
-  app.get("/api/settings/:advisorId", async (req: Request, res: Response) => {
+  app.get("/api/settings/:advisorId", requireAuth, async (req: Request, res: Response) => {
     try {
       const { advisorId } = req.params;
       
@@ -245,13 +344,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update contact info
-  app.patch("/api/settings/contact", async (req: Request, res: Response) => {
+  app.patch("/api/settings/contact", requireAuth, async (req: Request, res: Response) => {
     try {
       const validatedData = updateContactInfoSchema.parse(req.body);
       
-      // For demo purposes, use a mock advisor ID
-      // In a real app, this would come from the authenticated session
-      const advisorId = "advisor-1";
+      // Get advisor ID from session
+      const advisorId = req.session.advisorId!;
       
       await storage.updateContactInfo(advisorId, validatedData);
       
@@ -274,12 +372,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update compliance
-  app.patch("/api/settings/compliance", async (req: Request, res: Response) => {
+  app.patch("/api/settings/compliance", requireAuth, async (req: Request, res: Response) => {
     try {
       const validatedData = updateComplianceSchema.parse(req.body);
       
-      // For demo purposes, use a mock advisor ID
-      const advisorId = "advisor-1";
+      // Get advisor ID from session
+      const advisorId = req.session.advisorId!;
       
       await storage.updateCompliance(advisorId, validatedData);
       
@@ -302,12 +400,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update branding
-  app.patch("/api/settings/branding", async (req: Request, res: Response) => {
+  app.patch("/api/settings/branding", requireAuth, async (req: Request, res: Response) => {
     try {
       const validatedData = updateBrandingSchema.parse(req.body);
       
-      // For demo purposes, use a mock advisor ID
-      const advisorId = "advisor-1";
+      // Get advisor ID from session
+      const advisorId = req.session.advisorId!;
       
       await storage.updateBranding(advisorId, validatedData);
       

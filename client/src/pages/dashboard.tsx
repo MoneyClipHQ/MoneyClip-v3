@@ -1,10 +1,13 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { VideoIcon, FolderOpen, FileText, Plus } from "lucide-react";
 import AdvisorDropdown from "@/components/advisor-dropdown";
 import VideoThumbnail from "@/components/video-thumbnail";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 import type { Video, Advisor, AdvisorSettings } from "@shared/schema";
 
 // Type for the settings API response
@@ -23,18 +26,42 @@ const mockAdvisor = {
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<"library" | "scripted" | null>(null);
   const [, navigate] = useLocation();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  // Fetch advisor data
-  const { data: advisorData } = useQuery<SettingsResponse>({
-    queryKey: ["/api/settings", "advisor-1"]
-  });
-
-  // Use real advisor data if available, fallback to mock
-  const advisor = advisorData ? {
-    id: advisorData.advisor.id || "advisor-1",
-    name: advisorData.advisor.advisorName,
-    company: advisorData.advisor.companyName
+  // Get current user from auth
+  const { user } = useAuth();
+  
+  // Use real advisor data from auth
+  const advisor = user ? {
+    id: user.id,
+    name: user.advisorName,
+    company: user.companyName
   } : mockAdvisor;
+
+  // Logout mutation
+  const logoutMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/auth/logout");
+      return response.json();
+    },
+    onSuccess: () => {
+      // Clear all queries and redirect to home
+      queryClient.clear();
+      toast({
+        title: "Logged out",
+        description: "You have been successfully logged out.",
+      });
+      navigate("/");
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to log out. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
 
   // Fetch recent videos
   const { data: recentVideos = [], isLoading } = useQuery({
@@ -148,7 +175,7 @@ export default function Dashboard() {
             <AdvisorDropdown
               advisorName={advisor.name}
               onSettings={() => navigate("/settings")}
-              onSignOut={() => console.log("Sign out clicked")}
+              onSignOut={() => logoutMutation.mutate()}
             />
           </div>
         </div>

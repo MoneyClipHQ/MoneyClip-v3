@@ -14,6 +14,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { ArrowLeft, Upload, X, Eye, AlertTriangle, Check } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import AdvisorDropdown from "@/components/advisor-dropdown";
 import { apiRequest } from "@/lib/queryClient";
 import type { 
@@ -53,17 +54,21 @@ export default function Settings() {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [contrastWarning, setContrastWarning] = useState<string | null>(null);
   const [logoFile, setLogoFile] = useState<File | null>(null);
+  
+  // Get authenticated user
+  const { user } = useAuth();
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch advisor settings
+  // Fetch advisor settings using authenticated user ID
   const { data: settingsData, isLoading } = useQuery<SettingsResponse>({
-    queryKey: ["/api/settings", mockAdvisor.id]
+    queryKey: ["/api/settings", user?.id],
+    enabled: !!user?.id  // Only fetch when we have a user ID
   });
 
   // Use data from API, fallback to defaults if not available
-  const advisor = settingsData ? settingsData.advisor : mockAdvisor;
+  const advisor = settingsData ? settingsData.advisor : (user || mockAdvisor);
   const displaySettings = settingsData ? settingsData.settings : {
     phone: null,
     calendarLink: null,
@@ -106,7 +111,17 @@ export default function Settings() {
 
   // Mutations for autosave
   const updateContactMutation = useMutation({
-    mutationFn: (data: UpdateContactInfo) => apiRequest("PATCH", "/api/settings/contact", data),
+    mutationFn: (data: UpdateContactInfo) => {
+      return fetch("/api/settings/contact", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+        credentials: "include"
+      }).then(res => {
+        if (!res.ok) throw new Error(`${res.status}: ${res.statusText}`);
+        return res.json();
+      });
+    },
     onSuccess: () => {
       toast({
         title: "Saved",
@@ -124,7 +139,17 @@ export default function Settings() {
   });
 
   const updateComplianceMutation = useMutation({
-    mutationFn: (data: UpdateCompliance) => apiRequest("PATCH", "/api/settings/compliance", data),
+    mutationFn: (data: UpdateCompliance) => {
+      return fetch("/api/settings/compliance", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+        credentials: "include"
+      }).then(res => {
+        if (!res.ok) throw new Error(`${res.status}: ${res.statusText}`);
+        return res.json();
+      });
+    },
     onSuccess: () => {
       toast({
         title: "Saved",
@@ -142,7 +167,17 @@ export default function Settings() {
   });
 
   const updateBrandingMutation = useMutation({
-    mutationFn: (data: UpdateBranding) => apiRequest("PATCH", "/api/settings/branding", data),
+    mutationFn: (data: UpdateBranding) => {
+      return fetch("/api/settings/branding", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+        credentials: "include"
+      }).then(res => {
+        if (!res.ok) throw new Error(`${res.status}: ${res.statusText}`);
+        return res.json();
+      });
+    },
     onSuccess: () => {
       toast({
         title: "Saved",

@@ -264,3 +264,24 @@ export const insertUserSchema = createInsertSchema(users).pick({
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
+
+// Login schemas
+export const loginSchema = z.object({
+  email: z.string().email("Please enter a valid email address"),
+  password: z.string().min(1, "Password is required"),
+});
+
+export type LoginData = z.infer<typeof loginSchema>;
+
+// Session type extensions
+declare module "express-session" {
+  interface SessionData {
+    advisorId?: string;
+    advisor?: {
+      id: string;
+      advisorName: string;
+      companyName: string;
+      email: string;
+    };
+  }
+}

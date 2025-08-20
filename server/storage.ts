@@ -6,10 +6,14 @@ import {
   type AdvisorSettings, type InsertAdvisorSettings,
   type UpdateContactInfo, type UpdateCompliance, type UpdateBranding,
   type SettingsEvent, type InsertSettingsEvent,
-  PLANS
+  PLANS,
+  advisors, advisorSettings, settingsEvents, signupEvents, subscriptions
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { addDays } from "date-fns";
+import { eq } from "drizzle-orm";
+import { db } from "./db";
+import bcrypt from "bcryptjs";
 
 // modify the interface with any CRUD methods
 // you might need
@@ -24,6 +28,7 @@ export interface IStorage {
   getAdvisor(id: string): Promise<Advisor | undefined>;
   getAdvisorByEmail(email: string): Promise<Advisor | undefined>;
   createAdvisor(advisor: InsertAdvisor): Promise<Advisor>;
+  authenticateAdvisor(email: string, password: string): Promise<Advisor | null>;
   
   // Subscription methods
   createSubscription(subscription: InsertSubscription): Promise<Subscription>;
@@ -118,6 +123,20 @@ export class MemStorage implements IStorage {
     };
     this.advisors.set(id, advisor);
     return advisor;
+  }
+
+  async authenticateAdvisor(email: string, password: string): Promise<Advisor | null> {
+    const advisor = await this.getAdvisorByEmail(email);
+    if (!advisor) {
+      return null;
+    }
+
+    // For MemStorage, just do a simple comparison (not secure, for development only)
+    if (advisor.password === password) {
+      return advisor;
+    }
+    
+    return null;
   }
 
   // Subscription methods
@@ -350,4 +369,283 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+// Database Storage Implementation
+export class DatabaseStorage implements IStorage {
+  async getUser(id: string): Promise<User | undefined> {
+    // Legacy user support - not needed for advisor authentication
+    return undefined;
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    // Legacy user support - not needed for advisor authentication
+    return undefined;
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    throw new Error("Legacy user creation not supported");
+  }
+
+  async getAdvisor(id: string): Promise<Advisor | undefined> {
+    const [advisor] = await db.select().from(advisors).where(eq(advisors.id, id));
+    return advisor;
+  }
+
+  async getAdvisorByEmail(email: string): Promise<Advisor | undefined> {
+    const [advisor] = await db.select().from(advisors).where(eq(advisors.email, email));
+    return advisor;
+  }
+
+  async createAdvisor(insertAdvisor: InsertAdvisor): Promise<Advisor> {
+    // Hash password before storing
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(insertAdvisor.password, saltRounds);
+    
+    const [advisor] = await db
+      .insert(advisors)
+      .values({
+        ...insertAdvisor,
+        password: hashedPassword,
+      })
+      .returning();
+    return advisor;
+  }
+
+  async authenticateAdvisor(email: string, password: string): Promise<Advisor | null> {
+    const advisor = await this.getAdvisorByEmail(email);
+    if (!advisor) {
+      return null;
+    }
+
+    const isValidPassword = await bcrypt.compare(password, advisor.password);
+    if (!isValidPassword) {
+      return null;
+    }
+
+    return advisor;
+  }
+
+  async createSubscription(insertSubscription: InsertSubscription): Promise<Subscription> {
+    const [subscription] = await db
+      .insert(subscriptions)
+      .values(insertSubscription)
+      .returning();
+    return subscription;
+  }
+
+  async getSubscriptionByAdvisorId(advisorId: string): Promise<Subscription | undefined> {
+    const [subscription] = await db
+      .select()
+      .from(subscriptions)
+      .where(eq(subscriptions.advisorId, advisorId));
+    return subscription;
+  }
+
+  async logSignupEvent(insertEvent: InsertSignupEvent): Promise<SignupEvent> {
+    const [event] = await db
+      .insert(signupEvents)
+      .values(insertEvent)
+      .returning();
+    return event;
+  }
+
+  async createAdvisorWithSubscription(signupData: SignupData): Promise<{
+    advisor: Advisor;
+    subscription: Subscription;
+  }> {
+    // Check if email already exists
+    const existingAdvisor = await this.getAdvisorByEmail(signupData.email);
+    if (existingAdvisor) {
+      throw new Error("EMAIL_ALREADY_EXISTS");
+    }
+
+    // Create advisor (excluding payment fields and plan info)
+    const { cardholderName, cardNumber, expiryMonth, expiryYear, cvc, postalCode, agreeToTerms, marketingEmails, selectedPlan, ...advisorData } = signupData;
+    
+    const advisor = await this.createAdvisor(advisorData);
+
+    // Get selected plan details
+    const selectedPlanData = PLANS[selectedPlan];
+    
+    // Log signup event
+    await this.logSignupEvent({
+      advisorId: advisor.id,
+      event: "SIGNUP_SUBMITTED",
+      metadata: JSON.stringify({
+        planId: selectedPlan,
+        planName: selectedPlanData.name,
+        amount: selectedPlanData.price.toString(),
+        marketingEmails: marketingEmails
+      })
+    });
+
+    // Simulate payment processing (in real app, this would call payment provider)
+    const paymentToken = `tok_${randomUUID()}`;
+
+    // Create subscription with selected plan
+    const subscription = await this.createSubscription({
+      advisorId: advisor.id,
+      planName: selectedPlanData.name,
+      amount: selectedPlanData.price.toString(),
+      nextBillingDate: addDays(new Date(), 30),
+      paymentToken: paymentToken
+    });
+
+    // Log subscription creation event
+    await this.logSignupEvent({
+      advisorId: advisor.id,
+      event: "SUBSCRIPTION_CREATED",
+      metadata: JSON.stringify({
+        subscriptionId: subscription.id,
+        planName: subscription.planName,
+        amount: subscription.amount
+      })
+    });
+
+    return { advisor, subscription };
+  }
+
+  async getAdvisorSettings(advisorId: string): Promise<AdvisorSettings | undefined> {
+    const [settings] = await db
+      .select()
+      .from(advisorSettings)
+      .where(eq(advisorSettings.advisorId, advisorId));
+    return settings;
+  }
+
+  async createAdvisorSettings(insertSettings: InsertAdvisorSettings): Promise<AdvisorSettings> {
+    const [settings] = await db
+      .insert(advisorSettings)
+      .values(insertSettings)
+      .returning();
+    return settings;
+  }
+
+  async updateContactInfo(advisorId: string, data: UpdateContactInfo): Promise<void> {
+    // Update advisor basic info
+    await db
+      .update(advisors)
+      .set({
+        advisorName: data.advisorName,
+        companyName: data.companyName,
+        email: data.email,
+      })
+      .where(eq(advisors.id, advisorId));
+
+    // Update or create settings with contact info
+    const existingSettings = await this.getAdvisorSettings(advisorId);
+    
+    if (!existingSettings) {
+      await this.createAdvisorSettings({
+        advisorId,
+        phone: data.phone,
+        calendarLink: data.calendarLink,
+        disclosureText: "Before accessing or viewing this video, you must read and acknowledge the following disclosure. By proceeding, you confirm that you understand and accept these terms.\n\nThe information presented in this video, including any financial projections, scenarios, analyses, or recommendations, is provided for illustrative and educational purposes only. It is not intended to constitute personalized investment advice, financial planning, tax advice, legal advice, or any other professional guidance tailored to your specific circumstances.\n\nAll projections, estimates, and scenarios are based on hypothetical assumptions, such as growth rates, inflation, expenses, retirement ages, market conditions, and other variables. These assumptions are subject to change and may not reflect actual future events. Actual results may vary significantly due to factors including, but not limited to:\n\nMarket volatility, economic fluctuations, interest rate changes, and geopolitical events.\n\nUnexpected personal life events, health issues, or changes in income/expenses.\n\nChanges in tax laws, regulations, or government policies.\n\nInflation, deflation, or currency fluctuations.\n\nInvestment risks, including the potential loss of principal, liquidity risks, credit risks, and concentration risks.\n\nFees, commissions, or other costs associated with investments or financial products.\n\nNo representation or warranty is made regarding the accuracy, completeness, or reliability of the information provided. Past performance of any investment, strategy, or market is not indicative of future results, and no guarantee is made that any projected outcomes will be achieved. Investing always involves risks, including the possibility of substantial losses.\n\nThis video is not a solicitation to buy or sell any securities, insurance products, or other financial instruments. Any decisions you make based on this information are solely your responsibility.\n\nWe strongly recommend that you consult with a qualified financial advisor, tax professional, accountant, attorney, or other relevant experts before making any financial decisions or implementing any strategies discussed. Reliance on this information without professional consultation could result in adverse financial, tax, or legal consequences.\n\nThis disclosure is intended to comply with applicable regulatory requirements, including those from the Securities and Exchange Commission (SEC), Financial Industry Regulatory Authority (FINRA), and other governing bodies. If you are a client of our firm, this does not alter or supersede any existing agreements or disclosures provided to you.\n\nBy clicking \"Accept\" or proceeding to view the video, you acknowledge that you have read, understood, and agree to this disclosure, and you release the advisor, firm, and any affiliates from any liability arising from your use of this information. If you do not agree, please do not proceed.",
+        logoUrl: undefined,
+        primaryColor: "#2563eb",
+        secondaryColor: "#1e40af"
+      });
+    } else {
+      await db
+        .update(advisorSettings)
+        .set({
+          phone: data.phone,
+          calendarLink: data.calendarLink,
+          updatedAt: new Date(),
+        })
+        .where(eq(advisorSettings.advisorId, advisorId));
+    }
+
+    // Log event
+    await this.logSettingsEvent({
+      advisorId,
+      event: "CONTACT_INFO_UPDATED",
+      fieldName: "phone,calendarLink,advisorName,companyName,email",
+      metadata: JSON.stringify({
+        phone: data.phone,
+        calendarLink: data.calendarLink
+      })
+    });
+  }
+
+  async updateCompliance(advisorId: string, data: UpdateCompliance): Promise<void> {
+    const existingSettings = await this.getAdvisorSettings(advisorId);
+    
+    if (!existingSettings) {
+      await this.createAdvisorSettings({
+        advisorId,
+        phone: undefined,
+        calendarLink: undefined,
+        disclosureText: data.disclosureText,
+        logoUrl: undefined,
+        primaryColor: "#2563eb",
+        secondaryColor: "#1e40af"
+      });
+    } else {
+      await db
+        .update(advisorSettings)
+        .set({
+          disclosureText: data.disclosureText,
+          updatedAt: new Date(),
+        })
+        .where(eq(advisorSettings.advisorId, advisorId));
+    }
+
+    // Log event
+    await this.logSettingsEvent({
+      advisorId,
+      event: "COMPLIANCE_UPDATED",
+      fieldName: "disclosureText",
+      metadata: JSON.stringify({
+        disclosureTextLength: data.disclosureText.length
+      })
+    });
+  }
+
+  async updateBranding(advisorId: string, data: UpdateBranding): Promise<void> {
+    const existingSettings = await this.getAdvisorSettings(advisorId);
+    
+    if (!existingSettings) {
+      await this.createAdvisorSettings({
+        advisorId,
+        phone: undefined,
+        calendarLink: undefined,
+        disclosureText: "Before accessing or viewing this video, you must read and acknowledge the following disclosure. By proceeding, you confirm that you understand and accept these terms.\n\nThe information presented in this video, including any financial projections, scenarios, analyses, or recommendations, is provided for illustrative and educational purposes only. It is not intended to constitute personalized investment advice, financial planning, tax advice, legal advice, or any other professional guidance tailored to your specific circumstances.\n\nAll projections, estimates, and scenarios are based on hypothetical assumptions, such as growth rates, inflation, expenses, retirement ages, market conditions, and other variables. These assumptions are subject to change and may not reflect actual future events. Actual results may vary significantly due to factors including, but not limited to:\n\nMarket volatility, economic fluctuations, interest rate changes, and geopolitical events.\n\nUnexpected personal life events, health issues, or changes in income/expenses.\n\nChanges in tax laws, regulations, or government policies.\n\nInflation, deflation, or currency fluctuations.\n\nInvestment risks, including the potential loss of principal, liquidity risks, credit risks, and concentration risks.\n\nFees, commissions, or other costs associated with investments or financial products.\n\nNo representation or warranty is made regarding the accuracy, completeness, or reliability of the information provided. Past performance of any investment, strategy, or market is not indicative of future results, and no guarantee is made that any projected outcomes will be achieved. Investing always involves risks, including the possibility of substantial losses.\n\nThis video is not a solicitation to buy or sell any securities, insurance products, or other financial instruments. Any decisions you make based on this information are solely your responsibility.\n\nWe strongly recommend that you consult with a qualified financial advisor, tax professional, accountant, attorney, or other relevant experts before making any financial decisions or implementing any strategies discussed. Reliance on this information without professional consultation could result in adverse financial, tax, or legal consequences.\n\nThis disclosure is intended to comply with applicable regulatory requirements, including those from the Securities and Exchange Commission (SEC), Financial Industry Regulatory Authority (FINRA), and other governing bodies. If you are a client of our firm, this does not alter or supersede any existing agreements or disclosures provided to you.\n\nBy clicking \"Accept\" or proceeding to view the video, you acknowledge that you have read, understood, and agree to this disclosure, and you release the advisor, firm, and any affiliates from any liability arising from your use of this information. If you do not agree, please do not proceed.",
+        logoUrl: data.logoUrl,
+        primaryColor: data.primaryColor,
+        secondaryColor: data.secondaryColor
+      });
+    } else {
+      await db
+        .update(advisorSettings)
+        .set({
+          logoUrl: data.logoUrl,
+          primaryColor: data.primaryColor,
+          secondaryColor: data.secondaryColor,
+          updatedAt: new Date(),
+        })
+        .where(eq(advisorSettings.advisorId, advisorId));
+    }
+
+    // Log event
+    await this.logSettingsEvent({
+      advisorId,
+      event: "BRANDING_UPDATED",
+      fieldName: "logoUrl,primaryColor,secondaryColor",
+      metadata: JSON.stringify({
+        logoUrl: data.logoUrl,
+        primaryColor: data.primaryColor,
+        secondaryColor: data.secondaryColor
+      })
+    });
+  }
+
+  async logSettingsEvent(insertEvent: InsertSettingsEvent): Promise<SettingsEvent> {
+    const [event] = await db
+      .insert(settingsEvents)
+      .values(insertEvent)
+      .returning();
+    return event;
+  }
+}
+
+export const storage = new DatabaseStorage();
