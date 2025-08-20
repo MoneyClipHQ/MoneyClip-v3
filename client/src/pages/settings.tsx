@@ -195,8 +195,8 @@ export default function Settings() {
     },
     onSuccess: () => {
       toast({
-        title: "Saved",
-        description: "Branding settings updated successfully",
+        title: "Branding Saved",
+        description: "Your brand colors and logo have been updated successfully",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/settings"] });
     },
@@ -208,6 +208,9 @@ export default function Settings() {
       });
     },
   });
+
+  // Debounced save function for branding
+  const debouncedBrandingSave = useRef<NodeJS.Timeout | null>(null);
 
   // Auto-save handlers
   const handleContactBlur = (field: keyof UpdateContactInfo) => {
@@ -224,9 +227,29 @@ export default function Settings() {
   };
 
   const handleBrandingChange = (field: keyof UpdateBranding) => {
-    if (brandingForm.formState.isValid) {
-      updateBrandingMutation.mutate(brandingForm.getValues());
+    // Clear existing timeout
+    if (debouncedBrandingSave.current) {
+      clearTimeout(debouncedBrandingSave.current);
     }
+    
+    // Set new timeout for debounced save
+    debouncedBrandingSave.current = setTimeout(() => {
+      const formData = brandingForm.getValues();
+      const isValid = brandingForm.formState.isValid;
+      
+      // Validate the specific field that changed
+      const fieldValue = formData[field];
+      if (field === 'primaryColor' || field === 'secondaryColor') {
+        const isValidColor = fieldValue && /^#[0-9A-F]{6}$/i.test(fieldValue);
+        if (!isValidColor) {
+          return; // Don't save invalid colors
+        }
+      }
+      
+      if (isValid) {
+        updateBrandingMutation.mutate(formData);
+      }
+    }, 500); // 500ms delay
   };
 
   // Logo upload handler
@@ -288,6 +311,15 @@ export default function Settings() {
     }
     return null;
   };
+
+  // Cleanup debounced save on unmount
+  useEffect(() => {
+    return () => {
+      if (debouncedBrandingSave.current) {
+        clearTimeout(debouncedBrandingSave.current);
+      }
+    };
+  }, []);
 
   // Watch for color changes to check contrast
   useEffect(() => {
@@ -663,12 +695,12 @@ export default function Settings() {
                                 <div className="flex gap-2">
                                   <input
                                     type="color"
-                                    value={field.value}
+                                    value={field.value || "#2563eb"}
                                     onChange={(e) => {
                                       field.onChange(e.target.value);
                                       handleBrandingChange("primaryColor");
                                     }}
-                                    className="w-12 h-10 rounded border border-gray-300"
+                                    className="w-12 h-10 rounded border border-gray-300 cursor-pointer"
                                     data-testid="input-primary-color"
                                   />
                                   <Input
@@ -679,6 +711,7 @@ export default function Settings() {
                                       field.onChange(e.target.value);
                                       handleBrandingChange("primaryColor");
                                     }}
+                                    className="flex-1"
                                   />
                                 </div>
                               </FormControl>
@@ -697,12 +730,12 @@ export default function Settings() {
                                 <div className="flex gap-2">
                                   <input
                                     type="color"
-                                    value={field.value}
+                                    value={field.value || "#1e40af"}
                                     onChange={(e) => {
                                       field.onChange(e.target.value);
                                       handleBrandingChange("secondaryColor");
                                     }}
-                                    className="w-12 h-10 rounded border border-gray-300"
+                                    className="w-12 h-10 rounded border border-gray-300 cursor-pointer"
                                     data-testid="input-secondary-color"
                                   />
                                   <Input
@@ -713,6 +746,7 @@ export default function Settings() {
                                       field.onChange(e.target.value);
                                       handleBrandingChange("secondaryColor");
                                     }}
+                                    className="flex-1"
                                   />
                                 </div>
                               </FormControl>
@@ -736,7 +770,15 @@ export default function Settings() {
                     {updateBrandingMutation.isPending && (
                       <div className="flex items-center gap-2 text-sm text-gray-600">
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
-                        Saving...
+                        Saving branding changes...
+                      </div>
+                    )}
+                    
+                    {/* Success indicator */}
+                    {updateBrandingMutation.isSuccess && !updateBrandingMutation.isPending && (
+                      <div className="flex items-center gap-2 text-sm text-green-600">
+                        <Check className="h-4 w-4" />
+                        Branding saved successfully
                       </div>
                     )}
                   </CardContent>
