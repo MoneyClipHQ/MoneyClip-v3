@@ -363,14 +363,28 @@ export default function RecordPreviewPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="password-toggle">Password Protection</Label>
-                      <Switch
-                        id="password-toggle"
-                        checked={showPassword}
-                        onCheckedChange={setShowPassword}
-                        disabled={isSaving}
-                      />
+                    <div className={`p-4 rounded-lg border-2 transition-colors ${
+                      showPassword 
+                        ? 'border-blue-200 bg-blue-50' 
+                        : 'border-gray-200 bg-gray-50 hover:border-gray-300'
+                    }`}>
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-1">
+                          <Label htmlFor="password-toggle" className="text-base font-medium cursor-pointer">
+                            Password Protection
+                          </Label>
+                          <p className="text-sm text-gray-600">
+                            {showPassword ? 'Video will require a password to view' : 'Anyone with the link can view this video'}
+                          </p>
+                        </div>
+                        <Switch
+                          id="password-toggle"
+                          checked={showPassword}
+                          onCheckedChange={setShowPassword}
+                          disabled={isSaving}
+                          className="data-[state=checked]:bg-blue-600"
+                        />
+                      </div>
                     </div>
                     
                     {showPassword && (
