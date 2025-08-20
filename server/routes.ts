@@ -346,12 +346,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Update contact info
   app.patch("/api/settings/contact", requireAuth, async (req: Request, res: Response) => {
     try {
+      console.log("Contact update request:", {
+        advisorId: req.session.advisorId,
+        phone: req.body.phone,
+        calendarLink: req.body.calendarLink
+      });
+      
       const validatedData = updateContactInfoSchema.parse(req.body);
       
       // Get advisor ID from session
       const advisorId = req.session.advisorId!;
       
       await storage.updateContactInfo(advisorId, validatedData);
+      
+      console.log("Contact info updated successfully for advisor:", advisorId);
       
       res.json({ success: true });
     } catch (error) {
@@ -374,12 +382,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Update compliance
   app.patch("/api/settings/compliance", requireAuth, async (req: Request, res: Response) => {
     try {
+      console.log("Compliance update request:", {
+        advisorId: req.session.advisorId,
+        disclosureTextLength: req.body.disclosureText ? req.body.disclosureText.length : 0
+      });
+      
       const validatedData = updateComplianceSchema.parse(req.body);
       
       // Get advisor ID from session
       const advisorId = req.session.advisorId!;
       
       await storage.updateCompliance(advisorId, validatedData);
+      
+      console.log("Compliance updated successfully for advisor:", advisorId);
       
       res.json({ success: true });
     } catch (error) {

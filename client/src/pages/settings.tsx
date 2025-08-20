@@ -166,16 +166,25 @@ export default function Settings() {
 
   // Mutations for autosave
   const updateContactMutation = useMutation({
-    mutationFn: (data: UpdateContactInfo) => {
-      return fetch("/api/settings/contact", {
+    mutationFn: async (data: UpdateContactInfo) => {
+      console.log("Making contact API call with data:", data);
+      
+      const response = await fetch("/api/settings/contact", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
         credentials: "include"
-      }).then(res => {
-        if (!res.ok) throw new Error(`${res.status}: ${res.statusText}`);
-        return res.json();
       });
+      
+      console.log("Contact API response:", response.status, response.statusText);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Contact API error:", errorText);
+        throw new Error(`${response.status}: ${response.statusText}`);
+      }
+      
+      return response.json();
     },
     onSuccess: () => {
       toast({
@@ -185,6 +194,7 @@ export default function Settings() {
       queryClient.invalidateQueries({ queryKey: ["/api/settings"] });
     },
     onError: (error) => {
+      console.error("Contact save error:", error);
       toast({
         title: "Error",
         description: "Failed to save contact information",
@@ -194,16 +204,27 @@ export default function Settings() {
   });
 
   const updateComplianceMutation = useMutation({
-    mutationFn: (data: UpdateCompliance) => {
-      return fetch("/api/settings/compliance", {
+    mutationFn: async (data: UpdateCompliance) => {
+      console.log("Making compliance API call with data:", {
+        disclosureTextLength: data.disclosureText.length
+      });
+      
+      const response = await fetch("/api/settings/compliance", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
         credentials: "include"
-      }).then(res => {
-        if (!res.ok) throw new Error(`${res.status}: ${res.statusText}`);
-        return res.json();
       });
+      
+      console.log("Compliance API response:", response.status, response.statusText);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Compliance API error:", errorText);
+        throw new Error(`${response.status}: ${response.statusText}`);
+      }
+      
+      return response.json();
     },
     onSuccess: () => {
       toast({
@@ -213,6 +234,7 @@ export default function Settings() {
       queryClient.invalidateQueries({ queryKey: ["/api/settings"] });
     },
     onError: (error) => {
+      console.error("Compliance save error:", error);
       toast({
         title: "Error",
         description: "Failed to save compliance settings",
@@ -266,15 +288,28 @@ export default function Settings() {
 
   // Save handlers for explicit save buttons
   const handleContactSave = () => {
-    if (contactForm.formState.isValid) {
-      updateContactMutation.mutate(contactForm.getValues());
-    }
+    const formData = contactForm.getValues();
+    console.log("Manual contact save triggered with:", {
+      phone: formData.phone,
+      calendarLink: formData.calendarLink,
+      formValid: contactForm.formState.isValid,
+      formErrors: contactForm.formState.errors
+    });
+    
+    // Always attempt the save - let backend validation handle any issues
+    updateContactMutation.mutate(formData);
   };
 
   const handleComplianceSave = () => {
-    if (complianceForm.formState.isValid) {
-      updateComplianceMutation.mutate(complianceForm.getValues());
-    }
+    const formData = complianceForm.getValues();
+    console.log("Manual compliance save triggered with:", {
+      disclosureTextLength: formData.disclosureText.length,
+      formValid: complianceForm.formState.isValid,
+      formErrors: complianceForm.formState.errors
+    });
+    
+    // Always attempt the save - let backend validation handle any issues
+    updateComplianceMutation.mutate(formData);
   };
 
   const handleBrandingSave = () => {
