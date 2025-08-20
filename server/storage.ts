@@ -8,8 +8,7 @@ import {
   type SettingsEvent, type InsertSettingsEvent,
   type Video, type InsertVideo, type UpdateVideo,
   type RecordingEvent, type InsertRecordingEvent,
-  PLANS,
-  advisors, advisorSettings, settingsEvents, signupEvents, subscriptions, videos, recordingEvents
+  PLANS
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { addDays } from "date-fns";
@@ -71,6 +70,8 @@ export class MemStorage implements IStorage {
   private signupEvents: SignupEvent[];
   private advisorSettings: Map<string, AdvisorSettings>;
   private settingsEvents: SettingsEvent[];
+  private videos: Map<string, Video>;
+  private recordingEvents: RecordingEvent[];
 
   constructor() {
     this.users = new Map();
@@ -79,6 +80,8 @@ export class MemStorage implements IStorage {
     this.signupEvents = [];
     this.advisorSettings = new Map();
     this.settingsEvents = [];
+    this.videos = new Map();
+    this.recordingEvents = [];
     
     // Initialize with mock advisor for demo
     this.initializeMockData();
@@ -378,6 +381,72 @@ export class MemStorage implements IStorage {
     };
     this.settingsEvents.push(event);
     return event;
+  }
+
+  // Video methods
+  async createVideo(video: InsertVideo): Promise<Video> {
+    const id = randomUUID();
+    const newVideo: Video = { 
+      ...video, 
+      id,
+      viewCount: "0",
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    this.videos.set(id, newVideo);
+    return newVideo;
+  }
+
+  async updateVideo(id: string, data: UpdateVideo): Promise<Video | undefined> {
+    const video = this.videos.get(id);
+    if (!video) return undefined;
+    
+    const updatedVideo = { 
+      ...video, 
+      ...data,
+      updatedAt: new Date()
+    };
+    this.videos.set(id, updatedVideo);
+    return updatedVideo;
+  }
+
+  async getVideo(id: string): Promise<Video | undefined> {
+    return this.videos.get(id);
+  }
+
+  async getVideoByShareLink(shareLink: string): Promise<Video | undefined> {
+    return Array.from(this.videos.values()).find(
+      (video) => video.shareLink === shareLink
+    );
+  }
+
+  async getRecentVideos(advisorId: string, limit: number = 3): Promise<Video[]> {
+    return Array.from(this.videos.values())
+      .filter(video => video.advisorId === advisorId)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+      .slice(0, limit);
+  }
+
+  async getAllVideos(advisorId: string): Promise<Video[]> {
+    return Array.from(this.videos.values())
+      .filter(video => video.advisorId === advisorId)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }
+
+  async deleteVideo(id: string): Promise<void> {
+    this.videos.delete(id);
+  }
+
+  async logRecordingEvent(event: InsertRecordingEvent): Promise<RecordingEvent> {
+    const id = randomUUID();
+    const recordingEvent: RecordingEvent = { 
+      ...event, 
+      id,
+      timestamp: new Date(),
+      metadata: typeof event.metadata === 'object' ? JSON.stringify(event.metadata) : (event.metadata || null)
+    };
+    this.recordingEvents.push(recordingEvent);
+    return recordingEvent;
   }
 }
 

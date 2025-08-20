@@ -19,76 +19,13 @@ export default function VideoLibrary() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Mock video data - expanded for library view
-  const mockVideos: Video[] = [
-    {
-      id: "video-1",
-      advisorId: "advisor-1",
-      title: "Q4 Portfolio Review",
-      description: "Quarterly portfolio performance analysis and strategic adjustments for 2025",
-      fileUrl: "/videos/q4-review.mp4",
-      thumbnailUrl: "/thumbnails/q4-review.jpg",
-      duration: "360",
-      status: "published",
-      viewCount: "12",
-      createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-      updatedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-    },
-    {
-      id: "video-2",
-      advisorId: "advisor-1",
-      title: "Market Update - December 2025",
-      description: "Latest market trends, economic indicators, and investment outlook",
-      fileUrl: "/videos/market-update.mp4",
-      thumbnailUrl: null,
-      duration: "240",
-      status: "published",
-      viewCount: "8",
-      createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
-      updatedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
-    },
-    {
-      id: "video-3",
-      advisorId: "advisor-1",
-      title: "Retirement Planning Basics",
-      description: "Introduction to retirement planning strategies and key considerations",
-      fileUrl: "/videos/retirement-basics.mp4",
-      thumbnailUrl: "/thumbnails/retirement.jpg",
-      duration: "480",
-      status: "draft",
-      viewCount: "0",
-      createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-      updatedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-    },
-    {
-      id: "video-4",
-      advisorId: "advisor-1",
-      title: "Tax-Loss Harvesting Strategy",
-      description: "How to optimize your investment portfolio for tax efficiency",
-      fileUrl: "/videos/tax-loss.mp4",
-      thumbnailUrl: "/thumbnails/tax-loss.jpg",
-      duration: "300",
-      status: "published",
-      viewCount: "15",
-      createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
-      updatedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
-    },
-    {
-      id: "video-5",
-      advisorId: "advisor-1",
-      title: "ESG Investing Explained",
-      description: "Environmental, social, and governance considerations in modern investing",
-      fileUrl: "/videos/esg-investing.mp4",
-      thumbnailUrl: "/thumbnails/esg.jpg",
-      duration: "420",
-      status: "published",
-      viewCount: "22",
-      createdAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
-      updatedAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
-    },
-  ];
+  // Fetch videos from API instead of using mock data
+  const { data: videos = [], isLoading } = useQuery<Video[]>({
+    queryKey: ["/api/videos"],
+    enabled: !!mockAdvisor.id
+  });
 
-  const filteredVideos = mockVideos.filter(video =>
+  const filteredVideos = videos.filter((video: Video) =>
     video.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (video.description && video.description.toLowerCase().includes(searchQuery.toLowerCase()))
   );
@@ -207,7 +144,7 @@ export default function VideoLibrary() {
         {filteredVideos.length > 0 && (
           <div className="mt-8 text-center">
             <p className="text-sm text-gray-600" data-testid="text-results-count">
-              Showing {filteredVideos.length} of {mockVideos.length} videos
+              Showing {filteredVideos.length} of {videos.length} videos
             </p>
           </div>
         )}

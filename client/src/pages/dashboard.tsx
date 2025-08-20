@@ -63,10 +63,10 @@ export default function Dashboard() {
     },
   });
 
-  // Fetch recent videos
+  // Fetch recent videos - now using real API
   const { data: recentVideos = [], isLoading } = useQuery({
     queryKey: ["/api/videos/recent"],
-    enabled: false // Disabled for now since we don't have the API endpoint yet
+    enabled: !!advisor.id
   });
 
   const handleRecord = () => {
