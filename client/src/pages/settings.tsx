@@ -36,15 +36,7 @@ type SettingsResponse = {
   settings: AdvisorSettings;
 };
 
-// Mock advisor data - in a real app, this would come from auth context
-const mockAdvisor: Advisor = {
-  id: "advisor-1",
-  advisorName: "Sarah Chen",
-  companyName: "Chen Financial Advisory",
-  email: "sarah@chenfinancial.com",
-  password: "", // Never expose in real app
-  createdAt: new Date(),
-};
+// Removed mock advisor data - now using real authenticated user data
 
 const defaultDisclosure = "Before accessing or viewing this video, you must read and acknowledge the following disclosure. By proceeding, you confirm that you understand and accept these terms.\n\nThe information presented in this video, including any financial projections, scenarios, analyses, or recommendations, is provided for illustrative and educational purposes only. It is not intended to constitute personalized investment advice, financial planning, tax advice, legal advice, or any other professional guidance tailored to your specific circumstances.\n\nAll projections, estimates, and scenarios are based on hypothetical assumptions, such as growth rates, inflation, expenses, retirement ages, market conditions, and other variables. These assumptions are subject to change and may not reflect actual future events. Actual results may vary significantly due to factors including, but not limited to:\n\nMarket volatility, economic fluctuations, interest rate changes, and geopolitical events.\n\nUnexpected personal life events, health issues, or changes in income/expenses.\n\nChanges in tax laws, regulations, or government policies.\n\nInflation, deflation, or currency fluctuations.\n\nInvestment risks, including the potential loss of principal, liquidity risks, credit risks, and concentration risks.\n\nFees, commissions, or other costs associated with investments or financial products.\n\nNo representation or warranty is made regarding the accuracy, completeness, or reliability of the information provided. Past performance of any investment, strategy, or market is not indicative of future results, and no guarantee is made that any projected outcomes will be achieved. Investing always involves risks, including the possibility of substantial losses.\n\nThis video is not a solicitation to buy or sell any securities, insurance products, or other financial instruments. Any decisions you make based on this information are solely your responsibility.\n\nWe strongly recommend that you consult with a qualified financial advisor, tax professional, accountant, attorney, or other relevant experts before making any financial decisions or implementing any strategies discussed. Reliance on this information without professional consultation could result in adverse financial, tax, or legal consequences.\n\nThis disclosure is intended to comply with applicable regulatory requirements, including those from the Securities and Exchange Commission (SEC), Financial Industry Regulatory Authority (FINRA), and other governing bodies. If you are a client of our firm, this does not alter or supersede any existing agreements or disclosures provided to you.\n\nBy clicking \"Accept\" or proceeding to view the video, you acknowledge that you have read, understood, and agree to this disclosure, and you release the advisor, firm, and any affiliates from any liability arising from your use of this information. If you do not agree, please do not proceed.";
 
@@ -61,14 +53,37 @@ export default function Settings() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  // Logout mutation
+  const logoutMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/auth/logout");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.clear();
+      toast({
+        title: "Logged out",
+        description: "You have been successfully logged out.",
+      });
+      navigate("/");
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to log out. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Fetch advisor settings using authenticated user ID
   const { data: settingsData, isLoading } = useQuery<SettingsResponse>({
     queryKey: ["/api/settings", user?.id],
     enabled: !!user?.id  // Only fetch when we have a user ID
   });
 
-  // Use data from API, fallback to defaults if not available
-  const advisor = settingsData ? settingsData.advisor : (user || mockAdvisor);
+  // Use data from API, fallback to authenticated user data
+  const advisor = settingsData?.advisor || user;
   const displaySettings = settingsData ? settingsData.settings : {
     phone: null,
     calendarLink: null,
@@ -83,9 +98,9 @@ export default function Settings() {
   const contactForm = useForm<UpdateContactInfo>({
     resolver: zodResolver(updateContactInfoSchema),
     defaultValues: {
-      advisorName: advisor.advisorName,
-      companyName: advisor.companyName,
-      email: advisor.email,
+      advisorName: advisor?.advisorName || "",
+      companyName: advisor?.companyName || "",
+      email: advisor?.email || "",
       phone: displaySettings.phone || "",
       calendarLink: displaySettings.calendarLink || "",
     },
@@ -322,9 +337,9 @@ export default function Settings() {
               <h1 className="text-xl font-semibold text-gray-900">Settings</h1>
             </div>
             <AdvisorDropdown
-              advisorName={mockAdvisor.advisorName}
+              advisorName={advisor?.advisorName || "Advisor"}
               onSettings={() => {}} // Already on settings page
-              onSignOut={() => console.log("Sign out clicked")}
+              onSignOut={() => logoutMutation.mutate()}
             />
           </div>
         </div>
