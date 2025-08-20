@@ -165,31 +165,25 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Primary Action - Enhanced Record Button */}
+        {/* Primary Action - Record Button */}
         <div className="text-center mb-8">
-          <div className="relative inline-block">
-            <div className="absolute -inset-3 bg-gradient-to-r from-blue-500 via-purple-500 to-blue-500 rounded-3xl blur-lg opacity-30 animate-pulse"></div>
-            <Button
-              size="lg"
-              onClick={handleRecord}
-              data-testid="button-record"
-              className="record-button-gradient record-button-glow relative h-24 px-16 text-xl font-bold text-white rounded-2xl transform hover:scale-105 transition-all duration-300 group border border-white/20"
-            >
-              <div className="absolute inset-0 bg-gradient-to-r from-white/20 via-white/10 to-white/20 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-              <div className="relative flex items-center">
-                <div className="relative mr-4">
-                  <VideoIcon className="h-8 w-8 group-hover:rotate-12 transition-transform duration-300" />
-                  <div className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full animate-pulse"></div>
-                </div>
-                <span className="tracking-wide">Record</span>
-                <div className="absolute -bottom-2 -right-2 h-5 w-5 bg-green-400 rounded-full animate-bounce shadow-lg border-2 border-white">
-                  <div className="absolute inset-0 bg-green-300 rounded-full animate-ping"></div>
-                </div>
-              </div>
-            </Button>
-          </div>
-          <p className="text-sm text-gray-600 mt-4 font-medium">
-            Record your screen with voice
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            Turn Complex Ideas Into Clear Stories
+          </h1>
+          <p className="text-lg text-gray-600 mb-8 max-w-2xl mx-auto">
+            Record your screen and voice to explain portfolios, market updates, and financial strategies in a way your clients will actually understand.
+          </p>
+          <Button
+            size="lg"
+            onClick={handleRecord}
+            data-testid="button-record"
+            className="h-16 px-12 text-lg font-semibold bg-primary hover:bg-blue-700 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
+          >
+            <VideoIcon className="h-6 w-6 mr-3" />
+            Start Recording
+          </Button>
+          <p className="text-sm text-gray-500 mt-3">
+            Screen + voice recording in one click
           </p>
         </div>
 
