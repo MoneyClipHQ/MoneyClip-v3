@@ -8,7 +8,8 @@ import {
   type SettingsEvent, type InsertSettingsEvent,
   type Video, type InsertVideo, type UpdateVideo,
   type RecordingEvent, type InsertRecordingEvent,
-  PLANS
+  PLANS,
+  users, advisors, subscriptions, signupEvents, advisorSettings, settingsEvents, videos, recordingEvents
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { addDays } from "date-fns";
@@ -385,15 +386,14 @@ export class MemStorage implements IStorage {
 
   // Video methods
   async createVideo(video: InsertVideo): Promise<Video> {
-    const id = randomUUID();
-    const newVideo: Video = { 
-      ...video, 
-      id,
-      viewCount: "0",
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-    this.videos.set(id, newVideo);
+    const [newVideo] = await db
+      .insert(videos)
+      .values({
+        ...video,
+        password: video.password || null,
+        viewCount: "0"
+      })
+      .returning();
     return newVideo;
   }
 
@@ -434,19 +434,19 @@ export class MemStorage implements IStorage {
   }
 
   async deleteVideo(id: string): Promise<void> {
-    this.videos.delete(id);
+    await db.delete(videos).where(eq(videos.id, id));
   }
 
   async logRecordingEvent(event: InsertRecordingEvent): Promise<RecordingEvent> {
-    const id = randomUUID();
-    const recordingEvent: RecordingEvent = { 
-      ...event, 
-      id,
-      timestamp: new Date(),
-      metadata: typeof event.metadata === 'object' ? JSON.stringify(event.metadata) : (event.metadata || null)
-    };
-    this.recordingEvents.push(recordingEvent);
-    return recordingEvent;
+    const [newEvent] = await db
+      .insert(recordingEvents)
+      .values({
+        ...event,
+        videoId: event.videoId || null,
+        metadata: typeof event.metadata === 'object' ? JSON.stringify(event.metadata) : (event.metadata || null)
+      })
+      .returning();
+    return newEvent;
   }
 }
 
