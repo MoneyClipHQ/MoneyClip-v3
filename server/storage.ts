@@ -10,12 +10,13 @@ import {
   type RecordingEvent, type InsertRecordingEvent,
   type ViewerEvent, type InsertViewerEvent,
   type ViewerCompliment, type InsertViewerCompliment,
+  type PasswordResetToken, type InsertPasswordResetToken,
   PLANS,
-  users, advisors, subscriptions, signupEvents, advisorSettings, settingsEvents, videos, recordingEvents, viewerEvents, viewerCompliments
+  users, advisors, subscriptions, signupEvents, advisorSettings, settingsEvents, videos, recordingEvents, viewerEvents, viewerCompliments, passwordResetTokens
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { addDays } from "date-fns";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { db } from "./db";
 import bcrypt from "bcryptjs";
 
@@ -74,6 +75,13 @@ export interface IStorage {
   getCaptions(videoId: string): Promise<string | undefined>;
   storeTranscript(videoId: string, transcript: string): Promise<void>;
   getTranscript(videoId: string): Promise<string | undefined>;
+  
+  // Password reset methods
+  createPasswordResetToken(advisorId: string): Promise<{ token: string; expiresAt: Date }>;
+  getPasswordResetToken(email: string, token: string): Promise<{ advisorId: string } | null>;
+  updateAdvisorPassword(advisorId: string, newPassword: string): Promise<void>;
+  deletePasswordResetToken(advisorId: string): Promise<void>;
+  logPasswordResetEvent(advisorId: string): Promise<void>;
 }
 
 export class MemStorage implements IStorage {
@@ -87,6 +95,7 @@ export class MemStorage implements IStorage {
   private recordingEvents: RecordingEvent[];
   private captions: Map<string, string>;
   private transcripts: Map<string, string>;
+  private passwordResetTokens: Map<string, PasswordResetToken>;
 
   constructor() {
     this.users = new Map();
@@ -99,6 +108,7 @@ export class MemStorage implements IStorage {
     this.recordingEvents = [];
     this.captions = new Map();
     this.transcripts = new Map();
+    this.passwordResetTokens = new Map();
     
     // Initialize with mock advisor for demo
     this.initializeMockData();
@@ -509,6 +519,93 @@ export class MemStorage implements IStorage {
   async getTranscript(videoId: string): Promise<string | undefined> {
     return this.transcripts.get(videoId);
   }
+
+  // Password reset methods
+  async createPasswordResetToken(advisorId: string): Promise<{ token: string; expiresAt: Date }> {
+    // Generate 6-digit code
+    const token = Math.floor(100000 + Math.random() * 900000).toString();
+    
+    // Set expiration to 10 minutes from now
+    const expiresAt = new Date();
+    expiresAt.setMinutes(expiresAt.getMinutes() + 10);
+
+    const passwordResetToken: PasswordResetToken = {
+      id: randomUUID(),
+      advisorId,
+      token,
+      expiresAt,
+      createdAt: new Date()
+    };
+
+    // Clear any existing tokens for this advisor
+    const existingTokens = Array.from(this.passwordResetTokens.values())
+      .filter(t => t.advisorId === advisorId);
+    existingTokens.forEach(t => this.passwordResetTokens.delete(t.id));
+
+    // Store new token
+    this.passwordResetTokens.set(passwordResetToken.id, passwordResetToken);
+
+    return { token, expiresAt };
+  }
+
+  async getPasswordResetToken(email: string, token: string): Promise<{ advisorId: string } | null> {
+    // First find the advisor by email
+    const advisor = await this.getAdvisorByEmail(email);
+    if (!advisor) {
+      return null;
+    }
+
+    // Find valid token for this advisor
+    const resetToken = Array.from(this.passwordResetTokens.values())
+      .find(t => t.advisorId === advisor.id && t.token === token);
+
+    if (!resetToken) {
+      return null;
+    }
+
+    // Check if token has expired
+    if (new Date() > resetToken.expiresAt) {
+      // Clean up expired token
+      this.passwordResetTokens.delete(resetToken.id);
+      return null;
+    }
+
+    return { advisorId: advisor.id };
+  }
+
+  async updateAdvisorPassword(advisorId: string, newPassword: string): Promise<void> {
+    const advisor = this.advisors.get(advisorId);
+    if (!advisor) {
+      throw new Error("Advisor not found");
+    }
+
+    // In a real app, this should be hashed. For MemStorage demo, store plain text
+    advisor.password = newPassword;
+    this.advisors.set(advisorId, advisor);
+  }
+
+  async deletePasswordResetToken(advisorId: string): Promise<void> {
+    // Remove all tokens for this advisor
+    const tokensToDelete = Array.from(this.passwordResetTokens.entries())
+      .filter(([, token]) => token.advisorId === advisorId);
+    
+    tokensToDelete.forEach(([id]) => {
+      this.passwordResetTokens.delete(id);
+    });
+  }
+
+  async logPasswordResetEvent(advisorId: string): Promise<void> {
+    // Log the password reset event using existing settings event system
+    await this.logSettingsEvent({
+      advisorId,
+      event: "PASSWORD_RESET",
+      fieldName: "password",
+      metadata: JSON.stringify({
+        timestamp: new Date().toISOString(),
+        success: true
+      })
+    });
+  }
 }
 
 // Database Storage Implementation
@@ -912,6 +1009,85 @@ export class DatabaseStorage implements IStorage {
 
   async getTranscript(videoId: string): Promise<string | undefined> {
     return this.transcripts.get(videoId);
+  }
+
+  // Password reset methods  
+  async createPasswordResetToken(advisorId: string): Promise<{ token: string; expiresAt: Date }> {
+    // Generate 6-digit code
+    const token = Math.floor(100000 + Math.random() * 900000).toString();
+    
+    // Set expiration to 10 minutes from now
+    const expiresAt = new Date();
+    expiresAt.setMinutes(expiresAt.getMinutes() + 10);
+
+    // Clear any existing tokens for this advisor
+    await db.delete(passwordResetTokens).where(eq(passwordResetTokens.advisorId, advisorId));
+
+    // Create new token
+    await db.insert(passwordResetTokens).values({
+      advisorId,
+      token,
+      expiresAt
+    });
+
+    return { token, expiresAt };
+  }
+
+  async getPasswordResetToken(email: string, token: string): Promise<{ advisorId: string } | null> {
+    // First find the advisor by email
+    const advisor = await this.getAdvisorByEmail(email);
+    if (!advisor) {
+      return null;
+    }
+
+    // Find valid token for this advisor
+    const [resetToken] = await db
+      .select()
+      .from(passwordResetTokens)
+      .where(and(
+        eq(passwordResetTokens.advisorId, advisor.id),
+        eq(passwordResetTokens.token, token)
+      ));
+
+    if (!resetToken) {
+      return null;
+    }
+
+    // Check if token has expired
+    if (new Date() > resetToken.expiresAt) {
+      // Clean up expired token
+      await db.delete(passwordResetTokens).where(eq(passwordResetTokens.id, resetToken.id));
+      return null;
+    }
+
+    return { advisorId: advisor.id };
+  }
+
+  async updateAdvisorPassword(advisorId: string, newPassword: string): Promise<void> {
+    // In a real app, hash the password with bcrypt
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    
+    await db
+      .update(advisors)
+      .set({ password: hashedPassword })
+      .where(eq(advisors.id, advisorId));
+  }
+
+  async deletePasswordResetToken(advisorId: string): Promise<void> {
+    await db.delete(passwordResetTokens).where(eq(passwordResetTokens.advisorId, advisorId));
+  }
+
+  async logPasswordResetEvent(advisorId: string): Promise<void> {
+    // Log the password reset event using existing settings event system
+    await db.insert(settingsEvents).values({
+      advisorId,
+      event: "PASSWORD_RESET",
+      fieldName: "password",
+      metadata: JSON.stringify({
+        timestamp: new Date().toISOString(),
+        success: true
+      })
+    });
   }
 }
 

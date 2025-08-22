@@ -7,6 +7,8 @@ import Home from "@/pages/home";
 import SignUp from "@/pages/signup";
 import Pricing from "@/pages/pricing";
 import Login from "@/pages/login";
+import ForgotPassword from "@/pages/forgot-password";
+import ResetPassword from "@/pages/reset-password";
 import Dashboard from "@/pages/dashboard";
 import VideoLibrary from "@/pages/video-library";
 import ScriptedContent from "@/pages/scripted-content";
@@ -37,6 +39,8 @@ function Router() {
       <Route path="/signup" component={SignUp} />
       <Route path="/pricing" component={Pricing} />
       <Route path="/login" component={Login} />
+      <Route path="/forgot-password" component={ForgotPassword} />
+      <Route path="/reset-password" component={ResetPassword} />
       <Route path="/terms" component={Terms} />
       <Route path="/contact" component={Contact} />
       

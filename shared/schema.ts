@@ -346,6 +346,37 @@ export const insertUserSchema = createInsertSchema(users).pick({
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 
+// Password reset tokens table
+export const passwordResetTokens = pgTable("password_reset_tokens", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  advisorId: varchar("advisor_id").notNull().references(() => advisors.id),
+  token: varchar("token", { length: 6 }).notNull(), // 6-digit code
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Password reset schemas
+export const forgotPasswordSchema = z.object({
+  email: z.string().email("Please enter a valid email address"),
+});
+
+export const resetPasswordSchema = z.object({
+  email: z.string().email("Please enter a valid email address"),
+  token: z.string().length(6, "Please enter the 6-digit code"),
+  newPassword: z.string().min(6, "Password must be at least 6 characters"),
+});
+
+export const insertPasswordResetTokenSchema = createInsertSchema(passwordResetTokens).pick({
+  advisorId: true,
+  token: true,
+  expiresAt: true,
+});
+
+export type ForgotPasswordData = z.infer<typeof forgotPasswordSchema>;
+export type ResetPasswordData = z.infer<typeof resetPasswordSchema>;
+export type InsertPasswordResetToken = z.infer<typeof insertPasswordResetTokenSchema>;
+export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
+
 // Login schemas
 export const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),

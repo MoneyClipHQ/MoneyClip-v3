@@ -162,14 +162,24 @@ export default function Login() {
                   </Alert>
                 )}
 
-                <Button
-                  type="submit"
-                  className="w-full"
-                  disabled={loginMutation.isPending}
-                  data-testid="button-sign-in"
-                >
-                  {loginMutation.isPending ? "Signing in..." : "Sign in"}
-                </Button>
+                <div className="flex flex-col space-y-3">
+                  <Button
+                    type="submit"
+                    className="w-full"
+                    disabled={loginMutation.isPending}
+                    data-testid="button-sign-in"
+                  >
+                    {loginMutation.isPending ? "Signing in..." : "Sign in"}
+                  </Button>
+                  
+                  <div className="text-center">
+                    <Link href="/forgot-password">
+                      <span className="text-sm font-medium text-primary hover:text-blue-500 cursor-pointer" data-testid="link-forgot-password">
+                        Forgot password?
+                      </span>
+                    </Link>
+                  </div>
+                </div>
               </form>
             </Form>
           </CardContent>

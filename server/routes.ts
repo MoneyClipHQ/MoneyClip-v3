@@ -4,6 +4,8 @@ import { storage } from "./storage";
 import { 
   signupSchema, 
   loginSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
   PLANS, 
   updateContactInfoSchema, 
   updateComplianceSchema, 
@@ -64,6 +66,104 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     } catch (error) {
       console.error("Login error:", error);
+      
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({
+          success: false,
+          error: "VALIDATION_ERROR",
+          message: "Please check your form data.",
+          errors: error.errors
+        });
+      }
+      
+      res.status(500).json({
+        success: false,
+        error: "INTERNAL_ERROR",
+        message: "Something went wrong. Please try again."
+      });
+    }
+  });
+
+  // Forgot password route
+  app.post("/api/auth/forgot-password", async (req: Request, res: Response) => {
+    try {
+      const validatedData = forgotPasswordSchema.parse(req.body);
+      
+      // Check if advisor exists
+      const advisor = await storage.getAdvisorByEmail(validatedData.email);
+      
+      if (!advisor) {
+        // Don't reveal that the email doesn't exist for security
+        return res.json({
+          success: true,
+          message: "If an account with this email exists, you will receive a reset code."
+        });
+      }
+
+      // Generate reset token
+      const { token, expiresAt } = await storage.createPasswordResetToken(advisor.id);
+      
+      // For MVP - log the code to console instead of sending email
+      console.log(`Password reset code for ${validatedData.email}: ${token}`);
+      console.log(`Code expires at: ${expiresAt.toISOString()}`);
+
+      res.json({
+        success: true,
+        message: "If an account with this email exists, you will receive a reset code."
+      });
+
+    } catch (error) {
+      console.error("Forgot password error:", error);
+      
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({
+          success: false,
+          error: "VALIDATION_ERROR",
+          message: "Please check your email format.",
+          errors: error.errors
+        });
+      }
+      
+      res.status(500).json({
+        success: false,
+        error: "INTERNAL_ERROR",
+        message: "Something went wrong. Please try again."
+      });
+    }
+  });
+
+  // Reset password route
+  app.post("/api/auth/reset-password", async (req: Request, res: Response) => {
+    try {
+      const validatedData = resetPasswordSchema.parse(req.body);
+      
+      // Validate token and get advisor ID
+      const tokenResult = await storage.getPasswordResetToken(validatedData.email, validatedData.token);
+      
+      if (!tokenResult) {
+        return res.status(400).json({
+          success: false,
+          error: "INVALID_TOKEN",
+          message: "Invalid or expired reset code. Please request a new one."
+        });
+      }
+
+      // Update password
+      await storage.updateAdvisorPassword(tokenResult.advisorId, validatedData.newPassword);
+      
+      // Clean up the used token
+      await storage.deletePasswordResetToken(tokenResult.advisorId);
+      
+      // Log the password reset event
+      await storage.logPasswordResetEvent(tokenResult.advisorId);
+
+      res.json({
+        success: true,
+        message: "Password reset successful. You can now log in with your new password."
+      });
+
+    } catch (error) {
+      console.error("Reset password error:", error);
       
       if (error instanceof z.ZodError) {
         return res.status(400).json({
