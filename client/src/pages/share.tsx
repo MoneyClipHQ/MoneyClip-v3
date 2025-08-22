@@ -4,6 +4,8 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { 
   Play, 
@@ -60,6 +62,12 @@ export default function SharePage() {
   // Terms gate state
   const [hasAcceptedTerms, setHasAcceptedTerms] = useState(false);
   const [showTermsDialog, setShowTermsDialog] = useState(false);
+  
+  // Password protection state
+  const [hasEnteredPassword, setHasEnteredPassword] = useState(false);
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
+  const [passwordInput, setPasswordInput] = useState("");
+  const [passwordError, setPasswordError] = useState("");
   
   // Video player state
   const [isPlaying, setIsPlaying] = useState(false);
@@ -118,6 +126,45 @@ export default function SharePage() {
       });
     },
   });
+  
+  // Password verification mutation
+  const verifyPasswordMutation = useMutation({
+    mutationFn: async (password: string) => {
+      const response = await apiRequest("POST", `/api/share/${shareLink}/verify`, {
+        password,
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      setHasEnteredPassword(true);
+      setShowPasswordDialog(false);
+      setPasswordError("");
+      setPasswordInput("");
+      
+      // Store password verification in session storage
+      if (video) {
+        sessionStorage.setItem(`password-verified-${video.id}`, 'true');
+      }
+      
+      toast({
+        title: "Access Granted",
+        description: "You can now view the video.",
+      });
+      
+      // Log password verification event
+      logViewerEventMutation.mutate({
+        event: 'PASSWORD_VERIFIED',
+        metadata: { timestamp: new Date().toISOString() }
+      });
+    },
+    onError: (error: any) => {
+      if (error.message.includes("401")) {
+        setPasswordError("Incorrect password. Please try again.");
+      } else {
+        setPasswordError("Failed to verify password. Please try again.");
+      }
+    },
+  });
 
   // Show terms dialog on first visit
   useEffect(() => {
@@ -131,6 +178,19 @@ export default function SharePage() {
       }
     }
   }, [video, hasAcceptedTerms]);
+  
+  // Show password dialog for protected videos
+  useEffect(() => {
+    if (video && hasAcceptedTerms && video.passwordProtected && !hasEnteredPassword) {
+      // Check if password already verified in session storage
+      const passwordVerified = sessionStorage.getItem(`password-verified-${video.id}`);
+      if (passwordVerified) {
+        setHasEnteredPassword(true);
+      } else {
+        setShowPasswordDialog(true);
+      }
+    }
+  }, [video, hasAcceptedTerms, hasEnteredPassword]);
 
   // Handle terms acceptance
   const handleAcceptTerms = () => {
@@ -151,6 +211,20 @@ export default function SharePage() {
       });
     }
   };
+  
+  // Handle password verification
+  const handleVerifyPassword = () => {
+    if (!passwordInput.trim()) {
+      setPasswordError("Please enter a password.");
+      return;
+    }
+    
+    setPasswordError("");
+    verifyPasswordMutation.mutate(passwordInput);
+  };
+  
+  // Check if video content should be shown
+  const shouldShowVideo = hasAcceptedTerms && (!video?.passwordProtected || hasEnteredPassword);
   
   // Video player controls
   const togglePlayPause = () => {
@@ -283,6 +357,64 @@ export default function SharePage() {
           </div>
         </DialogContent>
       </Dialog>
+      
+      {/* Password Gate Dialog */}
+      <Dialog open={showPasswordDialog} onOpenChange={() => {}}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold">
+              Password Required
+            </DialogTitle>
+            <DialogDescription>
+              This video is password-protected. Please enter the password to continue.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="video-password">Password</Label>
+              <Input
+                id="video-password"
+                type="password"
+                placeholder="Enter password"
+                value={passwordInput}
+                onChange={(e) => {
+                  setPasswordInput(e.target.value);
+                  setPasswordError("");
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    handleVerifyPassword();
+                  }
+                }}
+                disabled={verifyPasswordMutation.isPending}
+                data-testid="input-video-password"
+              />
+              {passwordError && (
+                <p className="text-sm text-red-600" data-testid="password-error">
+                  {passwordError}
+                </p>
+              )}
+            </div>
+            <div className="flex gap-3 justify-end">
+              <Button
+                variant="outline"
+                onClick={() => window.history.back()}
+                data-testid="button-cancel-password"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleVerifyPassword}
+                disabled={verifyPasswordMutation.isPending}
+                data-testid="button-verify-password"
+              >
+                {verifyPasswordMutation.isPending ? "Verifying..." : "Enter"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
@@ -314,8 +446,8 @@ export default function SharePage() {
         </div>
       </div>
 
-      {/* Main Content (shown only after terms acceptance) */}
-      {hasAcceptedTerms && (
+      {/* Main Content (shown only after terms acceptance and password verification) */}
+      {shouldShowVideo && (
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Video Section */}
           <div className="bg-white rounded-lg shadow-sm overflow-hidden mb-8">
