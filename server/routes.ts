@@ -630,10 +630,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       console.log("Starting AI processing for preview...");
+      console.log("Audio buffer length:", audioBuffer.length);
+      console.log("Duration:", duration);
 
       try {
         // Convert base64 audio to buffer
         const buffer = Buffer.from(audioBuffer, 'base64');
+        console.log("Converted buffer size:", buffer.length, "bytes");
         
         // Process with OpenAI
         const result = await transcribeAndGenerateContent(buffer, 'preview.webm');

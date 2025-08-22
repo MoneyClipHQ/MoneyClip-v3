@@ -54,8 +54,7 @@ export default function RecordPreviewPage() {
         setIncludeProfilePicture(parsedSettings.includeProfilePicture || true);
       }
       
-      // Generate AI title and description (mock for now)
-      generateAIContent();
+      // AI content will be generated after video metadata loads
     } else {
       // No video found, redirect back to record
       navigate("/record");
@@ -70,6 +69,8 @@ export default function RecordPreviewPage() {
         setVideoDuration(duration);
         setTrimRange({ start: 0, end: duration });
         generatePreviewCaptions(duration);
+        // Generate AI content after video metadata is loaded
+        generateAIContent();
       };
     }
   }, [videoUrl]);
@@ -158,12 +159,17 @@ export default function RecordPreviewPage() {
       const binaryString = Array.from(uint8Array, byte => String.fromCharCode(byte)).join('');
       const audioBuffer = btoa(binaryString);
       
+      console.log('Sending AI processing request with duration:', videoDuration);
       const response = await apiRequest('POST', `/api/videos/process-preview`, {
         audioBuffer,
         duration: videoDuration
       });
+      
+      console.log('AI processing response received:', response.status);
 
       const data = await response.json();
+      console.log('AI processing data:', data);
+      
       if (data?.title || data?.description) {
         setTitle(data.title || "Financial Advisory Video");
         setDescription(data.description || "Professional financial guidance and insights.");
