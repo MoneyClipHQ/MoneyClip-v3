@@ -617,6 +617,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Process video for preview (AI processing without saving to database)
+  app.post("/api/videos/process-preview", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { audioBuffer, duration } = req.body;
+
+      if (!audioBuffer) {
+        return res.status(400).json({
+          error: "MISSING_DATA",
+          message: "Audio data is required"
+        });
+      }
+
+      console.log("Starting AI processing for preview...");
+
+      try {
+        // Convert base64 audio to buffer
+        const buffer = Buffer.from(audioBuffer, 'base64');
+        
+        // Process with OpenAI
+        const result = await transcribeAndGenerateContent(buffer, 'preview.webm');
+        
+        // Generate captions if transcription successful
+        const captions = result.text !== "Transcription unavailable" 
+          ? generateCaptions(result.text, duration || 300)
+          : "";
+
+        console.log("AI preview processing completed");
+
+        res.json({
+          success: true,
+          title: result.title,
+          description: result.description,
+          transcription: result.text,
+          captions: captions
+        });
+
+      } catch (openaiError) {
+        console.error("OpenAI preview processing error:", openaiError);
+        
+        // Return fallback content
+        res.json({
+          success: true,
+          title: "Financial Advisory Video",
+          description: "Professional financial guidance and insights.",
+          transcription: "Transcription unavailable",
+          captions: "",
+          warning: "AI processing failed, using fallback content"
+        });
+      }
+
+    } catch (error) {
+      console.error("Video preview processing error:", error);
+      res.status(500).json({
+        error: "Failed to process video for preview"
+      });
+    }
+  });
+
   // Serve video captions/subtitles
   app.get("/api/videos/:id/captions", async (req: Request, res: Response) => {
     try {

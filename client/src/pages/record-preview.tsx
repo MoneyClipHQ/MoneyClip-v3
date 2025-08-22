@@ -125,6 +125,91 @@ export default function RecordPreviewPage() {
     // Set initial placeholder content while processing
     setTitle("Processing...");
     setDescription("AI is analyzing your video content...");
+    
+    // Start AI processing immediately during preview
+    try {
+      const recordedVideoData = sessionStorage.getItem("recordedVideoBlob");
+      if (recordedVideoData) {
+        // Convert base64 back to blob for AI processing
+        const binaryString = atob(recordedVideoData);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        const videoBlob = new Blob([bytes], { type: 'video/webm' });
+        
+        // Process with AI immediately for preview
+        await processVideoWithAIForPreview(videoBlob);
+      }
+    } catch (error) {
+      console.error('AI processing error during preview:', error);
+      // Fallback content if AI processing fails
+      setTitle("Financial Advisory Video");
+      setDescription("Professional financial guidance and insights.");
+    }
+  };
+
+  // Process video with AI for preview (before saving)
+  const processVideoWithAIForPreview = async (videoBlob: Blob) => {
+    try {
+      // Convert video blob to base64 for sending to server
+      const arrayBuffer = await videoBlob.arrayBuffer();
+      const uint8Array = new Uint8Array(arrayBuffer);
+      const binaryString = Array.from(uint8Array, byte => String.fromCharCode(byte)).join('');
+      const audioBuffer = btoa(binaryString);
+      
+      const response = await apiRequest('POST', `/api/videos/process-preview`, {
+        audioBuffer,
+        duration: videoDuration
+      });
+
+      const data = await response.json();
+      if (data?.title || data?.description) {
+        setTitle(data.title || "Financial Advisory Video");
+        setDescription(data.description || "Professional financial guidance and insights.");
+        
+        // Update captions with AI-generated captions if available
+        if (data.captions && data.captions.length > 0) {
+          // Clean up old caption blob URL
+          if (captionBlobUrl) {
+            URL.revokeObjectURL(captionBlobUrl);
+          }
+          
+          // Create new blob with AI-generated captions
+          const captionBlob = new Blob([data.captions], { type: 'text/vtt' });
+          const newBlobUrl = URL.createObjectURL(captionBlob);
+          setCaptionBlobUrl(newBlobUrl);
+          
+          // Force video to reload tracks if it's already loaded
+          if (videoRef.current) {
+            // Small delay to ensure the blob URL is set before reloading
+            setTimeout(() => {
+              if (videoRef.current) {
+                const currentTime = videoRef.current.currentTime;
+                videoRef.current.load(); // Reload video with new tracks
+                videoRef.current.currentTime = currentTime; // Restore playback position
+              }
+            }, 100);
+          }
+        }
+        
+        toast({
+          title: "AI Content Generated",
+          description: "Title and description generated from video content. You can edit them before saving.",
+        });
+      }
+    } catch (error) {
+      console.error('AI preview processing error:', error);
+      // Keep fallback content if AI processing fails
+      setTitle("Financial Advisory Video");
+      setDescription("Professional financial guidance and insights.");
+      
+      toast({
+        title: "AI Processing Failed",
+        description: "Using fallback title and description. You can edit them before saving.",
+        variant: "destructive",
+      });
+    }
   };
 
   // Process video with OpenAI after saving
@@ -234,8 +319,9 @@ export default function RecordPreviewPage() {
       const response = await apiRequest('POST', "/api/videos", videoData);
       const data = await response.json();
 
-      // Start AI processing in background if we have video data
-      if (videoBlob && data?.id) {
+      // Only start AI processing if we haven't already processed during preview
+      // (indicated by non-placeholder title and description)
+      if (videoBlob && data?.id && (title === "Processing..." || !title || !description)) {
         // Process in background without blocking UI
         processVideoWithAI(data.id, videoBlob);
       }
