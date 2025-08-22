@@ -759,10 +759,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Don't send the password itself, just indicate if it's protected
+      // For password-protected videos, don't expose the fileUrl until verification
       const publicVideo = {
         ...video,
         password: undefined,
-        passwordProtected: !!video.password
+        passwordProtected: !!video.password,
+        fileUrl: video.password ? null : video.fileUrl
       };
       
       // Prepare branding data
@@ -800,7 +802,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       if (!video.password) {
-        return res.json({ success: true });
+        return res.json({ 
+          success: true,
+          fileUrl: video.fileUrl 
+        });
       }
       
       if (req.body.password !== video.password) {
@@ -810,7 +815,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      res.json({ success: true });
+      res.json({ 
+        success: true,
+        fileUrl: video.fileUrl 
+      });
     } catch (error) {
       console.error("Verify video password error:", error);
       res.status(500).json({

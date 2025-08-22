@@ -68,6 +68,7 @@ export default function SharePage() {
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
   const [passwordInput, setPasswordInput] = useState("");
   const [passwordError, setPasswordError] = useState("");
+  const [verifiedVideoUrl, setVerifiedVideoUrl] = useState<string | null>(null);
   
   // Video player state
   const [isPlaying, setIsPlaying] = useState(false);
@@ -135,15 +136,24 @@ export default function SharePage() {
       });
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       setHasEnteredPassword(true);
       setShowPasswordDialog(false);
       setPasswordError("");
       setPasswordInput("");
       
+      // Store the verified video URL
+      if (data.fileUrl) {
+        setVerifiedVideoUrl(data.fileUrl);
+      }
+      
       // Store password verification in session storage
       if (video) {
         sessionStorage.setItem(`password-verified-${video.id}`, 'true');
+        // Also store the fileUrl in session storage
+        if (data.fileUrl) {
+          sessionStorage.setItem(`video-url-${video.id}`, data.fileUrl);
+        }
       }
       
       toast({
@@ -184,8 +194,10 @@ export default function SharePage() {
     if (video && hasAcceptedTerms && video.passwordProtected && !hasEnteredPassword) {
       // Check if password already verified in session storage
       const passwordVerified = sessionStorage.getItem(`password-verified-${video.id}`);
-      if (passwordVerified) {
+      const storedVideoUrl = sessionStorage.getItem(`video-url-${video.id}`);
+      if (passwordVerified && storedVideoUrl) {
         setHasEnteredPassword(true);
+        setVerifiedVideoUrl(storedVideoUrl);
       } else {
         setShowPasswordDialog(true);
       }
@@ -459,10 +471,10 @@ export default function SharePage() {
             <div className="relative">
               {/* Video Player */}
               <div className="aspect-video bg-black relative">
-                {video.fileUrl ? (
+                {(video.fileUrl || verifiedVideoUrl) ? (
                   <video
                     ref={videoRef}
-                    src={video.fileUrl}
+                    src={verifiedVideoUrl || video.fileUrl}
                     className="w-full h-full"
                     data-testid="public-video-player"
                     controls
