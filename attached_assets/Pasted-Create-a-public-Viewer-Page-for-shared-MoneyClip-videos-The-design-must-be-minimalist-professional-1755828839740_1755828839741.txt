@@ -1,0 +1,141 @@
+Create a public Viewer Page for shared MoneyClip videos. The design must be minimalist, professional, and consistent with fintech SaaS products for advisors. The page enforces a Terms gate before playback, applies advisor branding, and provides clear viewer controls and client engagement features.
+
+Layout & Branding
+
+Header (white background):
+
+Left: Advisor logo (from advisor branding settings).
+
+Right: Client name (from advisor entry on Preview/Save).
+
+Page background:
+
+Advisor’s primary brand color (from branding settings).
+
+Below header (main video area):
+
+Embedded video player.
+
+Player supports playback speed controls (0.5x, 1x, 1.5x, 2x).
+
+Player supports captions toggle (captions auto-generated during recording).
+
+Advisor’s profile picture or webcam video bubble appears on video overlay (location consistent with what advisor chose during recording).
+
+Below video player:
+
+Compliments section:
+
+Row of pre-made compliments and emojis (e.g., 👍, 👏, “This was helpful,” “Thanks for explaining”).
+
+One-click send; viewer feedback stored.
+
+Video title & description (from AI-generated + advisor edits).
+
+Calls to action (CTAs):
+
+Email Advisor (mailto link).
+
+Call Advisor (tel link).
+
+Schedule Follow-Up (advisor’s scheduling link from branding page, e.g., Calendly).
+
+Footer (minimal):
+
+Reserved for future disclosures or legal links.
+
+Terms Gate
+
+Before playback, the viewer must accept a Terms & Disclosure gate.
+
+Disclosure text is defined and editable by the advisor in Settings.
+
+Modal overlay appears on first visit; must be accepted to unlock video.
+
+Consent stored per session (so the viewer doesn’t need to re-accept repeatedly).
+
+Viewer Controls
+
+Playback speed options: 0.5x, 1x, 1.5x, 2x.
+
+Captions toggle: Captions on/off.
+
+Full-screen mode.
+
+Volume control.
+
+Responsive layout: Works smoothly on desktop, tablet, and mobile.
+
+Behavior
+
+Branding: Logo, profile picture, and primary color load from advisor’s Branding page.
+
+Client name: Displays in header (top right).
+
+Compliments: Viewer can click to send; feedback recorded and tied to that video.
+
+CTAs: Open email, call, or scheduling link in default apps/browser.
+
+Captions: Show at bottom of video if enabled; viewer can toggle off.
+
+Webcam/profile photo: Displayed as small PiP bubble overlay in a corner of the player.
+
+Compliance & Privacy
+
+Audit log records: VIEWER_ACCEPTED_TERMS, VIDEO_PLAYED, VIDEO_PAUSED, VIDEO_COMPLETED, CAPTIONS_ON/OFF, SPEED_CHANGED, COMPLIMENT_SENT.
+
+Store only minimal viewer interaction data; do not capture PII beyond what is strictly needed (no raw IPs).
+
+Terms gate ensures disclosure acceptance before video can play.
+
+Acceptance Criteria
+
+On visiting the link, I see advisor logo (top left), client name (top right), and advisor brand color as background.
+
+A Terms gate modal appears. I cannot play until I accept the advisor’s disclosure.
+
+Once accepted, video player appears with controls for play, pause, volume, full-screen, speed, and captions.
+
+Advisor’s profile photo or webcam bubble appears in the player.
+
+Below the video: compliment buttons + emojis, video title, description, and CTAs for email, call, and schedule.
+
+Compliment clicks register feedback.
+
+Captions appear on playback and can be toggled off by the viewer.
+
+Speed control works as expected.
+
+Page adapts cleanly to mobile.
+
+Manual Test Steps
+
+Open a shared video link → confirm Terms gate blocks playback. Accept terms → video unlocked.
+
+Confirm advisor logo, client name, and background branding load correctly.
+
+Start playback → confirm profile photo/webcam bubble shows.
+
+Toggle captions on/off. Confirm captions display at bottom.
+
+Change playback speed to 1.5x and 0.5x → confirm playback adjusts.
+
+Send a compliment emoji → confirm it registers (e.g., shows a confirmation).
+
+Click “Email Advisor” → opens default mail app.
+
+Click “Call Advisor” → opens dialer.
+
+Click “Schedule Follow-Up” → opens advisor’s scheduling link.
+
+Resize browser to mobile width → confirm responsive layout.
+
+Guardrails
+
+No stack, framework, or library suggestions.
+
+No clutter; keep UI minimal and professional.
+
+Do not capture unnecessary viewer data.
+
+Accessibility: all controls must be keyboard-navigable with visible focus.
