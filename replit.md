@@ -4,9 +4,23 @@
 
 MoneyClip is a web application designed specifically for financial advisors to create secure screen recordings for client communication. The application allows advisors to record their screens while explaining portfolios, market updates, or financial plans, then share these recordings securely with clients through password-protected, expiring links. This solution addresses the challenge of explaining complex financial concepts while maintaining compliance standards required in the financial services industry.
 
-## Recent Changes (August 20, 2025)
+## Recent Changes (August 22, 2025)
 
-### Video Recording System Implementation - In Progress (August 20)
+### Profile Picture Upload Feature - Complete (August 22)
+- **Profile picture upload**: Added profile picture upload functionality to settings/branding section
+- **Database integration**: Extended advisor_settings schema with profilePictureUrl field
+- **Storage layer updates**: Updated both memory and database storage to handle profile pictures
+- **UI implementation**: Added circular profile picture preview with upload/replace/remove functionality
+- **Video integration ready**: Profile picture will be displayed in video recordings for advisor identification
+- **File validation**: Supports PNG/JPG files up to 5MB with proper validation and error handling
+
+### Recording Flow Timing Fix - Complete (August 22)
+- **Countdown timing**: Fixed countdown to happen AFTER screen selection instead of before
+- **Improved UX**: Recording flow now: Click "Start Recording" → Select screen → Countdown → Recording begins
+- **Error handling**: Added proper error handling for screen selection cancellation
+- **Modal updates**: Updated description text to reflect the new timing sequence
+
+### Video Recording System Implementation - Complete (August 20)
 - **Recording flow**: Built comprehensive Loom-like recording system tailored for financial advisors
 - **Capture chooser modal**: Screen, window, or browser tab selection with microphone and webcam options
 - **Recording interface**: Floating overlay controls with pause/resume, stop, mute, camera toggle, and live captions
