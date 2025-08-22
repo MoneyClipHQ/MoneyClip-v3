@@ -467,6 +467,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         shareLink: req.body.shareLink || `moneyclip-${Date.now()}-${Math.random().toString(36).substring(7)}`
       };
       
+      // If videoData is provided, generate a data URL for fileUrl
+      if (videoData.videoData) {
+        videoData.fileUrl = `data:video/webm;base64,${videoData.videoData}`;
+      }
+      
       const validatedData = insertVideoSchema.parse(videoData);
       const video = await storage.createVideo(validatedData);
       
@@ -760,11 +765,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Don't send the password itself, just indicate if it's protected
       // For password-protected videos, don't expose the fileUrl until verification
+      let fileUrl = video.fileUrl;
+      
+      // Generate data URL from stored video data if no fileUrl exists
+      if (!fileUrl && video.videoData) {
+        fileUrl = `data:video/webm;base64,${video.videoData}`;
+      }
+      
       const publicVideo = {
         ...video,
         password: undefined,
+        videoData: undefined, // Never expose raw video data
         passwordProtected: !!video.password,
-        fileUrl: video.password ? null : video.fileUrl
+        fileUrl: video.password ? null : fileUrl // Hide fileUrl for password-protected videos
       };
       
       // Prepare branding data
@@ -802,9 +815,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       if (!video.password) {
+        // Generate data URL from stored video data if no fileUrl exists
+        let fileUrl = video.fileUrl;
+        if (!fileUrl && video.videoData) {
+          fileUrl = `data:video/webm;base64,${video.videoData}`;
+        }
         return res.json({ 
           success: true,
-          fileUrl: video.fileUrl 
+          fileUrl: fileUrl 
         });
       }
       
@@ -815,9 +833,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
+      // Generate data URL from stored video data for password-protected videos
+      let fileUrl = video.fileUrl;
+      if (video.videoData && !fileUrl) {
+        fileUrl = `data:video/webm;base64,${video.videoData}`;
+      }
+      
       res.json({ 
         success: true,
-        fileUrl: video.fileUrl 
+        fileUrl: fileUrl 
       });
     } catch (error) {
       console.error("Verify video password error:", error);

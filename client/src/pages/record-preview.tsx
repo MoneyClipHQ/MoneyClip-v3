@@ -193,10 +193,11 @@ export default function RecordPreviewPage() {
         clientName: clientName || undefined,
         title: title || "Processing...",
         description: description || "AI is analyzing content...",
-        fileUrl: videoUrl || "processing", // Will be updated after upload
+        fileUrl: undefined, // Will be generated from videoData
+        videoData: recordedVideoData || undefined, // Send base64 video data
         thumbnailUrl: null, // TODO: Generate thumbnail
         duration: videoDuration.toString(),
-        status: "processing",
+        status: "published", // Set to published since we have the video data
         password: (showPassword && password) ? password : undefined,
         shareLink: `moneyclip-${Date.now()}-${Math.random().toString(36).substring(7)}`,
         captionsEnabled: true, // Always enabled

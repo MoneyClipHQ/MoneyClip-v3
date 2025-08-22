@@ -148,6 +148,7 @@ export const videos = pgTable("videos", {
   title: text("title").notNull(),
   description: text("description"),
   fileUrl: text("file_url"), // URL to the recorded video file
+  videoData: text("video_data"), // Base64 encoded video data for MVP
   thumbnailUrl: text("thumbnail_url"), // URL to the video thumbnail
   duration: numeric("duration"), // Duration in seconds
   status: text("status").notNull().default("draft"), // draft, published, archived
@@ -168,6 +169,7 @@ export const insertVideoSchema = createInsertSchema(videos).pick({
   title: true,
   description: true,
   fileUrl: true,
+  videoData: true,
   thumbnailUrl: true,
   duration: true,
   status: true,

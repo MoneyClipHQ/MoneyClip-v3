@@ -474,7 +474,7 @@ export default function SharePage() {
                 {(video.fileUrl || verifiedVideoUrl) ? (
                   <video
                     ref={videoRef}
-                    src={verifiedVideoUrl || video.fileUrl}
+                    src={verifiedVideoUrl || video.fileUrl || undefined}
                     className="w-full h-full"
                     data-testid="public-video-player"
                     controls
