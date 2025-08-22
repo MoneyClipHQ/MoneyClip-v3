@@ -668,14 +668,13 @@ export default function SharePage() {
             <div className="flex flex-col sm:flex-row gap-4" data-testid="cta-section">
               {/* Email CTA */}
               <Button
-                variant="default"
+                variant="outline"
                 size="lg"
                 asChild
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 bg-white hover:bg-gray-50"
                 style={{ 
-                  backgroundColor: branding.primaryColor || '#2563eb',
-                  borderColor: branding.primaryColor || '#2563eb',
-                  color: 'white'
+                  borderColor: branding.secondaryColor || '#1e40af',
+                  color: branding.primaryColor || '#2563eb'
                 }}
                 data-testid="cta-email"
               >
