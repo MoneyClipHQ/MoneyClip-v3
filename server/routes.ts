@@ -747,6 +747,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
+      // Get advisor branding data
+      const advisorSettings = await storage.getAdvisorSettings(video.advisorId);
+      const advisor = await storage.getAdvisor(video.advisorId);
+      
+      if (!advisor) {
+        return res.status(404).json({
+          error: "ADVISOR_NOT_FOUND",
+          message: "Advisor not found"
+        });
+      }
+      
       // Don't send the password itself, just indicate if it's protected
       const publicVideo = {
         ...video,
@@ -754,7 +765,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         passwordProtected: !!video.password
       };
       
-      res.json(publicVideo);
+      // Prepare branding data
+      const branding = {
+        logoUrl: advisorSettings?.logoUrl || null,
+        profilePictureUrl: advisorSettings?.profilePictureUrl || null,
+        primaryColor: advisorSettings?.primaryColor || "#2563eb",
+        secondaryColor: advisorSettings?.secondaryColor || "#1e40af",
+        phone: advisorSettings?.phone || null,
+        calendarLink: advisorSettings?.calendarLink || null,
+        disclosureText: advisorSettings?.disclosureText || "Please read and accept the terms to view this video.",
+        advisorName: advisor.advisorName,
+        companyName: advisor.companyName
+      };
+      
+      res.json({ video: publicVideo, branding });
     } catch (error) {
       console.error("Get shared video error:", error);
       res.status(500).json({
@@ -791,6 +815,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Verify video password error:", error);
       res.status(500).json({
         error: "Failed to verify password"
+      });
+    }
+  });
+  
+  // Log viewer events (public endpoint for shared videos)
+  app.post("/api/share/:shareLink/events", async (req: Request, res: Response) => {
+    try {
+      const video = await storage.getVideoByShareLink(req.params.shareLink);
+      
+      if (!video) {
+        return res.status(404).json({
+          error: "VIDEO_NOT_FOUND",
+          message: "Video not found"
+        });
+      }
+      
+      const eventData = {
+        ...req.body,
+        videoId: video.id
+      };
+      
+      const newEvent = await storage.logViewerEvent(eventData);
+      res.json(newEvent);
+    } catch (error) {
+      console.error("Log viewer event error:", error);
+      res.status(500).json({
+        error: "Failed to log viewer event"
+      });
+    }
+  });
+  
+  // Log viewer compliments (public endpoint for shared videos)
+  app.post("/api/share/:shareLink/compliments", async (req: Request, res: Response) => {
+    try {
+      const video = await storage.getVideoByShareLink(req.params.shareLink);
+      
+      if (!video) {
+        return res.status(404).json({
+          error: "VIDEO_NOT_FOUND",
+          message: "Video not found"
+        });
+      }
+      
+      const complimentData = {
+        ...req.body,
+        videoId: video.id
+      };
+      
+      const newCompliment = await storage.logViewerCompliment(complimentData);
+      res.json(newCompliment);
+    } catch (error) {
+      console.error("Log viewer compliment error:", error);
+      res.status(500).json({
+        error: "Failed to log viewer compliment"
       });
     }
   });

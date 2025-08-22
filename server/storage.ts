@@ -8,8 +8,10 @@ import {
   type SettingsEvent, type InsertSettingsEvent,
   type Video, type InsertVideo, type UpdateVideo,
   type RecordingEvent, type InsertRecordingEvent,
+  type ViewerEvent, type InsertViewerEvent,
+  type ViewerCompliment, type InsertViewerCompliment,
   PLANS,
-  users, advisors, subscriptions, signupEvents, advisorSettings, settingsEvents, videos, recordingEvents
+  users, advisors, subscriptions, signupEvents, advisorSettings, settingsEvents, videos, recordingEvents, viewerEvents, viewerCompliments
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { addDays } from "date-fns";
@@ -62,6 +64,10 @@ export interface IStorage {
   getAllVideos(advisorId: string): Promise<Video[]>;
   deleteVideo(id: string): Promise<void>;
   logRecordingEvent(event: InsertRecordingEvent): Promise<RecordingEvent>;
+  
+  // Viewer interaction methods
+  logViewerEvent(event: InsertViewerEvent): Promise<ViewerEvent>;
+  logViewerCompliment(compliment: InsertViewerCompliment): Promise<ViewerCompliment>;
 }
 
 export class MemStorage implements IStorage {
@@ -453,6 +459,29 @@ export class MemStorage implements IStorage {
       .returning();
     return newEvent;
   }
+
+  // Viewer interaction methods
+  async logViewerEvent(event: InsertViewerEvent): Promise<ViewerEvent> {
+    const [newEvent] = await db
+      .insert(viewerEvents)
+      .values({
+        ...event,
+        metadata: typeof event.metadata === 'object' ? JSON.stringify(event.metadata) : (event.metadata || null)
+      })
+      .returning();
+    return newEvent;
+  }
+
+  async logViewerCompliment(compliment: InsertViewerCompliment): Promise<ViewerCompliment> {
+    const [newCompliment] = await db
+      .insert(viewerCompliments)
+      .values({
+        ...compliment,
+        message: compliment.message || null
+      })
+      .returning();
+    return newCompliment;
+  }
 }
 
 // Database Storage Implementation
@@ -813,6 +842,29 @@ export class DatabaseStorage implements IStorage {
       .values(insertEvent)
       .returning();
     return event;
+  }
+
+  // Viewer interaction methods
+  async logViewerEvent(event: InsertViewerEvent): Promise<ViewerEvent> {
+    const [newEvent] = await db
+      .insert(viewerEvents)
+      .values({
+        ...event,
+        metadata: typeof event.metadata === 'object' ? JSON.stringify(event.metadata) : (event.metadata || null)
+      })
+      .returning();
+    return newEvent;
+  }
+
+  async logViewerCompliment(compliment: InsertViewerCompliment): Promise<ViewerCompliment> {
+    const [newCompliment] = await db
+      .insert(viewerCompliments)
+      .values({
+        ...compliment,
+        message: compliment.message || null
+      })
+      .returning();
+    return newCompliment;
   }
 }
 

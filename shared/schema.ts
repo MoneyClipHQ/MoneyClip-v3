@@ -289,6 +289,46 @@ export const insertRecordingEventSchema = createInsertSchema(recordingEvents).pi
 export type InsertRecordingEvent = z.infer<typeof insertRecordingEventSchema>;
 export type RecordingEvent = typeof recordingEvents.$inferSelect;
 
+// Viewer event logging for compliance
+export const viewerEvents = pgTable("viewer_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  videoId: varchar("video_id").notNull().references(() => videos.id),
+  sessionId: varchar("session_id").notNull(), // Anonymous session tracking
+  event: text("event").notNull(), // VIEWER_ACCEPTED_TERMS, VIDEO_PLAYED, VIDEO_PAUSED, VIDEO_COMPLETED, CAPTIONS_ON/OFF, SPEED_CHANGED, COMPLIMENT_SENT
+  metadata: text("metadata"), // JSON string for additional event data
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+});
+
+// Viewer compliments/feedback
+export const viewerCompliments = pgTable("viewer_compliments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  videoId: varchar("video_id").notNull().references(() => videos.id),
+  sessionId: varchar("session_id").notNull(), // Anonymous session tracking
+  type: text("type").notNull(), // "thumbs_up", "clap", "heart", "helpful", "thanks"
+  message: text("message"), // For text compliments
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+});
+
+// Viewer event schemas
+export const insertViewerEventSchema = createInsertSchema(viewerEvents).pick({
+  videoId: true,
+  sessionId: true,
+  event: true,
+  metadata: true,
+});
+
+export const insertViewerComplimentSchema = createInsertSchema(viewerCompliments).pick({
+  videoId: true,
+  sessionId: true,
+  type: true,
+  message: true,
+});
+
+export type InsertViewerEvent = z.infer<typeof insertViewerEventSchema>;
+export type ViewerEvent = typeof viewerEvents.$inferSelect;
+export type InsertViewerCompliment = z.infer<typeof insertViewerComplimentSchema>;
+export type ViewerCompliment = typeof viewerCompliments.$inferSelect;
+
 // Legacy user table (keeping for backward compatibility)
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
