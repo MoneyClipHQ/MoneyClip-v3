@@ -76,7 +76,7 @@ export default function RecordPreviewPage() {
 
   // Generate preview captions for demo purposes
   const generatePreviewCaptions = (duration: number) => {
-    // Create mock captions for preview
+    // Create mock captions for preview - these will be replaced with real AI captions once processing completes
     const mockTranscript = "Welcome to your financial review. Today we'll be discussing your portfolio performance and investment strategy. Let's start by examining your current asset allocation. Your diversified portfolio shows strong growth potential. We recommend maintaining this balanced approach for long-term success.";
     
     const captions = generateCaptionsSRT(mockTranscript, duration);
@@ -130,9 +130,11 @@ export default function RecordPreviewPage() {
   // Process video with OpenAI after saving
   const processVideoWithAI = async (videoId: string, videoBlob: Blob) => {
     try {
-      // Convert video blob to audio buffer for transcription
+      // Convert video blob to base64 for sending to server
       const arrayBuffer = await videoBlob.arrayBuffer();
-      const audioBuffer = Buffer.from(arrayBuffer).toString('base64');
+      const uint8Array = new Uint8Array(arrayBuffer);
+      const binaryString = Array.from(uint8Array, byte => String.fromCharCode(byte)).join('');
+      const audioBuffer = btoa(binaryString);
       
       const response = await apiRequest('POST', `/api/videos/process`, {
         videoId,
