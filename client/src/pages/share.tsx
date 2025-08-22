@@ -456,10 +456,10 @@ export default function SharePage() {
                 <img
                   src={branding.logoUrl}
                   alt={`${branding.companyName} logo`}
-                  className="h-12 w-auto max-w-64 object-contain"
+                  className="h-20 w-auto max-w-80 object-contain"
                 />
               ) : (
-                <div className="text-xl font-semibold text-gray-900">
+                <div className="text-3xl font-semibold text-gray-900">
                   {branding.companyName}
                 </div>
               )}
@@ -470,7 +470,7 @@ export default function SharePage() {
               <div className="text-right" data-testid="header-client-name">
                 <p className="text-sm text-gray-600">For:</p>
                 <p 
-                  className="font-semibold text-lg"
+                  className="font-semibold text-2xl"
                   style={{ color: branding.primaryColor || '#2563eb' }}
                 >
                   {video.clientName}
