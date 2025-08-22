@@ -31,7 +31,7 @@ export default function RecordPreviewPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [captionsEnabled, setCaptionsEnabled] = useState(true);
-  const [showWebcam, setShowWebcam] = useState(true);
+  const [includeProfilePicture, setIncludeProfilePicture] = useState(true);
   const [trimRange, setTrimRange] = useState<TrimRange>({ start: 0, end: 100 });
   const [videoDuration, setVideoDuration] = useState(0);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
@@ -51,7 +51,7 @@ export default function RecordPreviewPage() {
       if (settings) {
         const parsedSettings = JSON.parse(settings);
         setCaptionsEnabled(parsedSettings.captionsEnabled || true);
-        setShowWebcam(parsedSettings.showWebcam || true);
+        setIncludeProfilePicture(parsedSettings.includeProfilePicture || true);
       }
       
       // Generate AI title and description (mock for now)
@@ -199,7 +199,7 @@ export default function RecordPreviewPage() {
         password: (showPassword && password) ? password : undefined,
         shareLink: `moneyclip-${Date.now()}-${Math.random().toString(36).substring(7)}`,
         captionsEnabled: true, // Always enabled
-        showWebcam,
+        includeProfilePicture,
       };
 
       const response = await apiRequest("/api/videos", 'POST', videoData);
@@ -404,13 +404,13 @@ export default function RecordPreviewPage() {
                         />
                       </div>
 
-                      {/* Webcam Toggle */}
+                      {/* Profile Picture Toggle */}
                       <div className="flex items-center justify-between">
-                        <Label htmlFor="preview-webcam">Show Webcam/Photo</Label>
+                        <Label htmlFor="preview-profile-picture">Include Profile Picture</Label>
                         <Switch
-                          id="preview-webcam"
-                          checked={showWebcam}
-                          onCheckedChange={setShowWebcam}
+                          id="preview-profile-picture"
+                          checked={includeProfilePicture}
+                          onCheckedChange={setIncludeProfilePicture}
                           disabled={isSaving}
                         />
                       </div>

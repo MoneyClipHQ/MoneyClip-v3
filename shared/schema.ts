@@ -156,7 +156,7 @@ export const videos = pgTable("videos", {
   shareLink: text("share_link"), // Unique shareable link
   transcriptUrl: text("transcript_url"), // URL to the transcript file
   captionsEnabled: boolean("captions_enabled").default(true), // Whether captions are enabled
-  showWebcam: boolean("show_webcam").default(true), // Whether to show webcam/profile photo
+  includeProfilePicture: boolean("include_profile_picture").default(true), // Whether to include profile picture
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -175,7 +175,7 @@ export const insertVideoSchema = createInsertSchema(videos).pick({
   shareLink: true,
   transcriptUrl: true,
   captionsEnabled: true,
-  showWebcam: true,
+  includeProfilePicture: true,
 });
 
 export const updateVideoSchema = insertVideoSchema.partial();

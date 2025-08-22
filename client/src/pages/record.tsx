@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Mic, MicOff, Camera, CameraOff, Pause, Play, StopCircle, Settings } from "lucide-react";
+import { Mic, MicOff, Pause, Play, StopCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -16,7 +16,7 @@ type RecordingState = "idle" | "setup" | "countdown" | "recording" | "paused" | 
 
 interface RecordingSettings {
   microphone: string | null;
-  showWebcam: boolean;
+  includeProfilePicture: boolean;
 }
 
 export default function RecordPage() {
@@ -29,12 +29,11 @@ export default function RecordPage() {
   const [countdownValue, setCountdownValue] = useState(3);
   const [recordingTime, setRecordingTime] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
-  const [isCameraOn, setIsCameraOn] = useState(true);
 
   
   const [settings, setSettings] = useState<RecordingSettings>({
     microphone: "default",
-    showWebcam: true,
+    includeProfilePicture: true,
   });
 
   const [availableMicrophones, setAvailableMicrophones] = useState<MediaDeviceInfo[]>([]);
@@ -43,9 +42,6 @@ export default function RecordPage() {
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const webcamStreamRef = useRef<MediaStream | null>(null);
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const videoPreviewRef = useRef<HTMLVideoElement | null>(null);
 
   // Load available microphones
   useEffect(() => {
@@ -95,35 +91,6 @@ export default function RecordPage() {
 
       const displayStream = await navigator.mediaDevices.getDisplayMedia(displayConstraints);
       
-      // Setup webcam during countdown if enabled
-      if (settings.showWebcam) {
-        const webcamConstraints: MediaStreamConstraints = {
-          video: {
-            width: { ideal: 320 },
-            height: { ideal: 240 },
-            facingMode: "user"
-          },
-          audio: false,
-        };
-        try {
-          webcamStreamRef.current = await navigator.mediaDevices.getUserMedia(webcamConstraints);
-          
-          // Show webcam preview during countdown
-          if (videoPreviewRef.current) {
-            videoPreviewRef.current.srcObject = webcamStreamRef.current;
-            videoPreviewRef.current.play();
-          }
-        } catch (webcamError) {
-          console.warn("Could not access webcam during setup:", webcamError);
-          toast({
-            title: "Webcam Access Failed",
-            description: "Recording will continue without webcam.",
-            variant: "destructive",
-          });
-          setSettings(prev => ({ ...prev, showWebcam: false }));
-          setIsCameraOn(false);
-        }
-      }
       
       // Now that screen is selected, start countdown
       setRecordingState("countdown");
@@ -170,35 +137,6 @@ export default function RecordPage() {
         }
       }
 
-      // Get webcam stream if enabled and not already initialized
-      if (settings.showWebcam && !webcamStreamRef.current) {
-        const webcamConstraints: MediaStreamConstraints = {
-          video: {
-            width: { ideal: 320 },
-            height: { ideal: 240 },
-            facingMode: "user"
-          },
-          audio: false, // Audio already handled above
-        };
-        try {
-          webcamStreamRef.current = await navigator.mediaDevices.getUserMedia(webcamConstraints);
-          
-          // Show webcam preview
-          if (videoPreviewRef.current) {
-            videoPreviewRef.current.srcObject = webcamStreamRef.current;
-            videoPreviewRef.current.play();
-          }
-        } catch (webcamError) {
-          console.warn("Could not access webcam:", webcamError);
-          toast({
-            title: "Webcam Access Failed",
-            description: "Recording will continue without webcam.",
-            variant: "destructive",
-          });
-          setSettings(prev => ({ ...prev, showWebcam: false }));
-          setIsCameraOn(false);
-        }
-      }
 
       // Combine streams
       const combinedStream = new MediaStream();
@@ -252,7 +190,7 @@ export default function RecordPage() {
       logRecordingEvent("RECORDING_STARTED", {
         captureMode: "screen", // Will be chosen in overlay
         hasAudio: !!audioStream,
-        hasWebcam: settings.showWebcam,
+        hasProfilePicture: settings.includeProfilePicture,
         captionsEnabled: true, // Always enabled, can be disabled in preview
       });
 
@@ -291,14 +229,6 @@ export default function RecordPage() {
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(track => track.stop());
       }
-      if (webcamStreamRef.current) {
-        webcamStreamRef.current.getTracks().forEach(track => track.stop());
-      }
-      
-      // Clear webcam preview
-      if (videoPreviewRef.current) {
-        videoPreviewRef.current.srcObject = null;
-      }
       
       setRecordingState("stopped");
       logRecordingEvent("STOPPED", { duration: recordingTime });
@@ -312,25 +242,6 @@ export default function RecordPage() {
         track.enabled = isMuted;
       });
       setIsMuted(!isMuted);
-    }
-  };
-
-  const toggleCamera = () => {
-    if (webcamStreamRef.current) {
-      const videoTracks = webcamStreamRef.current.getVideoTracks();
-      videoTracks.forEach(track => {
-        track.enabled = !isCameraOn;
-      });
-      setIsCameraOn(!isCameraOn);
-      
-      // Also update the preview video element
-      if (videoPreviewRef.current) {
-        if (!isCameraOn) {
-          // Re-enable and show preview
-          videoPreviewRef.current.srcObject = webcamStreamRef.current;
-          videoPreviewRef.current.play();
-        }
-      }
     }
   };
 
@@ -393,16 +304,17 @@ export default function RecordPage() {
             {/* Recording Options */}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <Label htmlFor="webcam" className="text-sm font-medium">Show webcam</Label>
+                <Label htmlFor="profile-picture" className="text-sm font-medium">Include profile picture</Label>
                 <Switch
-                  id="webcam"
-                  checked={settings.showWebcam}
-                  onCheckedChange={(checked) => setSettings({...settings, showWebcam: checked})}
+                  id="profile-picture"
+                  checked={settings.includeProfilePicture}
+                  onCheckedChange={(checked) => setSettings({...settings, includeProfilePicture: checked})}
                 />
               </div>
               
               <div className="text-sm text-gray-500 space-y-1">
                 <p>• You'll select your screen, then see a 3-second countdown before recording starts</p>
+                <p>• Your profile picture can be shown in the corner of the video if enabled</p>
                 <p>• AI captions will be automatically generated (can be disabled in preview)</p>
               </div>
             </div>
@@ -492,17 +404,6 @@ export default function RecordPage() {
                 {isMuted ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
               </Button>
 
-              {settings.showWebcam && (
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  onClick={toggleCamera}
-                  className="hover:bg-gray-100"
-                  data-testid="button-toggle-camera"
-                >
-                  {isCameraOn ? <Camera className="h-5 w-5" /> : <CameraOff className="h-5 w-5" />}
-                </Button>
-              )}
 
 
             </div>
@@ -510,51 +411,6 @@ export default function RecordPage() {
         </div>
       )}
 
-      {/* Webcam Preview Window - Shows during countdown and recording */}
-      {(recordingState === "countdown" || recordingState === "recording") && settings.showWebcam && (
-        <div className="fixed bottom-6 right-6 z-50">
-          <div className="bg-white rounded-xl shadow-2xl overflow-hidden border-2 border-gray-300">
-            <div className="bg-gray-800 px-3 py-2 flex items-center justify-between">
-              <span className="text-xs font-medium text-white flex items-center gap-1">
-                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                You
-              </span>
-              {recordingState === "recording" && (
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  onClick={toggleCamera}
-                  className="h-6 w-6 hover:bg-gray-700 text-white hover:text-white"
-                  data-testid="button-webcam-toggle"
-                >
-                  <CameraOff className="h-3 w-3" />
-                </Button>
-              )}
-            </div>
-            <div className="relative">
-              <video
-                ref={videoPreviewRef}
-                autoPlay
-                muted
-                playsInline
-                className="w-56 h-42 object-cover"
-                data-testid="webcam-preview"
-                style={{ transform: 'scaleX(-1)' }} // Mirror the video
-              />
-              {!isCameraOn && recordingState === "recording" && (
-                <div className="absolute inset-0 bg-black flex items-center justify-center">
-                  <CameraOff className="h-8 w-8 text-white opacity-50" />
-                </div>
-              )}
-              {recordingState === "countdown" && (
-                <div className="absolute top-2 left-2 bg-blue-600 text-white px-2 py-1 rounded-md text-xs font-medium">
-                  Preview
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Recording indicator */}
       {recordingState === "recording" && (
