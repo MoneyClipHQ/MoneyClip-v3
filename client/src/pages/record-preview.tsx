@@ -76,8 +76,8 @@ export default function RecordPreviewPage() {
 
   // Generate preview captions for demo purposes
   const generatePreviewCaptions = (duration: number) => {
-    // Create mock captions for preview - these will be replaced with real AI captions once processing completes
-    const mockTranscript = "Welcome to your financial review. Today we'll be discussing your portfolio performance and investment strategy. Let's start by examining your current asset allocation. Your diversified portfolio shows strong growth potential. We recommend maintaining this balanced approach for long-term success.";
+    // Create temporary captions for preview - these will be replaced with real AI captions once processing completes
+    const mockTranscript = "Processing your video... AI captions will appear here once transcription is complete. This preview shows how captions will look during playback.";
     
     const captions = generateCaptionsSRT(mockTranscript, duration);
     if (captions) {
@@ -147,9 +147,34 @@ export default function RecordPreviewPage() {
         setTitle(data.video.title);
         setDescription(data.video.description || "");
         
+        // Update captions with real AI-generated captions
+        if (data.captions && data.captions.length > 0) {
+          // Clean up old caption blob URL
+          if (captionBlobUrl) {
+            URL.revokeObjectURL(captionBlobUrl);
+          }
+          
+          // Create new blob with AI-generated captions
+          const captionBlob = new Blob([data.captions], { type: 'text/vtt' });
+          const newBlobUrl = URL.createObjectURL(captionBlob);
+          setCaptionBlobUrl(newBlobUrl);
+          
+          // Force video to reload tracks if it's already loaded
+          if (videoRef.current) {
+            // Small delay to ensure the blob URL is set before reloading
+            setTimeout(() => {
+              if (videoRef.current) {
+                const currentTime = videoRef.current.currentTime;
+                videoRef.current.load(); // Reload video with new tracks
+                videoRef.current.currentTime = currentTime; // Restore playback position
+              }
+            }, 100);
+          }
+        }
+        
         toast({
           title: "AI Processing Complete",
-          description: "Title and description generated from video content",
+          description: "Title, description and captions generated from video content",
         });
       }
     } catch (error) {
@@ -369,8 +394,9 @@ export default function RecordPreviewPage() {
                         data-testid="video-preview"
                         crossOrigin="anonymous"
                       >
-                        {captionsEnabled && captionBlobUrl && (
+                          {captionsEnabled && captionBlobUrl && (
                           <track
+                            key={captionBlobUrl} // Force re-render when caption URL changes
                             kind="subtitles"
                             src={captionBlobUrl}
                             srcLang="en"
