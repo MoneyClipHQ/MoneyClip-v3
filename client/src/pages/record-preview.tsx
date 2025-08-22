@@ -202,7 +202,7 @@ export default function RecordPreviewPage() {
         includeProfilePicture,
       };
 
-      const response = await apiRequest("/api/videos", 'POST', videoData);
+      const response = await apiRequest('POST', "/api/videos", videoData);
 
       // Start AI processing in background if we have video data
       if (videoBlob && response?.id) {
