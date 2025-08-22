@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { 
@@ -21,7 +22,8 @@ import {
   Calendar,
   Settings2,
   Captions,
-  CaptionsOff
+  CaptionsOff,
+  Send
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -76,6 +78,9 @@ export default function SharePage() {
   const [showCaptions, setShowCaptions] = useState(true);
   const [volume, setVolume] = useState(1);
   const videoRef = useRef<HTMLVideoElement>(null);
+  
+  // Comment state
+  const [commentText, setCommentText] = useState("");
   
   // Generate session ID for tracking (anonymous)
   const sessionId = useRef(crypto.randomUUID());
@@ -276,6 +281,19 @@ export default function SharePage() {
       event: 'COMPLIMENT_SENT',
       metadata: { type, message }
     });
+  };
+  
+  // Fill comment text box with predefined message
+  const fillCommentText = (message: string) => {
+    setCommentText(message);
+  };
+  
+  // Send custom comment
+  const sendCustomComment = () => {
+    if (!commentText.trim()) return;
+    
+    handleCompliment('custom', commentText.trim());
+    setCommentText('');
   };
 
   const formatDuration = (seconds: string | null): string => {
@@ -575,7 +593,7 @@ export default function SharePage() {
             </div>
           </div>
           
-          {/* Compliments Section */}
+          {/* Comments Section */}
           <div 
             className="bg-white rounded-lg p-6 mb-8 border-2" 
             style={{ borderColor: branding.secondaryColor || '#1e40af' }}
@@ -586,14 +604,15 @@ export default function SharePage() {
             >
               Leave a comment
             </h3>
-            <div className="flex flex-wrap gap-3" data-testid="compliments-section">
+            
+            {/* Predefined comment options */}
+            <div className="flex flex-wrap gap-2 mb-4" data-testid="compliments-section">
               {complimentOptions.map((option) => (
                 <Button
                   key={option.type}
                   variant="outline"
                   size="sm"
-                  onClick={() => handleCompliment(option.type, option.message)}
-                  disabled={sendComplimentMutation.isPending}
+                  onClick={() => fillCommentText(option.message)}
                   className="flex items-center gap-2 bg-white hover:bg-gray-50"
                   style={{ 
                     borderColor: branding.secondaryColor || '#1e40af',
@@ -605,6 +624,33 @@ export default function SharePage() {
                   <span className="text-sm">{option.message}</span>
                 </Button>
               ))}
+            </div>
+            
+            {/* Comment input and send button */}
+            <div className="space-y-3">
+              <Textarea
+                placeholder="Type your comment here..."
+                value={commentText}
+                onChange={(e) => setCommentText(e.target.value)}
+                className="min-h-[100px] resize-none"
+                data-testid="input-comment-text"
+              />
+              <div className="flex justify-end">
+                <Button
+                  onClick={sendCustomComment}
+                  disabled={!commentText.trim() || sendComplimentMutation.isPending}
+                  className="flex items-center gap-2"
+                  style={{ 
+                    backgroundColor: branding.primaryColor || '#2563eb',
+                    borderColor: branding.primaryColor || '#2563eb',
+                    color: 'white'
+                  }}
+                  data-testid="button-send-comment"
+                >
+                  <Send className="h-4 w-4" />
+                  {sendComplimentMutation.isPending ? 'Sending...' : 'Send Comment'}
+                </Button>
+              </div>
             </div>
           </div>
           
