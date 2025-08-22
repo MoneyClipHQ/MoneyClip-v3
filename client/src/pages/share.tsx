@@ -584,7 +584,7 @@ export default function SharePage() {
               className="text-lg font-semibold mb-4"
               style={{ color: branding.primaryColor || '#2563eb' }}
             >
-              How did we do?
+              Leave a comment
             </h3>
             <div className="flex flex-wrap gap-3" data-testid="compliments-section">
               {complimentOptions.map((option) => (
