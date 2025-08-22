@@ -82,28 +82,45 @@ export default function RecordPage() {
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
-  const startCountdown = async () => {
-    setRecordingState("countdown");
+  const initiateRecordingFlow = async () => {
     setShowCaptureModal(false);
+    setRecordingState("setup");
     
-    // Always show 3-second countdown
-    for (let i = 3; i > 0; i--) {
-      setCountdownValue(i);
-      await new Promise(resolve => setTimeout(resolve, 1000));
-    }
-    
-    startRecording();
-  };
-
-  const startRecording = async () => {
     try {
-      // Get display stream based on capture mode
+      // First get display media (user selects screen/window/tab)
       const displayConstraints: DisplayMediaStreamOptions = {
         video: true,
         audio: false,
       };
 
       const displayStream = await navigator.mediaDevices.getDisplayMedia(displayConstraints);
+      
+      // Now that screen is selected, start countdown
+      setRecordingState("countdown");
+      
+      // Show 3-second countdown
+      for (let i = 3; i > 0; i--) {
+        setCountdownValue(i);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+      
+      // Start recording with the selected screen
+      await startRecordingWithStream(displayStream);
+      
+    } catch (error) {
+      console.error("Failed to start recording:", error);
+      toast({
+        title: "Recording Failed",
+        description: "Could not start recording. Please check permissions and try again.",
+        variant: "destructive",
+      });
+      setRecordingState("setup");
+      setShowCaptureModal(true);
+    }
+  };
+
+  const startRecordingWithStream = async (displayStream: MediaStream) => {
+    try {
       
       // Get audio stream if microphone is selected
       let audioStream: MediaStream | null = null;
@@ -335,7 +352,7 @@ export default function RecordPage() {
               </div>
               
               <div className="text-sm text-gray-500 space-y-1">
-                <p>• 3-second countdown will be shown before recording starts</p>
+                <p>• You'll select your screen, then see a 3-second countdown before recording starts</p>
                 <p>• AI captions will be automatically generated (can be disabled in preview)</p>
               </div>
             </div>
@@ -352,7 +369,7 @@ export default function RecordPage() {
             <Button variant="outline" onClick={() => navigate("/dashboard")}>
               Cancel
             </Button>
-            <Button onClick={startCountdown} data-testid="button-start-recording">
+            <Button onClick={initiateRecordingFlow} data-testid="button-start-recording">
               Start Recording
             </Button>
           </div>
