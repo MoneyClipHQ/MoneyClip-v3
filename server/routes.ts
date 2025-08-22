@@ -543,11 +543,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ? generateCaptions(result.text, duration || 300)
           : "";
 
+        // Store captions and transcript for serving
+        if (result.text !== "Transcription unavailable") {
+          await storage.storeCaptions(videoId, captions);
+          await storage.storeTranscript(videoId, result.text);
+        }
+
         // Update video with AI-generated content
         const updatedVideo = await storage.updateVideo(videoId, {
           title: result.title,
           description: result.description,
-          transcriptUrl: result.text !== "Transcription unavailable" ? `/transcripts/${videoId}.txt` : null,
+          transcriptUrl: result.text !== "Transcription unavailable" ? `/api/videos/${videoId}/captions` : null,
           captionsEnabled: true
         });
 
@@ -607,6 +613,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Video processing error:", error);
       res.status(500).json({
         error: "Failed to process video"
+      });
+    }
+  });
+
+  // Serve video captions/subtitles
+  app.get("/api/videos/:id/captions", async (req: Request, res: Response) => {
+    try {
+      const videoId = req.params.id;
+      const captions = await storage.getCaptions(videoId);
+      
+      if (!captions) {
+        return res.status(404).json({
+          error: "CAPTIONS_NOT_FOUND",
+          message: "Captions not found for this video"
+        });
+      }
+      
+      res.setHeader('Content-Type', 'text/vtt; charset=utf-8');
+      res.setHeader('Cache-Control', 'public, max-age=3600');
+      res.send(captions);
+    } catch (error) {
+      console.error("Get captions error:", error);
+      res.status(500).json({
+        error: "Failed to retrieve captions"
+      });
+    }
+  });
+
+  // Serve video transcript
+  app.get("/api/videos/:id/transcript", async (req: Request, res: Response) => {
+    try {
+      const videoId = req.params.id;
+      const transcript = await storage.getTranscript(videoId);
+      
+      if (!transcript) {
+        return res.status(404).json({
+          error: "TRANSCRIPT_NOT_FOUND",
+          message: "Transcript not found for this video"
+        });
+      }
+      
+      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      res.setHeader('Cache-Control', 'public, max-age=3600');
+      res.send(transcript);
+    } catch (error) {
+      console.error("Get transcript error:", error);
+      res.status(500).json({
+        error: "Failed to retrieve transcript"
       });
     }
   });

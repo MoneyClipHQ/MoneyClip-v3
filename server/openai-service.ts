@@ -86,7 +86,7 @@ Respond with JSON in this exact format:
 
 /**
  * Generate captions/subtitles from transcription text
- * This creates basic SRT-format captions
+ * This creates WebVTT-format captions for HTML5 video
  */
 export function generateCaptions(transcriptionText: string, videoDurationSeconds: number): string {
   if (!transcriptionText || transcriptionText === "Transcription unavailable") {
@@ -98,7 +98,7 @@ export function generateCaptions(transcriptionText: string, videoDurationSeconds
   const wordsPerSegment = 8; // ~3 seconds of speech
   const segmentDuration = Math.max(3, videoDurationSeconds / Math.ceil(words.length / wordsPerSegment));
   
-  let captions = "";
+  let captions = "WEBVTT\n\n";
   let segmentNumber = 1;
   
   for (let i = 0; i < words.length; i += wordsPerSegment) {
@@ -106,16 +106,15 @@ export function generateCaptions(transcriptionText: string, videoDurationSeconds
     const startTime = (segmentNumber - 1) * segmentDuration;
     const endTime = Math.min(segmentNumber * segmentDuration, videoDurationSeconds);
     
-    // Format time as SRT timestamp (HH:MM:SS,mmm)
+    // Format time as WebVTT timestamp (HH:MM:SS.mmm)
     const formatTime = (seconds: number) => {
       const hours = Math.floor(seconds / 3600);
       const minutes = Math.floor((seconds % 3600) / 60);
       const secs = Math.floor(seconds % 60);
       const milliseconds = Math.floor((seconds % 1) * 1000);
-      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')},${milliseconds.toString().padStart(3, '0')}`;
+      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}.${milliseconds.toString().padStart(3, '0')}`;
     };
     
-    captions += `${segmentNumber}\n`;
     captions += `${formatTime(startTime)} --> ${formatTime(endTime)}\n`;
     captions += `${segmentWords.join(' ')}\n\n`;
     

@@ -68,6 +68,12 @@ export interface IStorage {
   // Viewer interaction methods
   logViewerEvent(event: InsertViewerEvent): Promise<ViewerEvent>;
   logViewerCompliment(compliment: InsertViewerCompliment): Promise<ViewerCompliment>;
+  
+  // Caption and transcript storage methods
+  storeCaptions(videoId: string, captions: string): Promise<void>;
+  getCaptions(videoId: string): Promise<string | undefined>;
+  storeTranscript(videoId: string, transcript: string): Promise<void>;
+  getTranscript(videoId: string): Promise<string | undefined>;
 }
 
 export class MemStorage implements IStorage {
@@ -79,6 +85,8 @@ export class MemStorage implements IStorage {
   private settingsEvents: SettingsEvent[];
   private videos: Map<string, Video>;
   private recordingEvents: RecordingEvent[];
+  private captions: Map<string, string>;
+  private transcripts: Map<string, string>;
 
   constructor() {
     this.users = new Map();
@@ -89,6 +97,8 @@ export class MemStorage implements IStorage {
     this.settingsEvents = [];
     this.videos = new Map();
     this.recordingEvents = [];
+    this.captions = new Map();
+    this.transcripts = new Map();
     
     // Initialize with mock advisor for demo
     this.initializeMockData();
@@ -482,6 +492,23 @@ export class MemStorage implements IStorage {
       .returning();
     return newCompliment;
   }
+
+  // Caption and transcript storage methods (in-memory for MemStorage)
+  async storeCaptions(videoId: string, captions: string): Promise<void> {
+    this.captions.set(videoId, captions);
+  }
+
+  async getCaptions(videoId: string): Promise<string | undefined> {
+    return this.captions.get(videoId);
+  }
+
+  async storeTranscript(videoId: string, transcript: string): Promise<void> {
+    this.transcripts.set(videoId, transcript);
+  }
+
+  async getTranscript(videoId: string): Promise<string | undefined> {
+    return this.transcripts.get(videoId);
+  }
 }
 
 // Database Storage Implementation
@@ -865,6 +892,26 @@ export class DatabaseStorage implements IStorage {
       })
       .returning();
     return newCompliment;
+  }
+
+  // Caption and transcript storage methods (using in-memory for DatabaseStorage too)
+  private captions: Map<string, string> = new Map();
+  private transcripts: Map<string, string> = new Map();
+
+  async storeCaptions(videoId: string, captions: string): Promise<void> {
+    this.captions.set(videoId, captions);
+  }
+
+  async getCaptions(videoId: string): Promise<string | undefined> {
+    return this.captions.get(videoId);
+  }
+
+  async storeTranscript(videoId: string, transcript: string): Promise<void> {
+    this.transcripts.set(videoId, transcript);
+  }
+
+  async getTranscript(videoId: string): Promise<string | undefined> {
+    return this.transcripts.get(videoId);
   }
 }
 
