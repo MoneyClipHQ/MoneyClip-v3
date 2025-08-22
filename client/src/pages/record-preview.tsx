@@ -134,15 +134,16 @@ export default function RecordPreviewPage() {
       const arrayBuffer = await videoBlob.arrayBuffer();
       const audioBuffer = Buffer.from(arrayBuffer).toString('base64');
       
-      const response = await apiRequest(`/api/videos/process`, 'POST', {
+      const response = await apiRequest('POST', `/api/videos/process`, {
         videoId,
         audioBuffer,
         duration: videoDuration
       });
 
-      if (response?.video) {
-        setTitle(response.video.title);
-        setDescription(response.video.description || "");
+      const data = await response.json();
+      if (data?.video) {
+        setTitle(data.video.title);
+        setDescription(data.video.description || "");
         
         toast({
           title: "AI Processing Complete",
@@ -203,14 +204,15 @@ export default function RecordPreviewPage() {
       };
 
       const response = await apiRequest('POST', "/api/videos", videoData);
+      const data = await response.json();
 
       // Start AI processing in background if we have video data
-      if (videoBlob && response?.id) {
+      if (videoBlob && data?.id) {
         // Process in background without blocking UI
-        processVideoWithAI(response.id, videoBlob);
+        processVideoWithAI(data.id, videoBlob);
       }
 
-      return response;
+      return data;
     },
     onSuccess: (data) => {
       const link = `${window.location.origin}/share/${data?.shareLink}`;
