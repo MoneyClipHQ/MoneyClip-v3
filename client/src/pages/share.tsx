@@ -576,8 +576,14 @@ export default function SharePage() {
           </div>
           
           {/* Compliments Section */}
-          <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          <div 
+            className="bg-white rounded-lg p-6 mb-8 border-2" 
+            style={{ borderColor: branding.secondaryColor || '#1e40af' }}
+          >
+            <h3 
+              className="text-lg font-semibold mb-4"
+              style={{ color: branding.primaryColor || '#2563eb' }}
+            >
               How did we do?
             </h3>
             <div className="flex flex-wrap gap-3" data-testid="compliments-section">
@@ -588,7 +594,11 @@ export default function SharePage() {
                   size="sm"
                   onClick={() => handleCompliment(option.type, option.message)}
                   disabled={sendComplimentMutation.isPending}
-                  className="flex items-center gap-2"
+                  className="flex items-center gap-2 bg-white hover:bg-gray-50"
+                  style={{ 
+                    borderColor: branding.secondaryColor || '#1e40af',
+                    color: branding.primaryColor || '#2563eb'
+                  }}
                   data-testid={`compliment-${option.type}`}
                 >
                   <span>{option.label}</span>
@@ -599,8 +609,14 @@ export default function SharePage() {
           </div>
           
           {/* CTAs Section */}
-          <div className="bg-white rounded-lg shadow-sm p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          <div 
+            className="bg-white rounded-lg p-6 border-2" 
+            style={{ borderColor: branding.secondaryColor || '#1e40af' }}
+          >
+            <h3 
+              className="text-lg font-semibold mb-4"
+              style={{ color: branding.primaryColor || '#2563eb' }}
+            >
               Get in touch
             </h3>
             <div className="flex flex-col sm:flex-row gap-4" data-testid="cta-section">
@@ -610,6 +626,11 @@ export default function SharePage() {
                 size="lg"
                 asChild
                 className="flex items-center gap-2"
+                style={{ 
+                  backgroundColor: branding.primaryColor || '#2563eb',
+                  borderColor: branding.primaryColor || '#2563eb',
+                  color: 'white'
+                }}
                 data-testid="cta-email"
               >
                 <a href={`mailto:${branding.advisorName} <support@example.com>`}>
@@ -624,7 +645,11 @@ export default function SharePage() {
                   variant="outline"
                   size="lg"
                   asChild
-                  className="flex items-center gap-2"
+                  className="flex items-center gap-2 bg-white hover:bg-gray-50"
+                  style={{ 
+                    borderColor: branding.secondaryColor || '#1e40af',
+                    color: branding.primaryColor || '#2563eb'
+                  }}
                   data-testid="cta-call"
                 >
                   <a href={`tel:${branding.phone}`}>
@@ -640,7 +665,11 @@ export default function SharePage() {
                   variant="outline"
                   size="lg"
                   asChild
-                  className="flex items-center gap-2"
+                  className="flex items-center gap-2 bg-white hover:bg-gray-50"
+                  style={{ 
+                    borderColor: branding.secondaryColor || '#1e40af',
+                    color: branding.primaryColor || '#2563eb'
+                  }}
                   data-testid="cta-schedule"
                 >
                   <a href={branding.calendarLink} target="_blank" rel="noopener noreferrer">
@@ -655,8 +684,14 @@ export default function SharePage() {
       )}
       
       {/* Footer */}
-      <div className="bg-white border-t border-gray-200 py-4 mt-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-sm text-gray-500">
+      <div 
+        className="bg-white py-4 mt-12 border-t-2" 
+        style={{ borderColor: branding.secondaryColor || '#1e40af' }}
+      >
+        <div 
+          className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-sm"
+          style={{ color: branding.primaryColor || '#2563eb' }}
+        >
           Powered by MoneyClip
         </div>
       </div>
