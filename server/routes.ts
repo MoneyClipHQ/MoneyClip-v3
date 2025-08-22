@@ -17,6 +17,9 @@ import {
 import { z } from "zod";
 import { format } from "date-fns";
 import { transcribeAndGenerateContent, generateCaptions } from "./openai-service";
+import { Resend } from 'resend';
+
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 // Auth middleware
 function requireAuth(req: any, res: any, next: any) {
@@ -103,9 +106,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate reset token
       const { token, expiresAt } = await storage.createPasswordResetToken(advisor.id);
       
-      // For MVP - log the code to console instead of sending email
-      console.log(`Password reset code for ${validatedData.email}: ${token}`);
-      console.log(`Code expires at: ${expiresAt.toISOString()}`);
+      // Send reset code via email
+      try {
+        await resend.emails.send({
+          from: 'MoneyClip <noreply@yourdomain.com>',
+          to: validatedData.email,
+          subject: 'Your MoneyClip Password Reset Code',
+          html: `
+            <h2>Password Reset Request</h2>
+            <p>Your 6-digit reset code is: <strong>${token}</strong></p>
+            <p>This code will expire in 10 minutes.</p>
+            <p>If you didn't request this reset, please ignore this email.</p>
+          `
+        });
+      } catch (emailError) {
+        console.error('Failed to send reset email:', emailError);
+        // Continue with success response for security (don't reveal email send failures)
+      }
 
       res.json({
         success: true,
