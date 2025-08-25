@@ -38,6 +38,8 @@ export default function RecordPreviewPage() {
   const [shareLink, setShareLink] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [captionBlobUrl, setCaptionBlobUrl] = useState<string | null>(null);
+  const [isProcessingAI, setIsProcessingAI] = useState(false);
+  const [aiProcessingComplete, setAiProcessingComplete] = useState(false);
 
   // Load recorded video from session storage
   useEffect(() => {
@@ -69,11 +71,14 @@ export default function RecordPreviewPage() {
         setVideoDuration(duration);
         setTrimRange({ start: 0, end: duration });
         generatePreviewCaptions(duration);
-        // Generate AI content after video metadata is loaded
-        generateAIContent();
+        
+        // Generate AI content only once after video metadata is loaded
+        if (!isProcessingAI && !aiProcessingComplete) {
+          generateAIContent(duration);
+        }
       };
     }
-  }, [videoUrl]);
+  }, [videoUrl, isProcessingAI, aiProcessingComplete]);
 
   // Generate preview captions for demo purposes
   const generatePreviewCaptions = (duration: number) => {
@@ -122,7 +127,14 @@ export default function RecordPreviewPage() {
     return captions;
   };
 
-  const generateAIContent = async () => {
+  const generateAIContent = async (duration?: number) => {
+    // Prevent multiple simultaneous processing requests
+    if (isProcessingAI || aiProcessingComplete) {
+      return;
+    }
+
+    setIsProcessingAI(true);
+    
     // Set initial placeholder content while processing
     setTitle("Processing...");
     setDescription("AI is analyzing your video content...");
@@ -140,18 +152,21 @@ export default function RecordPreviewPage() {
         const videoBlob = new Blob([bytes], { type: 'video/webm' });
         
         // Process with AI immediately for preview
-        await processVideoWithAIForPreview(videoBlob);
+        await processVideoWithAIForPreview(videoBlob, duration || videoDuration);
+        setAiProcessingComplete(true);
       }
     } catch (error) {
       console.error('AI processing error during preview:', error);
       // Fallback content if AI processing fails
       setTitle("Financial Advisory Video");
       setDescription("Professional financial guidance and insights.");
+    } finally {
+      setIsProcessingAI(false);
     }
   };
 
   // Process video with AI for preview (before saving)
-  const processVideoWithAIForPreview = async (videoBlob: Blob) => {
+  const processVideoWithAIForPreview = async (videoBlob: Blob, duration: number) => {
     try {
       // Convert video blob to base64 for sending to server
       const arrayBuffer = await videoBlob.arrayBuffer();
@@ -159,10 +174,10 @@ export default function RecordPreviewPage() {
       const binaryString = Array.from(uint8Array, byte => String.fromCharCode(byte)).join('');
       const audioBuffer = btoa(binaryString);
       
-      console.log('Sending AI processing request with duration:', videoDuration);
+      console.log('Sending AI processing request with duration:', duration);
       const response = await apiRequest('POST', `/api/videos/process-preview`, {
         audioBuffer,
-        duration: videoDuration
+        duration: duration
       });
       
       console.log('AI processing response received:', response.status);
@@ -326,8 +341,7 @@ export default function RecordPreviewPage() {
       const data = await response.json();
 
       // Only start AI processing if we haven't already processed during preview
-      // (indicated by non-placeholder title and description)
-      if (videoBlob && data?.id && (title === "Processing..." || !title || !description)) {
+      if (videoBlob && data?.id && !aiProcessingComplete) {
         // Process in background without blocking UI
         processVideoWithAI(data.id, videoBlob);
       }
@@ -575,13 +589,13 @@ export default function RecordPreviewPage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="title">Title *</Label>
+                    <Label htmlFor="title">Title * {isProcessingAI && <span className="text-sm text-blue-600">(AI processing...)</span>}</Label>
                     <Input
                       id="title"
                       placeholder="Enter video title"
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
-                      disabled={isSaving}
+                      disabled={isSaving || isProcessingAI}
                       data-testid="input-title"
                     />
                   </div>
@@ -594,7 +608,7 @@ export default function RecordPreviewPage() {
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
                       rows={4}
-                      disabled={isSaving}
+                      disabled={isSaving || isProcessingAI}
                       data-testid="textarea-description"
                     />
                   </div>
