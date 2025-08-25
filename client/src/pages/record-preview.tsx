@@ -50,6 +50,11 @@ export default function RecordPreviewPage() {
     console.log('Loading video from session storage:', recordedVideoUrl ? 'Video URL found' : 'No video URL');
     
     if (recordedVideoUrl) {
+      // Reset AI processing state for new video
+      aiProcessingRef.current = false;
+      setAiProcessingComplete(false);
+      setIsProcessingAI(false);
+      
       setVideoUrl(recordedVideoUrl);
       
       // Parse settings if available
@@ -70,22 +75,28 @@ export default function RecordPreviewPage() {
   useEffect(() => {
     if (videoRef.current && videoUrl) {
       const handleMetadataLoaded = () => {
-        const duration = videoRef.current?.duration || 0;
+        const duration = videoRef.current?.duration;
         console.log('Video duration loaded:', duration, 'Current videoDuration:', videoDuration, 'AI processing ref:', aiProcessingRef.current);
         
-        // Only process if we have a valid duration and haven't processed yet
-        if (duration > 0 && !aiProcessingRef.current && videoDuration === 0) {
-          console.log('Starting initial video processing with duration:', duration);
-          setVideoDuration(duration);
-          setTrimRange({ start: 0, end: duration });
-          generatePreviewCaptions(duration);
+        // Handle duration - if null/undefined, try to get a reasonable default or wait
+        const effectiveDuration = duration && !isNaN(duration) && duration > 0 ? duration : null;
+        
+        // Only process if we haven't processed yet (regardless of current videoDuration state)
+        if (!aiProcessingRef.current) {
+          console.log('Starting initial video processing with duration:', effectiveDuration);
+          
+          if (effectiveDuration) {
+            setVideoDuration(effectiveDuration);
+            setTrimRange({ start: 0, end: effectiveDuration });
+            generatePreviewCaptions(effectiveDuration);
+          }
           
           // Mark as processing to prevent duplicate calls
           aiProcessingRef.current = true;
           
-          // Generate AI content only once after video metadata is loaded
+          // Generate AI content even if duration is not available yet
           if (!isProcessingAI && !aiProcessingComplete) {
-            generateAIContent(duration);
+            generateAIContent(effectiveDuration);
           }
         }
       };
@@ -165,7 +176,11 @@ export default function RecordPreviewPage() {
   const generateAIContent = async (duration?: number) => {
     // Prevent multiple simultaneous processing requests using ref
     if (isProcessingAI || aiProcessingComplete || aiProcessingRef.current) {
-      console.log('Skipping AI processing - already in progress or complete');
+      console.log('Skipping AI processing - already in progress or complete', {
+        isProcessingAI,
+        aiProcessingComplete,
+        aiProcessingRefCurrent: aiProcessingRef.current
+      });
       return;
     }
 
