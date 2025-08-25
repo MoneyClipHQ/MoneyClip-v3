@@ -1,10 +1,17 @@
+import logoUrl from "@/assets/logos/moneyclip-logo.png";
+
 export default function Footer() {
   return (
     <footer className="bg-white border-t border-gray-200 py-12">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center">
           <div className="mb-8">
-            <span className="text-2xl font-bold text-primary">MoneyClip</span>
+            <img 
+              src={logoUrl} 
+              alt="MoneyClip" 
+              className="h-8 w-auto object-contain mx-auto"
+              data-testid="logo-moneyclip"
+            />
           </div>
           <div className="flex justify-center space-x-8 text-sm text-secondary">
             <a 

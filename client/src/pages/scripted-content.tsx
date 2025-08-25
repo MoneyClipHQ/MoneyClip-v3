@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { FileText, ArrowLeft, Clock, Users, TrendingUp, DollarSign, Shield } from "lucide-react";
 import AdvisorDropdown from "@/components/advisor-dropdown";
+import logoUrl from "@/assets/logos/moneyclip-logo.png";
 
 // Mock advisor data
 const mockAdvisor = {
@@ -123,12 +124,12 @@ export default function ScriptedContent() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <Link href="/dashboard">
-              <span 
-                className="text-2xl font-bold text-primary cursor-pointer hover:text-blue-700 transition-colors"
+              <img 
+                src={logoUrl} 
+                alt="MoneyClip" 
+                className="h-10 w-auto object-contain cursor-pointer"
                 data-testid="logo-moneyclip"
-              >
-                MoneyClip
-              </span>
+              />
             </Link>
             <AdvisorDropdown
               advisorName={mockAdvisor.name}

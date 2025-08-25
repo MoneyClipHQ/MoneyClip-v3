@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
+import logoUrl from "@/assets/logos/moneyclip-logo.png";
 
 export default function Header() {
 
@@ -9,7 +10,14 @@ export default function Header() {
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <span className="text-2xl font-bold text-primary">MoneyClip</span>
+              <Link href="/">
+                <img 
+                  src={logoUrl} 
+                  alt="MoneyClip" 
+                  className="h-10 w-auto object-contain cursor-pointer"
+                  data-testid="logo-moneyclip"
+                />
+              </Link>
             </div>
           </div>
           <nav className="hidden md:flex items-center space-x-8">

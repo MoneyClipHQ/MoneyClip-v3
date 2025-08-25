@@ -12,6 +12,7 @@ import { Eye, EyeOff, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { loginSchema, type LoginData } from "@shared/schema";
+import logoUrl from "@/assets/logos/moneyclip-logo.png";
 
 export default function Login() {
   const [, navigate] = useLocation();
@@ -72,9 +73,12 @@ export default function Login() {
         {/* Header */}
         <div className="text-center">
           <Link href="/">
-            <span className="text-3xl font-bold text-primary cursor-pointer hover:text-blue-700 transition-colors">
-              MoneyClip
-            </span>
+            <img 
+              src={logoUrl} 
+              alt="MoneyClip" 
+              className="h-12 w-auto object-contain cursor-pointer mx-auto"
+              data-testid="logo-moneyclip"
+            />
           </Link>
           <h2 className="mt-6 text-3xl font-bold text-gray-900">
             Sign in to your account

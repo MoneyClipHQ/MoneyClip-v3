@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { CheckIcon, XIcon } from "lucide-react";
+import logoUrl from "@/assets/logos/moneyclip-logo.png";
 
 export default function Pricing() {
   const [, setLocation] = useLocation();
@@ -80,7 +81,12 @@ export default function Pricing() {
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
               <Link href="/">
-                <span className="text-2xl font-bold text-primary cursor-pointer">MoneyClip</span>
+                <img 
+                  src={logoUrl} 
+                  alt="MoneyClip" 
+                  className="h-10 w-auto object-contain cursor-pointer"
+                  data-testid="logo-moneyclip"
+                />
               </Link>
             </div>
             <div className="flex items-center space-x-4">
