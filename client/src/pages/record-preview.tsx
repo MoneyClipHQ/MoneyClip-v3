@@ -40,11 +40,14 @@ export default function RecordPreviewPage() {
   const [captionBlobUrl, setCaptionBlobUrl] = useState<string | null>(null);
   const [isProcessingAI, setIsProcessingAI] = useState(false);
   const [aiProcessingComplete, setAiProcessingComplete] = useState(false);
+  const aiProcessingRef = useRef(false); // Use ref to track processing without triggering re-renders
 
   // Load recorded video from session storage
   useEffect(() => {
     const recordedVideoUrl = sessionStorage.getItem("recordedVideo");
     const settings = sessionStorage.getItem("recordingSettings");
+    
+    console.log('Loading video from session storage:', recordedVideoUrl ? 'Video URL found' : 'No video URL');
     
     if (recordedVideoUrl) {
       setVideoUrl(recordedVideoUrl);
@@ -68,12 +71,17 @@ export default function RecordPreviewPage() {
     if (videoRef.current && videoUrl) {
       const handleMetadataLoaded = () => {
         const duration = videoRef.current?.duration || 0;
+        console.log('Video duration loaded:', duration, 'Current videoDuration:', videoDuration, 'AI processing ref:', aiProcessingRef.current);
+        
         // Only process if we have a valid duration and haven't processed yet
-        if (duration > 0 && videoDuration === 0) {
-          console.log('Video duration loaded:', duration);
+        if (duration > 0 && !aiProcessingRef.current && videoDuration === 0) {
+          console.log('Starting initial video processing with duration:', duration);
           setVideoDuration(duration);
           setTrimRange({ start: 0, end: duration });
           generatePreviewCaptions(duration);
+          
+          // Mark as processing to prevent duplicate calls
+          aiProcessingRef.current = true;
           
           // Generate AI content only once after video metadata is loaded
           if (!isProcessingAI && !aiProcessingComplete) {
@@ -82,10 +90,26 @@ export default function RecordPreviewPage() {
         }
       };
       
+      // Add error handling for video loading
+      const handleVideoError = (error: Event) => {
+        console.error('Video loading error:', error, 'Video readyState:', videoRef.current?.readyState);
+        console.error('Video error code:', (error.target as HTMLVideoElement)?.error?.code);
+        console.error('Video error message:', (error.target as HTMLVideoElement)?.error?.message);
+      };
+      
+      const handleVideoCanPlay = () => {
+        console.log('Video can play, readyState:', videoRef.current?.readyState, 'duration:', videoRef.current?.duration);
+      };
+      
+      videoRef.current.onerror = handleVideoError;
+      videoRef.current.oncanplay = handleVideoCanPlay;
+      
       // Check if metadata is already loaded
       if (videoRef.current.readyState >= 1) {
+        console.log('Video metadata already loaded, duration:', videoRef.current.duration);
         handleMetadataLoaded();
       } else {
+        console.log('Waiting for video metadata to load, current readyState:', videoRef.current.readyState);
         videoRef.current.onloadedmetadata = handleMetadataLoaded;
       }
     }
@@ -139,8 +163,9 @@ export default function RecordPreviewPage() {
   };
 
   const generateAIContent = async (duration?: number) => {
-    // Prevent multiple simultaneous processing requests
-    if (isProcessingAI || aiProcessingComplete) {
+    // Prevent multiple simultaneous processing requests using ref
+    if (isProcessingAI || aiProcessingComplete || aiProcessingRef.current) {
+      console.log('Skipping AI processing - already in progress or complete');
       return;
     }
 
@@ -213,33 +238,19 @@ export default function RecordPreviewPage() {
           const newBlobUrl = URL.createObjectURL(captionBlob);
           setCaptionBlobUrl(newBlobUrl);
           
-          // Force video to reload tracks if it's already loaded
-          if (videoRef.current) {
-            // Small delay to ensure the blob URL is set before reloading
+          // No need to reload video - modern browsers handle track updates dynamically
+          // Just ensure text tracks are visible if video is loaded
+          if (videoRef.current && videoRef.current.readyState >= 1) {
             setTimeout(() => {
               if (videoRef.current) {
-                const currentTime = videoRef.current.currentTime;
-                const wasPlaying = !videoRef.current.paused;
-                videoRef.current.load(); // Reload video with new tracks
-                
-                // Restore state after load and ensure captions are visible
-                videoRef.current.onloadeddata = () => {
-                  if (videoRef.current) {
-                    videoRef.current.currentTime = currentTime;
-                    if (wasPlaying) {
-                      videoRef.current.play();
-                    }
-                    // Ensure text tracks are visible
-                    const tracks = videoRef.current.textTracks;
-                    for (let i = 0; i < tracks.length; i++) {
-                      if (tracks[i].kind === 'captions' || tracks[i].kind === 'subtitles') {
-                        tracks[i].mode = 'showing';
-                      }
-                    }
+                const tracks = videoRef.current.textTracks;
+                for (let i = 0; i < tracks.length; i++) {
+                  if (tracks[i].kind === 'captions' || tracks[i].kind === 'subtitles') {
+                    tracks[i].mode = captionsEnabled ? 'showing' : 'hidden';
                   }
-                };
+                }
               }
-            }, 100);
+            }, 200); // Small delay to let the new track load
           }
         }
         
