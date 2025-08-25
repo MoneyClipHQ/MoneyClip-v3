@@ -208,6 +208,32 @@ export default function SharePage() {
       }
     }
   }, [video, hasAcceptedTerms, hasEnteredPassword]);
+  
+  // Initialize caption visibility when video loads
+  useEffect(() => {
+    if (videoRef.current && video?.captionsEnabled && video?.transcriptUrl) {
+      const handleLoadedMetadata = () => {
+        const tracks = videoRef.current?.textTracks;
+        if (tracks) {
+          for (let i = 0; i < tracks.length; i++) {
+            if (tracks[i].kind === 'captions' || tracks[i].kind === 'subtitles') {
+              tracks[i].mode = showCaptions ? 'showing' : 'hidden';
+            }
+          }
+        }
+      };
+      
+      // Check if metadata is already loaded
+      if (videoRef.current.readyState >= 1) {
+        handleLoadedMetadata();
+      } else {
+        videoRef.current.addEventListener('loadedmetadata', handleLoadedMetadata);
+        return () => {
+          videoRef.current?.removeEventListener('loadedmetadata', handleLoadedMetadata);
+        };
+      }
+    }
+  }, [video, showCaptions]);
 
   // Handle terms acceptance
   const handleAcceptTerms = () => {
@@ -269,7 +295,19 @@ export default function SharePage() {
   };
   
   const toggleCaptions = () => {
-    setShowCaptions(!showCaptions);
+    const newShowCaptions = !showCaptions;
+    setShowCaptions(newShowCaptions);
+    
+    // Programmatically control caption track visibility
+    if (videoRef.current) {
+      const tracks = videoRef.current.textTracks;
+      for (let i = 0; i < tracks.length; i++) {
+        if (tracks[i].kind === 'captions' || tracks[i].kind === 'subtitles') {
+          tracks[i].mode = newShowCaptions ? 'showing' : 'hidden';
+        }
+      }
+    }
+    
     logViewerEventMutation.mutate({
       event: showCaptions ? 'CAPTIONS_OFF' : 'CAPTIONS_ON'
     });

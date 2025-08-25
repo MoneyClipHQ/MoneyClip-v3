@@ -68,14 +68,17 @@ export default function RecordPreviewPage() {
     if (videoRef.current && videoUrl) {
       const handleMetadataLoaded = () => {
         const duration = videoRef.current?.duration || 0;
-        console.log('Video duration loaded:', duration);
-        setVideoDuration(duration);
-        setTrimRange({ start: 0, end: duration });
-        generatePreviewCaptions(duration);
-        
-        // Generate AI content only once after video metadata is loaded
-        if (!isProcessingAI && !aiProcessingComplete) {
-          generateAIContent(duration);
+        // Only process if we have a valid duration and haven't processed yet
+        if (duration > 0 && videoDuration === 0) {
+          console.log('Video duration loaded:', duration);
+          setVideoDuration(duration);
+          setTrimRange({ start: 0, end: duration });
+          generatePreviewCaptions(duration);
+          
+          // Generate AI content only once after video metadata is loaded
+          if (!isProcessingAI && !aiProcessingComplete) {
+            generateAIContent(duration);
+          }
         }
       };
       
@@ -86,7 +89,7 @@ export default function RecordPreviewPage() {
         videoRef.current.onloadedmetadata = handleMetadataLoaded;
       }
     }
-  }, [videoUrl, isProcessingAI, aiProcessingComplete]);
+  }, [videoUrl]); // Remove isProcessingAI and aiProcessingComplete from dependencies to prevent re-triggers
 
   // Generate preview captions for demo purposes
   const generatePreviewCaptions = (duration: number) => {

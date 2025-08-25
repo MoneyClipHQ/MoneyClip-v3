@@ -156,6 +156,8 @@ export const videos = pgTable("videos", {
   password: text("password"), // Optional password protection
   shareLink: text("share_link"), // Unique shareable link
   transcriptUrl: text("transcript_url"), // URL to the transcript file
+  captionsData: text("captions_data"), // Actual caption data in WebVTT format
+  transcriptText: text("transcript_text"), // Actual transcript text
   captionsEnabled: boolean("captions_enabled").default(true), // Whether captions are enabled
   includeProfilePicture: boolean("include_profile_picture").default(true), // Whether to include profile picture
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -176,6 +178,8 @@ export const insertVideoSchema = createInsertSchema(videos).pick({
   password: true,
   shareLink: true,
   transcriptUrl: true,
+  captionsData: true,
+  transcriptText: true,
   captionsEnabled: true,
   includeProfilePicture: true,
 });

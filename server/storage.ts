@@ -991,24 +991,35 @@ export class DatabaseStorage implements IStorage {
     return newCompliment;
   }
 
-  // Caption and transcript storage methods (using in-memory for DatabaseStorage too)
-  private captions: Map<string, string> = new Map();
-  private transcripts: Map<string, string> = new Map();
-
+  // Caption and transcript storage methods (using database)
   async storeCaptions(videoId: string, captions: string): Promise<void> {
-    this.captions.set(videoId, captions);
+    await db
+      .update(videos)
+      .set({ captionsData: captions })
+      .where(eq(videos.id, videoId));
   }
 
   async getCaptions(videoId: string): Promise<string | undefined> {
-    return this.captions.get(videoId);
+    const [video] = await db
+      .select({ captionsData: videos.captionsData })
+      .from(videos)
+      .where(eq(videos.id, videoId));
+    return video?.captionsData || undefined;
   }
 
   async storeTranscript(videoId: string, transcript: string): Promise<void> {
-    this.transcripts.set(videoId, transcript);
+    await db
+      .update(videos)
+      .set({ transcriptText: transcript })
+      .where(eq(videos.id, videoId));
   }
 
   async getTranscript(videoId: string): Promise<string | undefined> {
-    return this.transcripts.get(videoId);
+    const [video] = await db
+      .select({ transcriptText: videos.transcriptText })
+      .from(videos)
+      .where(eq(videos.id, videoId));
+    return video?.transcriptText || undefined;
   }
 
   // Password reset methods  

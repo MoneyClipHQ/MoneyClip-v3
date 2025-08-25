@@ -585,7 +585,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const videoData = {
         ...req.body,
         advisorId,
-        shareLink: req.body.shareLink || `moneyclip-${Date.now()}-${Math.random().toString(36).substring(7)}`
+        shareLink: req.body.shareLink || `moneyclip-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+        // Set transcriptUrl to null initially, will be updated after processing
+        transcriptUrl: null
       };
       
       // If videoData is provided, generate a data URL for fileUrl
@@ -664,17 +666,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ? generateCaptions(result.text, duration || 300)
           : "";
 
-        // Store captions and transcript for serving
-        if (result.text !== "Transcription unavailable") {
-          await storage.storeCaptions(videoId, captions);
-          await storage.storeTranscript(videoId, result.text);
-        }
-
-        // Update video with AI-generated content
+        // Update video with AI-generated content and store captions directly
         const updatedVideo = await storage.updateVideo(videoId, {
           title: result.title,
           description: result.description,
-          transcriptUrl: result.text !== "Transcription unavailable" ? `/api/videos/${videoId}/captions` : null,
+          transcriptUrl: captions ? `/api/videos/${videoId}/captions` : null,
+          captionsData: captions || null,
+          transcriptText: result.text !== "Transcription unavailable" ? result.text : null,
           captionsEnabled: true
         });
 
@@ -763,8 +761,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const result = await transcribeAndGenerateContent(buffer, 'preview.webm');
         
         // Generate captions if transcription successful
+        // Use the provided duration if available and valid, otherwise default to 300 seconds
+        const effectiveDuration = duration && duration > 0 ? duration : 300;
         const captions = result.text !== "Transcription unavailable" 
-          ? generateCaptions(result.text, duration || 300)
+          ? generateCaptions(result.text, effectiveDuration)
           : "";
 
         console.log("AI preview processing completed");
@@ -803,7 +803,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/videos/:id/captions", async (req: Request, res: Response) => {
     try {
       const videoId = req.params.id;
-      const captions = await storage.getCaptions(videoId);
+      
+      // First try to get from new database field
+      const video = await storage.getVideo(videoId);
+      const captions = video?.captionsData || await storage.getCaptions(videoId);
       
       if (!captions) {
         return res.status(404).json({
