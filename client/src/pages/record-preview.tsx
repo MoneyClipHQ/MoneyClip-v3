@@ -66,8 +66,9 @@ export default function RecordPreviewPage() {
   // Update duration when video loads and generate preview captions
   useEffect(() => {
     if (videoRef.current && videoUrl) {
-      videoRef.current.onloadedmetadata = () => {
+      const handleMetadataLoaded = () => {
         const duration = videoRef.current?.duration || 0;
+        console.log('Video duration loaded:', duration);
         setVideoDuration(duration);
         setTrimRange({ start: 0, end: duration });
         generatePreviewCaptions(duration);
@@ -77,6 +78,13 @@ export default function RecordPreviewPage() {
           generateAIContent(duration);
         }
       };
+      
+      // Check if metadata is already loaded
+      if (videoRef.current.readyState >= 1) {
+        handleMetadataLoaded();
+      } else {
+        videoRef.current.onloadedmetadata = handleMetadataLoaded;
+      }
     }
   }, [videoUrl, isProcessingAI, aiProcessingComplete]);
 
@@ -191,6 +199,7 @@ export default function RecordPreviewPage() {
         
         // Update captions with AI-generated captions if available
         if (data.captions && data.captions.length > 0) {
+          console.log('Updating captions with AI-generated content');
           // Clean up old caption blob URL
           if (captionBlobUrl) {
             URL.revokeObjectURL(captionBlobUrl);
@@ -207,8 +216,25 @@ export default function RecordPreviewPage() {
             setTimeout(() => {
               if (videoRef.current) {
                 const currentTime = videoRef.current.currentTime;
+                const wasPlaying = !videoRef.current.paused;
                 videoRef.current.load(); // Reload video with new tracks
-                videoRef.current.currentTime = currentTime; // Restore playback position
+                
+                // Restore state after load and ensure captions are visible
+                videoRef.current.onloadeddata = () => {
+                  if (videoRef.current) {
+                    videoRef.current.currentTime = currentTime;
+                    if (wasPlaying) {
+                      videoRef.current.play();
+                    }
+                    // Ensure text tracks are visible
+                    const tracks = videoRef.current.textTracks;
+                    for (let i = 0; i < tracks.length; i++) {
+                      if (tracks[i].kind === 'captions' || tracks[i].kind === 'subtitles') {
+                        tracks[i].mode = 'showing';
+                      }
+                    }
+                  }
+                };
               }
             }, 100);
           }
@@ -499,11 +525,12 @@ export default function RecordPreviewPage() {
                         className="w-full rounded-lg bg-black"
                         data-testid="video-preview"
                         crossOrigin="anonymous"
+                        preload="metadata"
                       >
                           {captionsEnabled && captionBlobUrl && (
                           <track
                             key={captionBlobUrl} // Force re-render when caption URL changes
-                            kind="subtitles"
+                            kind="captions"
                             src={captionBlobUrl}
                             srcLang="en"
                             label="English"
