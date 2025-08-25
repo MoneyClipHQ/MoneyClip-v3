@@ -1011,12 +1011,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         fileUrl = `data:video/webm;base64,${video.videoData}`;
       }
       
+      // Ensure transcriptUrl is set if captions exist but URL is missing
+      let transcriptUrl = video.transcriptUrl;
+      if (!transcriptUrl && video.captionsEnabled && video.captionsData) {
+        transcriptUrl = `/api/videos/${video.id}/captions`;
+      }
+
       const publicVideo = {
         ...video,
         password: undefined,
         videoData: undefined, // Never expose raw video data
         passwordProtected: !!video.password,
-        fileUrl: video.password ? null : fileUrl // Hide fileUrl for password-protected videos
+        fileUrl: video.password ? null : fileUrl, // Hide fileUrl for password-protected videos
+        transcriptUrl: transcriptUrl
       };
       
       // Prepare branding data
