@@ -91,11 +91,10 @@ export default function RecordPreviewPage() {
             generatePreviewCaptions(effectiveDuration);
           }
           
-          // Mark as processing to prevent duplicate calls
-          aiProcessingRef.current = true;
-          
           // Generate AI content even if duration is not available yet
           if (!isProcessingAI && !aiProcessingComplete) {
+            // Mark as processing to prevent duplicate calls (set after check, before processing)
+            aiProcessingRef.current = true;
             generateAIContent(effectiveDuration);
           }
         }
@@ -174,16 +173,9 @@ export default function RecordPreviewPage() {
   };
 
   const generateAIContent = async (duration?: number) => {
-    // Prevent multiple simultaneous processing requests using ref
-    if (isProcessingAI || aiProcessingComplete || aiProcessingRef.current) {
-      console.log('Skipping AI processing - already in progress or complete', {
-        isProcessingAI,
-        aiProcessingComplete,
-        aiProcessingRefCurrent: aiProcessingRef.current
-      });
-      return;
-    }
-
+    // Note: aiProcessingRef check is now done before calling this function
+    console.log('Starting AI content generation with duration:', duration);
+    
     setIsProcessingAI(true);
     
     // Set initial placeholder content while processing
