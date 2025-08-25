@@ -368,6 +368,17 @@ export default function RecordPreviewPage() {
         videoBlob = new Blob([bytes], { type: 'video/webm' });
       }
       
+      // Get caption data from blob URL if available
+      let captionsData: string | null = null;
+      if (captionBlobUrl) {
+        try {
+          const response = await fetch(captionBlobUrl);
+          captionsData = await response.text();
+        } catch (error) {
+          console.error('Failed to extract caption data:', error);
+        }
+      }
+      
       const videoData: Partial<InsertVideo> = {
         advisorId: user?.id,
         clientName: clientName || undefined,
@@ -382,6 +393,7 @@ export default function RecordPreviewPage() {
         shareLink: `moneyclip-${Date.now()}-${Math.random().toString(36).substring(7)}`,
         captionsEnabled: true, // Always enabled
         includeProfilePicture,
+        captionsData: captionsData, // Include caption data if available
       };
 
       const response = await apiRequest('POST', "/api/videos", videoData);

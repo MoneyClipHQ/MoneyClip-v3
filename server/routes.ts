@@ -598,6 +598,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validatedData = insertVideoSchema.parse(videoData);
       const video = await storage.createVideo(validatedData);
       
+      // If captions data was provided, set the transcript URL
+      if (video.captionsData) {
+        await storage.updateVideo(video.id, {
+          transcriptUrl: `/api/videos/${video.id}/captions`
+        });
+      }
+      
       // Log event
       await storage.logRecordingEvent({
         advisorId,
