@@ -127,7 +127,7 @@ export default function ScriptedContent() {
               <img 
                 src={logoUrl} 
                 alt="MoneyClip" 
-                className="h-10 w-auto object-contain cursor-pointer"
+                className="h-16 w-auto object-contain cursor-pointer"
                 data-testid="logo-moneyclip"
               />
             </Link>

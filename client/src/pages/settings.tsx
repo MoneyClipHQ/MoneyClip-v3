@@ -17,6 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import AdvisorDropdown from "@/components/advisor-dropdown";
 import { apiRequest } from "@/lib/queryClient";
+import logoUrl from "@/assets/logos/moneyclip-logo.png";
 import type { 
   Advisor, 
   AdvisorSettings, 
@@ -481,16 +482,14 @@ export default function Settings() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => navigate("/dashboard")}
-                data-testid="button-back-dashboard"
-                className="flex items-center gap-2"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Back to Dashboard
-              </Button>
+              <Link href="/dashboard">
+                <img 
+                  src={logoUrl} 
+                  alt="MoneyClip" 
+                  className="h-16 w-auto object-contain cursor-pointer"
+                  data-testid="logo-moneyclip"
+                />
+              </Link>
               <div className="hidden sm:block w-px h-6 bg-gray-300"></div>
               <h1 className="text-xl font-semibold text-gray-900">Settings</h1>
             </div>

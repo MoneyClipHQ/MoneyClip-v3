@@ -1,15 +1,16 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { useLocation } from "wouter";
+import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Mic, MicOff, Pause, Play, StopCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import AdvisorDropdown from "@/components/advisor-dropdown";
+import logoUrl from "@/assets/logos/moneyclip-logo.png";
 
 type CaptureMode = "screen" | "window" | "tab";
 type RecordingState = "idle" | "setup" | "countdown" | "recording" | "paused" | "stopped";
@@ -273,6 +274,33 @@ export default function RecordPage() {
 
   return (
     <div className="min-h-screen bg-gray-900 relative">
+      {/* Header - only show when not in setup mode */}
+      {recordingState !== "setup" && (
+        <header className="bg-white border-b border-gray-200 relative z-40">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-center h-16">
+              <Link href="/dashboard">
+                <img 
+                  src={logoUrl} 
+                  alt="MoneyClip" 
+                  className="h-16 w-auto object-contain cursor-pointer"
+                  data-testid="logo-moneyclip"
+                />
+              </Link>
+              {user && (
+                <AdvisorDropdown
+                  advisorName={user.advisorName}
+                  onSettings={() => navigate("/settings")}
+                  onSignOut={() => {
+                    // Handle logout logic if needed
+                    navigate("/");
+                  }}
+                />
+              )}
+            </div>
+          </div>
+        </header>
+      )}
       {/* Capture Setup Modal */}
       <Dialog open={showCaptureModal && recordingState === "setup"} onOpenChange={setShowCaptureModal}>
         <DialogContent className="max-w-2xl">

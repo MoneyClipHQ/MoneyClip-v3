@@ -8,6 +8,7 @@ import VideoThumbnail from "@/components/video-thumbnail";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import logoUrl from "@/assets/logos/moneyclip-logo.png";
 import type { Video, Advisor, AdvisorSettings } from "@shared/schema";
 
 // Type for the settings API response
@@ -105,7 +106,10 @@ export default function Dashboard() {
       shareLink: "moneyclip-q4-review-2025",
       transcriptUrl: null,
       captionsEnabled: true,
-      showWebcam: true,
+      includeProfilePicture: true,
+      videoData: null,
+      captionsData: null,
+      transcriptText: null,
       createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // 2 days ago
       updatedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
     },
@@ -124,7 +128,10 @@ export default function Dashboard() {
       shareLink: "moneyclip-market-update-dec",
       transcriptUrl: null,
       captionsEnabled: true,
-      showWebcam: false,
+      includeProfilePicture: false,
+      videoData: null,
+      captionsData: null,
+      transcriptText: null,
       createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), // 5 days ago
       updatedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
     },
@@ -143,7 +150,10 @@ export default function Dashboard() {
       shareLink: "moneyclip-retirement-basics",
       transcriptUrl: null,
       captionsEnabled: false,
-      showWebcam: true,
+      includeProfilePicture: true,
+      videoData: null,
+      captionsData: null,
+      transcriptText: null,
       createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // 1 week ago
       updatedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
     },
@@ -159,12 +169,12 @@ export default function Dashboard() {
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-8">
               <Link href="/dashboard">
-                <span 
-                  className="text-2xl font-bold text-primary cursor-pointer hover:text-blue-700 transition-colors"
+                <img 
+                  src={logoUrl} 
+                  alt="MoneyClip" 
+                  className="h-16 w-auto object-contain cursor-pointer"
                   data-testid="logo-moneyclip"
-                >
-                  MoneyClip
-                </span>
+                />
               </Link>
               <nav className="hidden md:flex items-center space-x-1">
                 <Button
