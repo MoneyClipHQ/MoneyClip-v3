@@ -4,7 +4,14 @@
 
 MoneyClip is a web application designed specifically for financial advisors to create secure screen recordings for client communication. The application allows advisors to record their screens while explaining portfolios, market updates, or financial plans, then share these recordings securely with clients through password-protected, expiring links. This solution addresses the challenge of explaining complex financial concepts while maintaining compliance standards required in the financial services industry.
 
-## Recent Changes (August 22, 2025)
+## Recent Changes (August 27, 2025)
+
+### Default Compliance Disclosure Implementation - Complete (August 27)
+- **Automatic disclosure population**: All new advisor signups now automatically receive comprehensive financial services compliance disclosure text
+- **Viewer disclosure requirement**: Video viewers must accept disclosure terms before accessing any video content
+- **Compliance tracking**: Viewer acceptance is logged for audit trail and regulatory compliance
+- **Centralized disclosure management**: Created shared constants file for consistent disclosure text across platform
+- **Database integration**: Default disclosure is automatically created in advisor settings during beta signup
 
 ### Profile Picture Upload Feature - Complete (August 22)
 - **Profile picture upload**: Added profile picture upload functionality to settings/branding section
