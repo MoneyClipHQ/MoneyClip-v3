@@ -44,7 +44,16 @@ export const insertAdvisorSchema = createInsertSchema(advisors, {
   password: true,
 });
 
+// Free signup schema for beta/MVP - no payment required
 export const signupSchema = insertAdvisorSchema.extend({
+  agreeToTerms: z.boolean().refine(val => val === true, {
+    message: "You must agree to the Terms and Privacy Policy"
+  }),
+  marketingEmails: z.boolean().default(false),
+});
+
+// Full signup schema with payment (for future use)
+export const paidSignupSchema = insertAdvisorSchema.extend({
   cardholderName: z.string().min(1, "Cardholder name is required"),
   cardNumber: z.string().min(13, "Card number is invalid").max(19, "Card number is invalid"),
   expiryMonth: z.string().min(2, "Expiry month is required"),

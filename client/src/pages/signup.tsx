@@ -3,7 +3,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation, useSearch } from "wouter";
-import { signupSchema, type SignupData, PLANS, type PlanId } from "@shared/schema";
+import { signupSchema } from "@shared/schema";
+import { z } from "zod";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
@@ -15,6 +16,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { LoaderIcon, CheckIcon, CreditCardIcon } from "lucide-react";
 
+type SignupData = z.infer<typeof signupSchema>;
+
 interface SignupResponse {
   success: boolean;
   advisor: {
@@ -22,13 +25,6 @@ interface SignupResponse {
     advisorName: string;
     companyName: string;
     email: string;
-  };
-  subscription: {
-    id: string;
-    planName: string;
-    amount: string;
-    status: string;
-    nextBillingDate: string;
   };
   error?: string;
   message?: string;
@@ -42,10 +38,7 @@ export default function SignUp() {
   const queryClient = useQueryClient();
   const searchParams = useSearch();
 
-  // Get selected plan from URL params
-  const urlParams = new URLSearchParams(searchParams);
-  const preselectedPlan = urlParams.get('plan') as PlanId | null;
-  const selectedPlanData = preselectedPlan && PLANS[preselectedPlan] ? PLANS[preselectedPlan] : PLANS.starter;
+  // Remove plan selection for beta signup
 
   const form = useForm<SignupData>({
     resolver: zodResolver(signupSchema),
@@ -54,15 +47,8 @@ export default function SignUp() {
       companyName: "",
       email: "",
       password: "",
-      cardholderName: "",
-      cardNumber: "",
-      expiryMonth: "",
-      expiryYear: "",
-      cvc: "",
-      postalCode: "",
       agreeToTerms: false,
       marketingEmails: false,
-      selectedPlan: preselectedPlan || "starter",
     },
   });
 
@@ -76,8 +62,8 @@ export default function SignUp() {
         setConfirmationData(data);
         setIsSuccess(true);
         toast({
-          title: "Account created successfully!",
-          description: "Welcome to MoneyClip. Your subscription is now active.",
+          title: "Welcome to MoneyClip Beta!",
+          description: "Your account has been created successfully. Start recording today!",
         });
       }
     },
@@ -134,9 +120,9 @@ export default function SignUp() {
             <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-green-100 flex items-center justify-center">
               <CheckIcon className="h-6 w-6 text-green-600" />
             </div>
-            <CardTitle className="text-xl">Account Created Successfully!</CardTitle>
+            <CardTitle className="text-xl">Welcome to MoneyClip Beta!</CardTitle>
             <p className="text-sm text-muted-foreground">
-              Welcome to MoneyClip. Your subscription is now active.
+              Your account has been created successfully. Start recording professional videos for your clients.
             </p>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -157,32 +143,9 @@ export default function SignUp() {
               </div>
             </div>
             
-            <Separator />
-            
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="font-medium">Plan</span>
-                <span className="font-semibold">{confirmationData.subscription.planName}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="font-medium">Amount</span>
-                <span className="font-semibold">${confirmationData.subscription.amount}/month</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="font-medium">Status</span>
-                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                  {confirmationData.subscription.status}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="font-medium">Next billing</span>
-                <span className="font-semibold">{confirmationData.subscription.nextBillingDate}</span>
-              </div>
-            </div>
-            
             <div className="bg-blue-50 p-4 rounded-lg">
               <p className="text-sm text-blue-800">
-                <strong>Confirmation email sent!</strong> Check your inbox for account details and getting started guide.
+                <strong>Welcome to the beta!</strong> You now have full access to MoneyClip's screen recording features. A welcome email has been sent to your inbox.
               </p>
             </div>
             
@@ -195,11 +158,9 @@ export default function SignUp() {
                 Continue to Dashboard
               </Button>
               <div className="text-center">
-                <Link href="/billing">
-                  <Button variant="outline" size="sm" data-testid="link-manage-billing">
-                    Manage billing
-                  </Button>
-                </Link>
+                <p className="text-sm text-muted-foreground">
+                  Ready to start creating professional video content for your clients!
+                </p>
               </div>
             </div>
           </CardContent>
@@ -218,23 +179,15 @@ export default function SignUp() {
           </p>
         </CardHeader>
         <CardContent>
-          {/* Plan Summary */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+          {/* Beta Notice */}
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
             <div className="flex items-center gap-3">
-              <CreditCardIcon className="h-5 w-5 text-blue-600" />
+              <CheckIcon className="h-5 w-5 text-green-600" />
               <div className="flex-1">
-                <div className="flex items-center justify-between">
-                  <p className="font-semibold text-blue-900">
-                    {selectedPlanData.name} plan • ${selectedPlanData.price}/month
-                  </p>
-                  <Link href="/pricing">
-                    <Button variant="ghost" size="sm" className="text-blue-600 hover:text-blue-800">
-                      Change plan
-                    </Button>
-                  </Link>
-                </div>
-                <p className="text-sm text-blue-700">{selectedPlanData.description}</p>
-                <p className="text-sm text-blue-700 mt-1">Billing monthly. Cancel anytime.</p>
+                <p className="font-semibold text-green-900">
+                  Beta Access - Free Registration
+                </p>
+                <p className="text-sm text-green-700">Join MoneyClip's beta program and start recording professional videos for your clients at no cost during our MVP phase.</p>
               </div>
             </div>
           </div>
@@ -324,129 +277,6 @@ export default function SignUp() {
 
               <Separator className="my-6" />
 
-              {/* Payment Information */}
-              <div className="space-y-4">
-                <h3 className="font-medium text-sm text-muted-foreground uppercase tracking-wider">
-                  Payment Details
-                </h3>
-                
-                <FormField
-                  control={form.control}
-                  name="cardholderName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Cardholder Name</FormLabel>
-                      <FormControl>
-                        <Input 
-                          {...field} 
-                          placeholder="John Smith"
-                          data-testid="input-cardholder-name"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="cardNumber"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Card Number</FormLabel>
-                      <FormControl>
-                        <Input 
-                          {...field} 
-                          placeholder="1234 5678 9012 3456"
-                          maxLength={19}
-                          data-testid="input-card-number"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <div className="grid grid-cols-3 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="expiryMonth"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Month</FormLabel>
-                        <FormControl>
-                          <Input 
-                            {...field} 
-                            placeholder="MM"
-                            maxLength={2}
-                            data-testid="input-expiry-month"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="expiryYear"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Year</FormLabel>
-                        <FormControl>
-                          <Input 
-                            {...field} 
-                            placeholder="YYYY"
-                            maxLength={4}
-                            data-testid="input-expiry-year"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="cvc"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>CVC</FormLabel>
-                        <FormControl>
-                          <Input 
-                            {...field} 
-                            placeholder="123"
-                            maxLength={4}
-                            data-testid="input-cvc"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                
-                <FormField
-                  control={form.control}
-                  name="postalCode"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Postal Code</FormLabel>
-                      <FormControl>
-                        <Input 
-                          {...field} 
-                          placeholder="12345"
-                          data-testid="input-postal-code"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <Separator className="my-6" />
-
               {/* Agreements */}
               <div className="space-y-4">
                 <FormField
@@ -500,12 +330,12 @@ export default function SignUp() {
                 type="submit"
                 className="w-full"
                 disabled={signupMutation.isPending}
-                data-testid="button-start-subscription"
+                data-testid="button-create-account"
               >
                 {signupMutation.isPending && (
                   <LoaderIcon className="mr-2 h-4 w-4 animate-spin" />
                 )}
-                Start subscription
+                Create Account - Join Beta
               </Button>
             </form>
           </Form>

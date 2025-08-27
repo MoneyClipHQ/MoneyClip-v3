@@ -253,24 +253,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Validate request body
       const validatedData = signupSchema.parse(req.body);
       
-      // Create advisor with subscription
-      const result = await storage.createAdvisorWithSubscription(validatedData);
+      // Create advisor only (no subscription for beta)
+      const advisor = await storage.createAdvisor(validatedData);
       
       // Send success response with confirmation data
       res.json({
         success: true,
         advisor: {
-          id: result.advisor.id,
-          advisorName: result.advisor.advisorName,
-          companyName: result.advisor.companyName,
-          email: result.advisor.email
-        },
-        subscription: {
-          id: result.subscription.id,
-          planName: result.subscription.planName,
-          amount: result.subscription.amount,
-          status: result.subscription.status,
-          nextBillingDate: format(result.subscription.nextBillingDate, "MMMM d, yyyy")
+          id: advisor.id,
+          advisorName: advisor.advisorName,
+          companyName: advisor.companyName,
+          email: advisor.email
         }
       });
 

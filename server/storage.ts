@@ -156,14 +156,40 @@ export class MemStorage implements IStorage {
     );
   }
 
-  async createAdvisor(insertAdvisor: InsertAdvisor): Promise<Advisor> {
+  async createAdvisor(insertAdvisor: InsertAdvisor | SignupData): Promise<Advisor> {
+    // Check if email already exists
+    const existingAdvisor = await this.getAdvisorByEmail(insertAdvisor.email);
+    if (existingAdvisor) {
+      throw new Error("EMAIL_ALREADY_EXISTS");
+    }
+
     const id = randomUUID();
+    
+    // Extract only advisor fields (filter out agreeToTerms, marketingEmails)
+    const advisorData = {
+      advisorName: insertAdvisor.advisorName,
+      companyName: insertAdvisor.companyName,
+      email: insertAdvisor.email,
+      password: insertAdvisor.password
+    };
+    
     const advisor: Advisor = { 
-      ...insertAdvisor, 
+      ...advisorData, 
       id, 
       createdAt: new Date() 
     };
     this.advisors.set(id, advisor);
+    
+    // Log signup event for beta signup
+    await this.logSignupEvent({
+      advisorId: advisor.id,
+      event: "SIGNUP_SUBMITTED",
+      metadata: JSON.stringify({
+        betaSignup: true,
+        marketingEmails: 'marketingEmails' in insertAdvisor ? insertAdvisor.marketingEmails : false
+      })
+    });
+    
     return advisor;
   }
 
@@ -215,8 +241,8 @@ export class MemStorage implements IStorage {
     return event;
   }
 
-  // Combined signup method
-  async createAdvisorWithSubscription(signupData: SignupData): Promise<{
+  // Combined signup method - enhanced for beta (keeping both for backwards compatibility)
+  async createAdvisorWithSubscription(signupData: any): Promise<{
     advisor: Advisor;
     subscription: Subscription;
   }> {
@@ -704,18 +730,43 @@ export class DatabaseStorage implements IStorage {
     return advisor;
   }
 
-  async createAdvisor(insertAdvisor: InsertAdvisor): Promise<Advisor> {
+  async createAdvisor(insertAdvisor: InsertAdvisor | SignupData): Promise<Advisor> {
+    // Check if email already exists
+    const existingAdvisor = await this.getAdvisorByEmail(insertAdvisor.email);
+    if (existingAdvisor) {
+      throw new Error("EMAIL_ALREADY_EXISTS");
+    }
+
+    // Extract only advisor fields (filter out agreeToTerms, marketingEmails)
+    const advisorData = {
+      advisorName: insertAdvisor.advisorName,
+      companyName: insertAdvisor.companyName,
+      email: insertAdvisor.email,
+      password: insertAdvisor.password
+    };
+
     // Hash password before storing
     const saltRounds = 10;
-    const hashedPassword = await bcrypt.hash(insertAdvisor.password, saltRounds);
+    const hashedPassword = await bcrypt.hash(advisorData.password, saltRounds);
     
     const [advisor] = await db
       .insert(advisors)
       .values({
-        ...insertAdvisor,
+        ...advisorData,
         password: hashedPassword,
       })
       .returning();
+      
+    // Log signup event for beta signup
+    await this.logSignupEvent({
+      advisorId: advisor.id,
+      event: "SIGNUP_SUBMITTED",
+      metadata: JSON.stringify({
+        betaSignup: true,
+        marketingEmails: 'marketingEmails' in insertAdvisor ? insertAdvisor.marketingEmails : false
+      })
+    });
+      
     return advisor;
   }
 
@@ -757,7 +808,7 @@ export class DatabaseStorage implements IStorage {
     return event;
   }
 
-  async createAdvisorWithSubscription(signupData: SignupData): Promise<{
+  async createAdvisorWithSubscription(signupData: any): Promise<{
     advisor: Advisor;
     subscription: Subscription;
   }> {
