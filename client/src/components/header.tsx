@@ -26,6 +26,11 @@ export default function Header() {
                 Pricing
               </span>
             </Link>
+            <Link href="/coming-soon">
+              <span className="text-secondary hover:text-primary transition-colors duration-200 font-medium cursor-pointer">
+                Coming Soon
+              </span>
+            </Link>
           </nav>
           <div className="flex items-center space-x-4">
             <Link href="/login">

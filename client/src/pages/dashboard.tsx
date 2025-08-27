@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { VideoIcon, FolderOpen, FileText, Plus } from "lucide-react";
+import { VideoIcon, FolderOpen, FileText, Plus, Clock } from "lucide-react";
 import AdvisorDropdown from "@/components/advisor-dropdown";
 import VideoThumbnail from "@/components/video-thumbnail";
 import { useAuth } from "@/hooks/useAuth";
@@ -197,6 +197,17 @@ export default function Dashboard() {
                   <FileText className="h-4 w-4" />
                   Scripted Content
                 </Button>
+                <Link href="/coming-soon">
+                  <Button
+                    variant="ghost"
+                    data-testid="button-coming-soon"
+                    className="flex items-center gap-2 px-3 py-2"
+                    size="sm"
+                  >
+                    <Clock className="h-4 w-4" />
+                    Coming Soon
+                  </Button>
+                </Link>
               </nav>
             </div>
             <AdvisorDropdown
@@ -232,6 +243,17 @@ export default function Dashboard() {
               <FileText className="h-4 w-4" />
               Scripts
             </Button>
+            <Link href="/coming-soon">
+              <Button
+                variant="outline"
+                data-testid="button-coming-soon-mobile"
+                className="flex items-center gap-2 flex-1"
+                size="sm"
+              >
+                <Clock className="h-4 w-4" />
+                Coming Soon
+              </Button>
+            </Link>
           </div>
         </div>
 

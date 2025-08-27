@@ -19,6 +19,7 @@ import Contact from "@/pages/contact";
 import RecordPage from "@/pages/record";
 import RecordPreviewPage from "@/pages/record-preview";
 import SharePage from "@/pages/share";
+import ComingSoon from "@/pages/coming-soon";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -43,6 +44,7 @@ function Router() {
       <Route path="/reset-password" component={ResetPassword} />
       <Route path="/terms" component={Terms} />
       <Route path="/contact" component={Contact} />
+      <Route path="/coming-soon" component={ComingSoon} />
       
       {/* Protected routes - redirect to login if not authenticated */}
       <Route path="/dashboard">
