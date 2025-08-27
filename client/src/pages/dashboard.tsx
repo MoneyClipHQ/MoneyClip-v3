@@ -247,7 +247,7 @@ export default function Dashboard() {
             size="lg"
             onClick={handleRecord}
             data-testid="button-record"
-            className="h-16 px-12 text-lg font-semibold bg-primary hover:bg-blue-700 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
+            className="h-16 px-12 text-lg font-semibold bg-primary hover:bg-accent text-white hover:text-accent-foreground rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
           >
             <VideoIcon className="h-6 w-6 mr-3" />
             Start Recording
