@@ -45,7 +45,7 @@ export default function Header() {
             <Link href="/signup">
               <Button
                 data-testid="button-signup"
-                className="bg-primary hover:bg-blue-700 text-white font-medium px-6 py-2 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
+                className="bg-primary hover:bg-green-700 text-white font-medium px-6 py-2 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
               >
                 Sign Up
               </Button>
