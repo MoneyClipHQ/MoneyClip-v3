@@ -1,21 +1,15 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { VideoIcon, FolderOpen, FileText, Plus, Clock } from "lucide-react";
+import { VideoIcon, FolderOpen, FileText, Clock } from "lucide-react";
 import AdvisorDropdown from "@/components/advisor-dropdown";
-import VideoThumbnail from "@/components/video-thumbnail";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import logoUrl from "@/assets/logos/moneyclip-logo.png";
-import type { Video, Advisor, AdvisorSettings } from "@shared/schema";
 
-// Type for the settings API response
-type SettingsResponse = {
-  advisor: Pick<Advisor, 'id' | 'advisorName' | 'companyName' | 'email'>;
-  settings: AdvisorSettings;
-};
+
 
 // Mock advisor data - in a real app, this would come from auth context
 const mockAdvisor = {
@@ -64,19 +58,8 @@ export default function Dashboard() {
     },
   });
 
-  // Fetch recent videos - now using real API
-  const { data: recentVideos = [], isLoading } = useQuery({
-    queryKey: ["/api/videos/recent"],
-    enabled: !!advisor.id
-  });
-
   const handleRecord = () => {
     navigate("/record");
-  };
-
-  const handleVideoClick = (videoId: string) => {
-    // TODO: Navigate to video detail page
-    console.log("Opening video:", videoId);
   };
 
   const handleVideoLibrary = () => {
@@ -88,78 +71,6 @@ export default function Dashboard() {
     setActiveTab("scripted");
     navigate("/scripted-content");
   };
-
-  // Mock recent videos for demo
-  const mockRecentVideos: Video[] = [
-    {
-      id: "video-1",
-      advisorId: "advisor-1",
-      clientName: "John Smith",
-      title: "Q4 Portfolio Review",
-      description: "Quarterly portfolio performance analysis",
-      fileUrl: "/videos/q4-review.mp4",
-      thumbnailUrl: "/thumbnails/q4-review.jpg",
-      duration: "360",
-      status: "published",
-      viewCount: "12",
-      password: null,
-      shareLink: "moneyclip-q4-review-2025",
-      transcriptUrl: null,
-      captionsEnabled: true,
-      includeProfilePicture: true,
-      videoData: null,
-      captionsData: null,
-      transcriptText: null,
-      createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // 2 days ago
-      updatedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-    },
-    {
-      id: "video-2",
-      advisorId: "advisor-1",
-      clientName: null,
-      title: "Market Update - December 2025",
-      description: "Latest market trends and outlook",
-      fileUrl: "/videos/market-update.mp4",
-      thumbnailUrl: null,
-      duration: "240",
-      status: "published",
-      viewCount: "8",
-      password: "secure123",
-      shareLink: "moneyclip-market-update-dec",
-      transcriptUrl: null,
-      captionsEnabled: true,
-      includeProfilePicture: false,
-      videoData: null,
-      captionsData: null,
-      transcriptText: null,
-      createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), // 5 days ago
-      updatedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
-    },
-    {
-      id: "video-3",
-      advisorId: "advisor-1",
-      clientName: "Sarah Johnson",
-      title: "Retirement Planning Basics",
-      description: "Introduction to retirement planning strategies",
-      fileUrl: "/videos/retirement-basics.mp4",
-      thumbnailUrl: "/thumbnails/retirement.jpg",
-      duration: "480",
-      status: "draft",
-      viewCount: "0",
-      password: null,
-      shareLink: "moneyclip-retirement-basics",
-      transcriptUrl: null,
-      captionsEnabled: false,
-      includeProfilePicture: true,
-      videoData: null,
-      captionsData: null,
-      transcriptText: null,
-      createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // 1 week ago
-      updatedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-    },
-  ];
-
-  const displayVideos = mockRecentVideos; // Use mock data for now
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -279,113 +190,35 @@ export default function Dashboard() {
           </p>
         </div>
 
-        {/* Content Grid */}
-        <div className="grid lg:grid-cols-3 gap-8">
-          {/* Recent Videos Section */}
-          <div className="lg:col-span-2">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-semibold text-gray-900" data-testid="section-recent-videos">
-                Recent Videos
-              </h2>
-              {displayVideos.length > 0 && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleVideoLibrary}
-                  className="text-sm"
-                  data-testid="button-view-all-videos"
-                >
-                  View All
-                </Button>
-              )}
-            </div>
-            
-            {displayVideos.length === 0 ? (
-              /* Empty State */
-              <div className="text-center py-12 bg-white rounded-lg border-2 border-dashed border-gray-200">
-                <VideoIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2" data-testid="text-empty-state-title">
-                  No videos yet
-                </h3>
-                <p className="text-gray-600 mb-6 max-w-sm mx-auto" data-testid="text-empty-state-message">
-                  Get started by recording your first video to share with clients
-                </p>
-                <Button
-                  onClick={handleRecord}
-                  data-testid="button-record-first-video"
-                  className="flex items-center gap-2"
-                >
-                  <Plus className="h-4 w-4" />
-                  Record your first video
-                </Button>
-              </div>
-            ) : (
-              /* Recent Videos Grid */
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {displayVideos.slice(0, 3).map((video) => (
-                  <VideoThumbnail
-                    key={video.id}
-                    video={video}
-                    onClick={() => handleVideoClick(video.id)}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Quick Stats & Actions Sidebar */}
-          <div className="space-y-6">
-            {/* Quick Stats */}
-            <div className="bg-white rounded-lg p-6 border border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Stats</h3>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Total Videos</span>
-                  <span className="font-semibold text-gray-900">{displayVideos.length}</span>
+        {/* Quick Actions Section */}
+        <div className="max-w-2xl mx-auto">
+          <div className="bg-white rounded-lg p-8 border border-gray-200 shadow-sm">
+            <h3 className="text-xl font-semibold text-gray-900 mb-6 text-center">Quick Actions</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Button
+                variant="outline"
+                className="h-16 flex items-center justify-start gap-4 text-left"
+                onClick={handleVideoLibrary}
+                data-testid="button-video-library-action"
+              >
+                <FolderOpen className="h-6 w-6 text-primary" />
+                <div>
+                  <div className="font-medium">Video Library</div>
+                  <div className="text-sm text-gray-500">View all recordings</div>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600">This Month</span>
-                  <span className="font-semibold text-gray-900">3</span>
+              </Button>
+              <Button
+                variant="outline"
+                className="h-16 flex items-center justify-start gap-4 text-left"
+                onClick={handleScriptedContent}
+                data-testid="button-scripted-content-action"
+              >
+                <FileText className="h-6 w-6 text-primary" />
+                <div>
+                  <div className="font-medium">Browse Scripts</div>
+                  <div className="text-sm text-gray-500">Ready-made content</div>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Total Views</span>
-                  <span className="font-semibold text-gray-900">42</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Quick Actions */}
-            <div className="bg-white rounded-lg p-6 border border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
-              <div className="space-y-3">
-                <Button
-                  variant="outline"
-                  className="w-full justify-start"
-                  onClick={handleScriptedContent}
-                  data-testid="button-browse-scripts"
-                >
-                  <FileText className="h-4 w-4 mr-2" />
-                  Browse Scripts
-                </Button>
-                <Button
-                  variant="outline"
-                  className="w-full justify-start"
-                  onClick={() => console.log("Settings clicked")}
-                  data-testid="button-account-settings"
-                >
-                  <div className="h-4 w-4 mr-2 rounded-full bg-gray-400"></div>
-                  Account Settings
-                </Button>
-                <Button
-                  variant="outline"
-                  className="w-full justify-start"
-                  onClick={() => console.log("Help clicked")}
-                  data-testid="button-help"
-                >
-                  <div className="h-4 w-4 mr-2 rounded-full border-2 border-gray-400 flex items-center justify-center text-xs font-bold text-gray-400">?</div>
-                  Help & Support
-                </Button>
-              </div>
+              </Button>
             </div>
           </div>
         </div>
