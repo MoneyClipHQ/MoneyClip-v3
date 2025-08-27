@@ -457,11 +457,15 @@ export default function RecordPreviewPage() {
     mutationFn: async () => {
       setIsSaving(true);
       
-      // Get video blob from session storage 
+      // Get video blob from session storage or IndexedDB
       const recordedVideoData = sessionStorage.getItem("recordedVideoBlob");
+      const usingIndexedDB = sessionStorage.getItem("usingIndexedDB");
       let videoBlob: Blob | null = null;
+      let base64VideoData: string | null = null;
       
       if (recordedVideoData) {
+        // From sessionStorage - already base64
+        base64VideoData = recordedVideoData;
         // Convert base64 back to blob for processing
         const binaryString = atob(recordedVideoData);
         const bytes = new Uint8Array(binaryString.length);
@@ -469,6 +473,16 @@ export default function RecordPreviewPage() {
           bytes[i] = binaryString.charCodeAt(i);
         }
         videoBlob = new Blob([bytes], { type: 'video/webm' });
+      } else if (usingIndexedDB === "true") {
+        // From IndexedDB - need to convert blob to base64
+        videoBlob = await loadVideoBlobFromIndexedDB();
+        if (videoBlob) {
+          // Convert blob to base64 for backend
+          const arrayBuffer = await videoBlob.arrayBuffer();
+          const uint8Array = new Uint8Array(arrayBuffer);
+          const binaryString = Array.from(uint8Array, byte => String.fromCharCode(byte)).join('');
+          base64VideoData = btoa(binaryString);
+        }
       }
       
       // Get caption data from blob URL if available
@@ -488,7 +502,7 @@ export default function RecordPreviewPage() {
         title: title || "Processing...",
         description: description || "AI is analyzing content...",
         fileUrl: undefined, // Will be generated from videoData
-        videoData: recordedVideoData || undefined, // Send base64 video data
+        videoData: base64VideoData || undefined, // Send base64 video data
         thumbnailUrl: null, // TODO: Generate thumbnail
         duration: videoDuration.toString(),
         status: "published", // Set to published since we have the video data

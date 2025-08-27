@@ -6,6 +6,14 @@ MoneyClip is a web application designed specifically for financial advisors to c
 
 ## Recent Changes (August 27, 2025)
 
+### Video Storage Size Limit Fix - Complete (August 27)
+- **Root cause identified**: Videos longer than ~15-20 seconds exceeded sessionStorage limits (5-10MB), causing "nothing happens" when clicking stop recording
+- **SessionStorage fallback**: Reduced video bitrate from 2.5Mbps to 1.5Mbps to reduce file sizes
+- **IndexedDB implementation**: Added automatic fallback to IndexedDB for large videos that exceed sessionStorage quota
+- **Error handling**: Added comprehensive error handling with user-friendly messages for storage failures  
+- **Viewer page fix**: Updated saveMutation to properly handle both sessionStorage and IndexedDB videos for viewer access
+- **Complete solution**: Both recording and sharing now work seamlessly for videos of any length
+
 ### Default Compliance Disclosure Implementation - Complete (August 27)
 - **Automatic disclosure population**: All new advisor signups now automatically receive comprehensive financial services compliance disclosure text
 - **Viewer disclosure requirement**: Video viewers must accept disclosure terms before accessing any video content
