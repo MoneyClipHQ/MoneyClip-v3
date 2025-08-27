@@ -181,13 +181,20 @@ export default function RecordPreviewPage() {
             setVideoDuration(effectiveDuration);
             setTrimRange({ start: 0, end: effectiveDuration });
             generatePreviewCaptions(effectiveDuration);
-          }
-          
-          // Generate AI content even if duration is not available yet
-          if (!isProcessingAI && !aiProcessingComplete) {
-            // Mark as processing to prevent duplicate calls (set after check, before processing)
-            aiProcessingRef.current = true;
-            generateAIContent(effectiveDuration || undefined);
+            
+            // Only start AI processing when we have valid duration
+            if (!isProcessingAI && !aiProcessingComplete) {
+              // Mark as processing to prevent duplicate calls (set after check, before processing)
+              aiProcessingRef.current = true;
+              generateAIContent(effectiveDuration);
+            }
+          } else {
+            // If duration not loaded yet, retry in a short while
+            setTimeout(() => {
+              if (videoRef.current && videoRef.current.readyState >= 1) {
+                handleMetadataLoaded();
+              }
+            }, 200);
           }
         }
       };

@@ -93,10 +93,13 @@ export function generateCaptions(transcriptionText: string, videoDurationSeconds
     return "";
   }
 
-  // Simple caption generation - split text into segments
+  // Improved caption generation - split text into segments with realistic timing
   const words = transcriptionText.split(' ');
-  const wordsPerSegment = 8; // ~3 seconds of speech
-  const segmentDuration = Math.max(3, videoDurationSeconds / Math.ceil(words.length / wordsPerSegment));
+  const wordsPerSegment = 6; // ~2-3 seconds of speech (more natural)
+  const totalSegments = Math.ceil(words.length / wordsPerSegment);
+  
+  // Calculate more realistic segment duration (aim for 2-4 seconds per segment)
+  const segmentDuration = Math.min(4, Math.max(2, videoDurationSeconds / totalSegments));
   
   let captions = "WEBVTT\n\n";
   let segmentNumber = 1;

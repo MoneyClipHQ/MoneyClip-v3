@@ -761,8 +761,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const result = await transcribeAndGenerateContent(buffer, 'preview.webm');
         
         // Generate captions if transcription successful
-        // Use the provided duration if available and valid, otherwise default to 300 seconds
-        const effectiveDuration = duration && duration > 0 ? duration : 300;
+        // Use the provided duration if available and valid, otherwise estimate from audio
+        let effectiveDuration = duration && duration > 0 ? duration : null;
+        
+        // If no duration provided, estimate from transcription length (rough estimate: ~150 words per minute)
+        if (!effectiveDuration && result.text !== "Transcription unavailable") {
+          const wordCount = result.text.split(' ').length;
+          effectiveDuration = Math.max(30, Math.ceil(wordCount / 2.5)); // ~150 words/min = 2.5 words/sec
+          console.log(`No duration provided, estimated ${effectiveDuration}s from ${wordCount} words`);
+        }
+        
+        // Final fallback - but this should rarely be needed now
+        if (!effectiveDuration) {
+          effectiveDuration = 60; // Much more reasonable 1-minute fallback
+        }
+        
         const captions = result.text !== "Transcription unavailable" 
           ? generateCaptions(result.text, effectiveDuration)
           : "";
