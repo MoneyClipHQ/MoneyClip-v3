@@ -59,7 +59,7 @@ export default function RecordPreviewPage() {
         try {
           const data = await loadVideoFromIndexedDB();
           if (data) {
-            loadVideoFromSessionStorage(data.videoUrl, data.settings);
+            loadVideoFromSessionStorage(data.videoUrl, data.settings, data.duration);
           } else {
             navigate("/record");
           }
@@ -76,7 +76,7 @@ export default function RecordPreviewPage() {
     loadVideoData();
   }, [navigate]);
 
-  const loadVideoFromSessionStorage = (recordedVideoUrl: string, settings: string | null) => {
+  const loadVideoFromSessionStorage = (recordedVideoUrl: string, settings: string | null, storedDuration?: number) => {
     // Reset AI processing state for new video
     aiProcessingRef.current = false;
     setAiProcessingComplete(false);
@@ -91,10 +91,17 @@ export default function RecordPreviewPage() {
       setIncludeProfilePicture(parsedSettings.includeProfilePicture || true);
     }
     
+    // Use stored duration if available (fallback for when video element duration is null)
+    if (storedDuration && storedDuration > 0) {
+      console.log('Using stored recording duration:', storedDuration);
+      setVideoDuration(storedDuration);
+      setTrimRange({ start: 0, end: storedDuration });
+    }
+    
     // AI content will be generated after video metadata loads
   };
 
-  const loadVideoFromIndexedDB = (): Promise<{videoUrl: string, settings: string} | null> => {
+  const loadVideoFromIndexedDB = (): Promise<{videoUrl: string, settings: string, duration?: number} | null> => {
     return new Promise((resolve, reject) => {
       const request = indexedDB.open('MoneyClipVideos', 1);
       
@@ -111,7 +118,8 @@ export default function RecordPreviewPage() {
           if (result) {
             resolve({
               videoUrl: result.videoUrl,
-              settings: result.settings
+              settings: result.settings,
+              duration: result.duration // Include stored duration
             });
           } else {
             resolve(null);
@@ -189,12 +197,21 @@ export default function RecordPreviewPage() {
               generateAIContent(effectiveDuration);
             }
           } else {
-            // If duration not loaded yet, retry in a short while
-            setTimeout(() => {
-              if (videoRef.current && videoRef.current.readyState >= 1) {
-                handleMetadataLoaded();
+            // If duration not loaded from video element, use stored duration as fallback
+            if (videoDuration > 0) {
+              console.log('Using stored duration as fallback:', videoDuration);
+              if (!isProcessingAI && !aiProcessingComplete) {
+                aiProcessingRef.current = true;
+                generateAIContent(videoDuration);
               }
-            }, 200);
+            } else {
+              // If still no duration, retry in a short while
+              setTimeout(() => {
+                if (videoRef.current && videoRef.current.readyState >= 1) {
+                  handleMetadataLoaded();
+                }
+              }, 200);
+            }
           }
         }
       };
@@ -222,6 +239,14 @@ export default function RecordPreviewPage() {
       } else {
         console.log('Waiting for video metadata to load, current readyState:', videoRef.current.readyState);
         videoRef.current.onloadedmetadata = handleMetadataLoaded;
+        
+        // Also listen for durationchange event as backup
+        videoRef.current.ondurationchange = () => {
+          console.log('Duration changed event fired, new duration:', videoRef.current?.duration);
+          if (videoRef.current?.duration && !isNaN(videoRef.current.duration) && videoRef.current.duration > 0) {
+            handleMetadataLoaded();
+          }
+        };
       }
     }
   }, [videoUrl]); // Remove isProcessingAI and aiProcessingComplete from dependencies to prevent re-triggers
@@ -304,8 +329,12 @@ export default function RecordPreviewPage() {
       }
       
       if (videoBlob) {
+        // Ensure we have a valid duration before processing
+        const actualDuration = duration || videoDuration || (videoRef.current?.duration);
+        console.log('AI processing with duration values - param:', duration, 'state:', videoDuration, 'video element:', videoRef.current?.duration, 'using:', actualDuration);
+        
         // Process with AI immediately for preview
-        await processVideoWithAIForPreview(videoBlob, duration || videoDuration);
+        await processVideoWithAIForPreview(videoBlob, actualDuration);
         setAiProcessingComplete(true);
       }
     } catch (error) {
@@ -319,7 +348,7 @@ export default function RecordPreviewPage() {
   };
 
   // Process video with AI for preview (before saving)
-  const processVideoWithAIForPreview = async (videoBlob: Blob, duration: number) => {
+  const processVideoWithAIForPreview = async (videoBlob: Blob, duration: number | undefined) => {
     try {
       // Convert video blob to base64 for sending to server
       const arrayBuffer = await videoBlob.arrayBuffer();
@@ -327,10 +356,19 @@ export default function RecordPreviewPage() {
       const binaryString = Array.from(uint8Array, byte => String.fromCharCode(byte)).join('');
       const audioBuffer = btoa(binaryString);
       
-      console.log('Sending AI processing request with duration:', duration);
+      // Try to get duration from multiple sources if not provided
+      let effectiveDuration = duration;
+      if (!effectiveDuration && videoRef.current) {
+        effectiveDuration = videoRef.current.duration;
+      }
+      if (!effectiveDuration && videoDuration) {
+        effectiveDuration = videoDuration;
+      }
+      
+      console.log('Sending AI processing request with duration:', effectiveDuration);
       const response = await apiRequest('POST', `/api/videos/process-preview`, {
         audioBuffer,
-        duration: duration
+        duration: effectiveDuration
       });
       
       console.log('AI processing response received:', response.status);

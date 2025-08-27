@@ -764,10 +764,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Use the provided duration if available and valid, otherwise estimate from audio
         let effectiveDuration = duration && duration > 0 ? duration : null;
         
-        // If no duration provided, estimate from transcription length (rough estimate: ~150 words per minute)
+        // If no duration provided, estimate from transcription length (more conservative estimate)
         if (!effectiveDuration && result.text !== "Transcription unavailable") {
           const wordCount = result.text.split(' ').length;
-          effectiveDuration = Math.max(30, Math.ceil(wordCount / 2.5)); // ~150 words/min = 2.5 words/sec
+          // More conservative: ~120 words per minute = 2 words/sec  
+          effectiveDuration = Math.max(30, Math.ceil(wordCount / 2.0));
           console.log(`No duration provided, estimated ${effectiveDuration}s from ${wordCount} words`);
         }
         

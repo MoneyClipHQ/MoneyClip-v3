@@ -316,6 +316,7 @@ export default function RecordPage() {
           videoBlob,
           videoUrl,
           settings: JSON.stringify(settings),
+          duration: recordingTime, // Store the actual recording duration
           timestamp: Date.now()
         };
         
