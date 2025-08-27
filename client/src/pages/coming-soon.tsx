@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Link } from "wouter";
 import { ArrowLeft, Brain, Video, Database, FileText, User } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 import logoUrl from "@/assets/logos/moneyclip-logo.png";
 
 const upcomingFeatures = [
@@ -33,6 +34,10 @@ const upcomingFeatures = [
 ];
 
 export default function ComingSoon() {
+  const { isAuthenticated } = useAuth();
+  const backLink = isAuthenticated ? "/dashboard" : "/";
+  const backText = isAuthenticated ? "Back to Dashboard" : "Back to Home";
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -50,24 +55,37 @@ export default function ComingSoon() {
               </Link>
             </div>
             <div className="flex items-center space-x-4">
-              <Link href="/dashboard">
-                <Button
-                  variant="ghost"
-                  data-testid="button-dashboard"
-                  className="text-secondary hover:text-primary transition-colors duration-200 font-medium px-4 py-2"
-                >
-                  Dashboard
-                </Button>
-              </Link>
-              <Link href="/login">
-                <Button
-                  variant="ghost"
-                  data-testid="button-login"
-                  className="text-secondary hover:text-primary transition-colors duration-200 font-medium px-4 py-2"
-                >
-                  Log In
-                </Button>
-              </Link>
+              {isAuthenticated ? (
+                <Link href="/dashboard">
+                  <Button
+                    variant="ghost"
+                    data-testid="button-dashboard"
+                    className="text-secondary hover:text-primary transition-colors duration-200 font-medium px-4 py-2"
+                  >
+                    Dashboard
+                  </Button>
+                </Link>
+              ) : (
+                <>
+                  <Link href="/login">
+                    <Button
+                      variant="ghost"
+                      data-testid="button-login"
+                      className="text-secondary hover:text-primary transition-colors duration-200 font-medium px-4 py-2"
+                    >
+                      Log In
+                    </Button>
+                  </Link>
+                  <Link href="/signup">
+                    <Button
+                      data-testid="button-signup"
+                      className="bg-primary hover:bg-blue-700 text-white font-medium px-6 py-2 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
+                    >
+                      Sign Up
+                    </Button>
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -76,14 +94,14 @@ export default function ComingSoon() {
       {/* Main Content */}
       <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="text-center mb-12">
-          <Link href="/">
+          <Link href={backLink}>
             <Button
               variant="ghost"
               data-testid="button-back-home"
               className="mb-6 text-primary hover:text-blue-700 inline-flex items-center gap-2"
             >
               <ArrowLeft className="h-4 w-4" />
-              Back to Home
+              {backText}
             </Button>
           </Link>
           
