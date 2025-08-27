@@ -20,7 +20,7 @@ export default function Hero() {
           <Button
             onClick={handleGetStarted}
             data-testid="button-get-started"
-            className="bg-primary hover:bg-green-700 text-white font-semibold px-8 py-4 rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl text-lg"
+            className="bg-primary hover:bg-accent text-white hover:text-accent-foreground font-semibold px-8 py-4 rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl text-lg"
           >
             Get Started Free
           </Button>

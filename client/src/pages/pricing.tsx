@@ -102,7 +102,7 @@ export default function Pricing() {
               <Link href="/signup">
                 <Button
                   data-testid="button-signup"
-                  className="bg-primary hover:bg-green-700 text-white font-medium px-6 py-2 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
+                  className="bg-primary hover:bg-accent text-white hover:text-accent-foreground font-medium px-6 py-2 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
                 >
                   Sign Up
                 </Button>
@@ -177,7 +177,7 @@ export default function Pricing() {
                     onClick={() => handleChoosePlan(planId)}
                     className={`w-full ${
                       planId === 'professional' 
-                        ? 'bg-primary hover:bg-green-700 text-white' 
+                        ? 'bg-primary hover:bg-accent text-white hover:text-accent-foreground' 
                         : 'bg-gray-900 hover:bg-gray-800 text-white'
                     }`}
                     data-testid={`button-choose-${planId}`}

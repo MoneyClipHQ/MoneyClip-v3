@@ -79,7 +79,7 @@ export default function ComingSoon() {
                   <Link href="/signup">
                     <Button
                       data-testid="button-signup"
-                      className="bg-primary hover:bg-green-700 text-white font-medium px-6 py-2 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
+                      className="bg-primary hover:bg-accent text-white hover:text-accent-foreground font-medium px-6 py-2 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
                     >
                       Sign Up
                     </Button>
@@ -98,7 +98,7 @@ export default function ComingSoon() {
             <Button
               variant="ghost"
               data-testid="button-back-home"
-              className="mb-6 text-primary hover:text-green-700 inline-flex items-center gap-2"
+              className="mb-6 text-primary hover:text-accent inline-flex items-center gap-2"
             >
               <ArrowLeft className="h-4 w-4" />
               {backText}
@@ -151,7 +151,7 @@ export default function ComingSoon() {
             <Link href="/signup">
               <Button
                 data-testid="button-get-started"
-                className="bg-primary hover:bg-green-700 text-white font-medium px-8 py-3 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
+                className="bg-primary hover:bg-accent text-white hover:text-accent-foreground font-medium px-8 py-3 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
               >
                 Get Started Today
               </Button>
