@@ -76,7 +76,7 @@ export default function Login() {
             <img 
               src={logoUrl} 
               alt="MoneyClip" 
-              className="h-12 w-auto object-contain cursor-pointer mx-auto"
+              className="h-16 w-auto object-contain cursor-pointer mx-auto"
               data-testid="logo-moneyclip"
             />
           </Link>

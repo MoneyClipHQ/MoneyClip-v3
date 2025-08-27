@@ -283,7 +283,7 @@ export default function RecordPage() {
                 <img 
                   src={logoUrl} 
                   alt="MoneyClip" 
-                  className="h-16 w-auto object-contain cursor-pointer"
+                  className="h-20 w-auto object-contain cursor-pointer"
                   data-testid="logo-moneyclip"
                 />
               </Link>
