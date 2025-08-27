@@ -42,34 +42,126 @@ export default function RecordPreviewPage() {
   const [aiProcessingComplete, setAiProcessingComplete] = useState(false);
   const aiProcessingRef = useRef(false); // Use ref to track processing without triggering re-renders
 
-  // Load recorded video from session storage
+  // Load recorded video from session storage or IndexedDB
   useEffect(() => {
-    const recordedVideoUrl = sessionStorage.getItem("recordedVideo");
-    const settings = sessionStorage.getItem("recordingSettings");
-    
-    console.log('Loading video from session storage:', recordedVideoUrl ? 'Video URL found' : 'No video URL');
-    
-    if (recordedVideoUrl) {
-      // Reset AI processing state for new video
-      aiProcessingRef.current = false;
-      setAiProcessingComplete(false);
-      setIsProcessingAI(false);
+    const loadVideoData = async () => {
+      const recordedVideoUrl = sessionStorage.getItem("recordedVideo");
+      const settings = sessionStorage.getItem("recordingSettings");
+      const usingIndexedDB = sessionStorage.getItem("usingIndexedDB");
       
-      setVideoUrl(recordedVideoUrl);
+      console.log('Loading video from storage:', recordedVideoUrl ? 'Session storage' : 'Checking IndexedDB');
       
-      // Parse settings if available
-      if (settings) {
-        const parsedSettings = JSON.parse(settings);
-        setCaptionsEnabled(parsedSettings.captionsEnabled || true);
-        setIncludeProfilePicture(parsedSettings.includeProfilePicture || true);
+      if (recordedVideoUrl) {
+        // Load from sessionStorage (normal path)
+        loadVideoFromSessionStorage(recordedVideoUrl, settings);
+      } else if (usingIndexedDB === "true") {
+        // Load from IndexedDB (fallback path)
+        try {
+          const data = await loadVideoFromIndexedDB();
+          if (data) {
+            loadVideoFromSessionStorage(data.videoUrl, data.settings);
+          } else {
+            navigate("/record");
+          }
+        } catch (error) {
+          console.error('Failed to load from IndexedDB:', error);
+          navigate("/record");
+        }
+      } else {
+        // No video found, redirect back to record
+        navigate("/record");
       }
-      
-      // AI content will be generated after video metadata loads
-    } else {
-      // No video found, redirect back to record
-      navigate("/record");
-    }
+    };
+    
+    loadVideoData();
   }, [navigate]);
+
+  const loadVideoFromSessionStorage = (recordedVideoUrl: string, settings: string | null) => {
+    // Reset AI processing state for new video
+    aiProcessingRef.current = false;
+    setAiProcessingComplete(false);
+    setIsProcessingAI(false);
+    
+    setVideoUrl(recordedVideoUrl);
+    
+    // Parse settings if available
+    if (settings) {
+      const parsedSettings = JSON.parse(settings);
+      setCaptionsEnabled(parsedSettings.captionsEnabled || true);
+      setIncludeProfilePicture(parsedSettings.includeProfilePicture || true);
+    }
+    
+    // AI content will be generated after video metadata loads
+  };
+
+  const loadVideoFromIndexedDB = (): Promise<{videoUrl: string, settings: string} | null> => {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open('MoneyClipVideos', 1);
+      
+      request.onerror = () => reject(request.error);
+      
+      request.onsuccess = () => {
+        const db = request.result;
+        const transaction = db.transaction(['recordings'], 'readonly');
+        const store = transaction.objectStore('recordings');
+        const getRequest = store.get('current');
+        
+        getRequest.onsuccess = () => {
+          const result = getRequest.result;
+          if (result) {
+            resolve({
+              videoUrl: result.videoUrl,
+              settings: result.settings
+            });
+          } else {
+            resolve(null);
+          }
+        };
+        
+        getRequest.onerror = () => reject(getRequest.error);
+      };
+    });
+  };
+
+  const loadVideoBlobFromIndexedDB = (): Promise<Blob | null> => {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open('MoneyClipVideos', 1);
+      
+      request.onerror = () => reject(request.error);
+      
+      request.onsuccess = () => {
+        const db = request.result;
+        const transaction = db.transaction(['recordings'], 'readonly');
+        const store = transaction.objectStore('recordings');
+        const getRequest = store.get('current');
+        
+        getRequest.onsuccess = () => {
+          const result = getRequest.result;
+          resolve(result ? result.videoBlob : null);
+        };
+        
+        getRequest.onerror = () => reject(getRequest.error);
+      };
+    });
+  };
+
+  const cleanupIndexedDB = (): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open('MoneyClipVideos', 1);
+      
+      request.onerror = () => reject(request.error);
+      
+      request.onsuccess = () => {
+        const db = request.result;
+        const transaction = db.transaction(['recordings'], 'readwrite');
+        const store = transaction.objectStore('recordings');
+        const deleteRequest = store.delete('current');
+        
+        deleteRequest.onsuccess = () => resolve();
+        deleteRequest.onerror = () => reject(deleteRequest.error);
+      };
+    });
+  };
 
   // Update duration when video loads and generate preview captions
   useEffect(() => {
@@ -95,16 +187,18 @@ export default function RecordPreviewPage() {
           if (!isProcessingAI && !aiProcessingComplete) {
             // Mark as processing to prevent duplicate calls (set after check, before processing)
             aiProcessingRef.current = true;
-            generateAIContent(effectiveDuration);
+            generateAIContent(effectiveDuration || undefined);
           }
         }
       };
       
       // Add error handling for video loading
-      const handleVideoError = (error: Event) => {
+      const handleVideoError = (error: string | Event) => {
         console.error('Video loading error:', error, 'Video readyState:', videoRef.current?.readyState);
-        console.error('Video error code:', (error.target as HTMLVideoElement)?.error?.code);
-        console.error('Video error message:', (error.target as HTMLVideoElement)?.error?.message);
+        if (typeof error !== 'string' && error.target) {
+          console.error('Video error code:', (error.target as HTMLVideoElement)?.error?.code);
+          console.error('Video error message:', (error.target as HTMLVideoElement)?.error?.message);
+        }
       };
       
       const handleVideoCanPlay = () => {
@@ -185,6 +279,10 @@ export default function RecordPreviewPage() {
     // Start AI processing immediately during preview
     try {
       const recordedVideoData = sessionStorage.getItem("recordedVideoBlob");
+      const usingIndexedDB = sessionStorage.getItem("usingIndexedDB");
+      
+      let videoBlob: Blob | null = null;
+      
       if (recordedVideoData) {
         // Convert base64 back to blob for AI processing
         const binaryString = atob(recordedVideoData);
@@ -192,8 +290,13 @@ export default function RecordPreviewPage() {
         for (let i = 0; i < binaryString.length; i++) {
           bytes[i] = binaryString.charCodeAt(i);
         }
-        const videoBlob = new Blob([bytes], { type: 'video/webm' });
-        
+        videoBlob = new Blob([bytes], { type: 'video/webm' });
+      } else if (usingIndexedDB === "true") {
+        // Load from IndexedDB
+        videoBlob = await loadVideoBlobFromIndexedDB();
+      }
+      
+      if (videoBlob) {
         // Process with AI immediately for preview
         await processVideoWithAIForPreview(videoBlob, duration || videoDuration);
         setAiProcessingComplete(true);
@@ -427,6 +530,12 @@ export default function RecordPreviewPage() {
       sessionStorage.removeItem("recordedVideo");
       sessionStorage.removeItem("recordedVideoBlob");
       sessionStorage.removeItem("recordingSettings");
+      sessionStorage.removeItem("usingIndexedDB");
+      
+      // Clean up IndexedDB (promise-based cleanup since onSuccess is not async)
+      cleanupIndexedDB().catch(error => {
+        console.warn('Failed to cleanup IndexedDB:', error);
+      });
       
       // Clean up blob URL
       if (captionBlobUrl) {
@@ -467,11 +576,19 @@ export default function RecordPreviewPage() {
     logEvent("PREVIEWED", { hasClientName: !!clientName, hasPassword: showPassword && !!password });
   };
 
-  const handleDiscard = () => {
+  const handleDiscard = async () => {
     if (window.confirm("Are you sure you want to discard this recording?")) {
       sessionStorage.removeItem("recordedVideo");
       sessionStorage.removeItem("recordedVideoBlob");
       sessionStorage.removeItem("recordingSettings");
+      sessionStorage.removeItem("usingIndexedDB");
+      
+      // Clean up IndexedDB
+      try {
+        await cleanupIndexedDB();
+      } catch (error) {
+        console.warn('Failed to cleanup IndexedDB:', error);
+      }
       
       // Clean up blob URL
       if (captionBlobUrl) {

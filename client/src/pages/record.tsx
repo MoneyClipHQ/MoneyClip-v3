@@ -155,7 +155,7 @@ export default function RecordPage() {
       
       const recorder = new MediaRecorder(combinedStream, {
         mimeType,
-        videoBitsPerSecond: 2500000,
+        videoBitsPerSecond: 1500000, // Reduced from 2.5Mbps to 1.5Mbps to help with storage limits
       });
 
       recorder.ondataavailable = (event) => {
@@ -171,13 +171,52 @@ export default function RecordPage() {
         // Convert blob to base64 for storage and later AI processing
         const reader = new FileReader();
         reader.onload = () => {
-          const base64Data = (reader.result as string).split(',')[1]; // Remove data URL prefix
-          sessionStorage.setItem("recordedVideoBlob", base64Data);
-          
-          // Navigate to preview with the recorded video
-          sessionStorage.setItem("recordedVideo", url);
-          sessionStorage.setItem("recordingSettings", JSON.stringify(settings));
-          navigate("/record/preview");
+          try {
+            const base64Data = (reader.result as string).split(',')[1]; // Remove data URL prefix
+            
+            // Try to store in sessionStorage, fallback to IndexedDB if quota exceeded
+            try {
+              sessionStorage.setItem("recordedVideoBlob", base64Data);
+              sessionStorage.setItem("recordedVideo", url);
+              sessionStorage.setItem("recordingSettings", JSON.stringify(settings));
+              navigate("/record/preview");
+            } catch (storageError) {
+              console.warn("SessionStorage quota exceeded, using IndexedDB fallback:", storageError);
+              
+              // Fallback: Store directly as blob without base64 conversion
+              storeVideoInIndexedDB(blob, url, settings)
+                .then(() => {
+                  navigate("/record/preview");
+                })
+                .catch((indexedDBError) => {
+                  console.error("IndexedDB storage failed:", indexedDBError);
+                  toast({
+                    title: "Storage Error",
+                    description: "Video too large for browser storage. Please record shorter videos or try again.",
+                    variant: "destructive",
+                  });
+                  setRecordingState("idle");
+                });
+            }
+          } catch (conversionError) {
+            console.error("Error processing recorded video:", conversionError);
+            toast({
+              title: "Processing Error", 
+              description: "Failed to process recorded video. Please try again.",
+              variant: "destructive",
+            });
+            setRecordingState("idle");
+          }
+        };
+        
+        reader.onerror = () => {
+          console.error("FileReader error");
+          toast({
+            title: "Processing Error",
+            description: "Failed to process recorded video. Please try again.",
+            variant: "destructive", 
+          });
+          setRecordingState("idle");
         };
         reader.readAsDataURL(blob);
       };
@@ -251,6 +290,46 @@ export default function RecordPage() {
   const logRecordingEvent = async (event: string, metadata: any) => {
     // TODO: Send to backend API
     console.log("Recording event:", event, metadata);
+  };
+
+  // IndexedDB fallback for large videos
+  const storeVideoInIndexedDB = async (videoBlob: Blob, videoUrl: string, settings: RecordingSettings): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open('MoneyClipVideos', 1);
+      
+      request.onerror = () => reject(request.error);
+      
+      request.onupgradeneeded = () => {
+        const db = request.result;
+        if (!db.objectStoreNames.contains('recordings')) {
+          db.createObjectStore('recordings', { keyPath: 'id' });
+        }
+      };
+      
+      request.onsuccess = () => {
+        const db = request.result;
+        const transaction = db.transaction(['recordings'], 'readwrite');
+        const store = transaction.objectStore('recordings');
+        
+        const recordingData = {
+          id: 'current',
+          videoBlob,
+          videoUrl,
+          settings: JSON.stringify(settings),
+          timestamp: Date.now()
+        };
+        
+        const storeRequest = store.put(recordingData);
+        
+        storeRequest.onsuccess = () => {
+          // Store flag in sessionStorage to indicate using IndexedDB
+          sessionStorage.setItem("usingIndexedDB", "true");
+          resolve();
+        };
+        
+        storeRequest.onerror = () => reject(storeRequest.error);
+      };
+    });
   };
 
   if (!user) {
