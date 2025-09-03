@@ -15,28 +15,28 @@ export default function Footer() {
           </div>
           <div className="flex justify-center space-x-8 text-sm text-secondary">
             <a 
-              href="#" 
+              href="/about" 
               className="hover:text-primary transition-colors duration-200"
               data-testid="link-about"
             >
               About
             </a>
             <a 
-              href="#" 
+              href="/terms" 
               className="hover:text-primary transition-colors duration-200"
               data-testid="link-terms"
             >
               Terms of Service
             </a>
             <a 
-              href="#" 
+              href="/privacy" 
               className="hover:text-primary transition-colors duration-200"
               data-testid="link-privacy"
             >
               Privacy Policy
             </a>
             <a 
-              href="#" 
+              href="/contact" 
               className="hover:text-primary transition-colors duration-200"
               data-testid="link-contact"
             >

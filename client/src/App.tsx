@@ -16,6 +16,8 @@ import Settings from "@/pages/settings";
 import Terms from "@/pages/terms";
 import Billing from "@/pages/billing";
 import Contact from "@/pages/contact";
+import About from "@/pages/about";
+import Privacy from "@/pages/privacy";
 import RecordPage from "@/pages/record";
 import RecordPreviewPage from "@/pages/record-preview";
 import SharePage from "@/pages/share";
@@ -44,6 +46,8 @@ function Router() {
       <Route path="/reset-password" component={ResetPassword} />
       <Route path="/terms" component={Terms} />
       <Route path="/contact" component={Contact} />
+      <Route path="/about" component={About} />
+      <Route path="/privacy" component={Privacy} />
       <Route path="/coming-soon" component={ComingSoon} />
       
       {/* Protected routes - redirect to login if not authenticated */}
