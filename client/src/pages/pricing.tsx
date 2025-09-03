@@ -131,7 +131,7 @@ export default function Pricing() {
             {(Object.entries(PLANS) as [PlanId, typeof PLANS[PlanId]][]).map(([planId, plan]) => (
               <Card 
                 key={planId}
-                className={`relative transition-all duration-200 hover:shadow-lg ${
+                className={`relative h-full flex flex-col transition-all duration-200 hover:shadow-lg ${
                   selectedPlan === planId ? 'ring-2 ring-primary shadow-lg' : ''
                 } ${planId === 'professional' ? 'border-primary border-2' : ''}`}
                 data-testid={`card-plan-${planId}`}
@@ -155,33 +155,35 @@ export default function Pricing() {
                   </p>
                 </CardHeader>
                 
-                <CardContent className="space-y-6">
-                  <p className="text-sm text-center text-muted-foreground">
-                    {plan.description}
-                  </p>
-                  
-                  <div className="space-y-3">
-                    {plan.features.map((feature, index) => (
-                      <div key={index} className="flex items-center gap-3">
-                        <CheckIcon className="h-4 w-4 text-green-600 flex-shrink-0" />
-                        <span className="text-sm">{feature}</span>
-                      </div>
-                    ))}
+                <CardContent className="flex flex-col h-full">
+                  <div className="flex-grow space-y-6">
+                    <p className="text-sm text-center text-muted-foreground">
+                      {plan.description}
+                    </p>
                     
-                    {plan.notIncluded.map((feature, index) => (
-                      <div key={index} className="flex items-center gap-3 opacity-60">
-                        <XIcon className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                        <span className="text-sm text-muted-foreground">{feature}</span>
-                      </div>
-                    ))}
+                    <div className="space-y-3">
+                      {plan.features.map((feature, index) => (
+                        <div key={index} className="flex items-center gap-3">
+                          <CheckIcon className="h-4 w-4 text-green-600 flex-shrink-0" />
+                          <span className="text-sm">{feature}</span>
+                        </div>
+                      ))}
+                      
+                      {plan.notIncluded.map((feature, index) => (
+                        <div key={index} className="flex items-center gap-3 opacity-60">
+                          <XIcon className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                          <span className="text-sm text-muted-foreground">{feature}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                   
                   <Button
                     onClick={() => handleChoosePlan(planId)}
-                    className={`w-full ${
+                    className={`w-full mt-6 ${
                       planId === 'professional' 
                         ? 'bg-primary hover:bg-accent text-white hover:text-accent-foreground' 
-                        : 'bg-gray-900 hover:bg-gray-800 text-white'
+                        : 'bg-gray-900 hover:bg-accent text-white hover:text-accent-foreground'
                     }`}
                     data-testid={`button-choose-${planId}`}
                   >
