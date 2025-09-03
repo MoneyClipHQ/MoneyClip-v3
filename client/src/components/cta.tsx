@@ -12,6 +12,9 @@ export default function CTA() {
         <p className="text-xl text-blue-100 mb-8 max-w-3xl mx-auto">
           Join thousands of financial advisors who trust MoneyClip to deliver clear, compliant video explanations that clients love.
         </p>
+        <p className="text-lg text-blue-200 mb-8 font-medium">
+          Made for Advisors By Advisors
+        </p>
         <div className="flex justify-center">
           <Link href="/signup">
             <Button
