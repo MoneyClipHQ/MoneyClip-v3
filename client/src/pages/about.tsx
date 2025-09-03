@@ -3,12 +3,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { Shield, Users, Award, TrendingUp } from "lucide-react";
+import Header from "@/components/header";
 
 export default function About() {
   usePageTitle("MoneyClip - About Us");
   
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-white">
+      <Header />
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
           <Card>
