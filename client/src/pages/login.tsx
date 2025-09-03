@@ -13,8 +13,11 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { loginSchema, type LoginData } from "@shared/schema";
 import logoUrl from "@/assets/logos/moneyclip-logo.png";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function Login() {
+  usePageTitle("MoneyClip - Sign In");
+  
   const [, navigate] = useLocation();
   const [showPassword, setShowPassword] = useState(false);
   const { toast } = useToast();

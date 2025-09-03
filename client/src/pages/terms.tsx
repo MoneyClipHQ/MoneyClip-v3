@@ -1,8 +1,11 @@
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function Terms() {
+  usePageTitle("MoneyClip - Terms & Privacy");
+  
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-white">
       <div className="container mx-auto px-4 py-8">

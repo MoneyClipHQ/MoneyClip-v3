@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import AdvisorDropdown from "@/components/advisor-dropdown";
 import logoUrl from "@/assets/logos/moneyclip-logo.png";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 type CaptureMode = "screen" | "window" | "tab";
 type RecordingState = "idle" | "setup" | "countdown" | "recording" | "paused" | "stopped";
@@ -21,6 +22,8 @@ interface RecordingSettings {
 }
 
 export default function RecordPage() {
+  usePageTitle("MoneyClip - Record");
+  
   const [, navigate] = useLocation();
   const { user } = useAuth();
   const { toast } = useToast();

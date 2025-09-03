@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import type { InsertVideo } from "@shared/schema";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 interface TrimRange {
   start: number;
@@ -20,6 +21,8 @@ interface TrimRange {
 }
 
 export default function RecordPreviewPage() {
+  usePageTitle("MoneyClip - Preview Recording");
+  
   const [, navigate] = useLocation();
   const { user } = useAuth();
   const { toast } = useToast();

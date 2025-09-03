@@ -12,8 +12,11 @@ import { ArrowLeft, AlertCircle, CheckCircle, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { resetPasswordSchema, type ResetPasswordData } from "@shared/schema";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function ResetPassword() {
+  usePageTitle("MoneyClip - Reset Password");
+  
   const [, navigate] = useLocation();
   const [showPassword, setShowPassword] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);

@@ -12,8 +12,11 @@ import { ArrowLeft, AlertCircle, CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { forgotPasswordSchema, type ForgotPasswordData } from "@shared/schema";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function ForgotPassword() {
+  usePageTitle("MoneyClip - Forgot Password");
+  
   const [, navigate] = useLocation();
   const [isSubmitted, setIsSubmitted] = useState(false);
   const { toast } = useToast();

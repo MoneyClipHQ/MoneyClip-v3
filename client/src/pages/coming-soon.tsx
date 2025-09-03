@@ -4,6 +4,7 @@ import { Link } from "wouter";
 import { ArrowLeft, Brain, Video, Database, FileText, User } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import logoUrl from "@/assets/logos/moneyclip-logo.png";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 const upcomingFeatures = [
   {
@@ -34,6 +35,8 @@ const upcomingFeatures = [
 ];
 
 export default function ComingSoon() {
+  usePageTitle("MoneyClip - Coming Soon");
+  
   const { isAuthenticated } = useAuth();
   const backLink = isAuthenticated ? "/dashboard" : "/";
   const backText = isAuthenticated ? "Back to Dashboard" : "Back to Home";

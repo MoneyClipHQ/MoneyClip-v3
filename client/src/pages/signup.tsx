@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { LoaderIcon, CheckIcon, CreditCardIcon } from "lucide-react";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 type SignupData = z.infer<typeof signupSchema>;
 
@@ -31,6 +32,8 @@ interface SignupResponse {
 }
 
 export default function SignUp() {
+  usePageTitle("MoneyClip - Sign Up");
+  
   const [, setLocation] = useLocation();
   const [isSuccess, setIsSuccess] = useState(false);
   const [confirmationData, setConfirmationData] = useState<SignupResponse | null>(null);

@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 interface SharedVideo {
   id: string;
@@ -58,6 +59,8 @@ interface AdvisorBranding {
 }
 
 export default function SharePage() {
+  usePageTitle("MoneyClip - Shared Video");
+  
   const [match, params] = useRoute("/share/:shareLink");
   const { toast } = useToast();
   

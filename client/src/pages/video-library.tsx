@@ -8,6 +8,7 @@ import AdvisorDropdown from "@/components/advisor-dropdown";
 import VideoThumbnail from "@/components/video-thumbnail";
 import type { Video } from "@shared/schema";
 import logoUrl from "@/assets/logos/moneyclip-logo.png";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 // Mock advisor data
 const mockAdvisor = {
@@ -17,6 +18,8 @@ const mockAdvisor = {
 };
 
 export default function VideoLibrary() {
+  usePageTitle("MoneyClip - Video Library");
+  
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [searchQuery, setSearchQuery] = useState("");
 

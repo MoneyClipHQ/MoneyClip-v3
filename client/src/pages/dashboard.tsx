@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import logoUrl from "@/assets/logos/moneyclip-logo.png";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 
 
@@ -19,6 +20,8 @@ const mockAdvisor = {
 };
 
 export default function Dashboard() {
+  usePageTitle("MoneyClip - Dashboard");
+  
   const [activeTab, setActiveTab] = useState<"library" | "scripted" | null>(null);
   const [, navigate] = useLocation();
   const { toast } = useToast();

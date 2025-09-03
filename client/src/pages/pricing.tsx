@@ -9,8 +9,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { CheckIcon, XIcon } from "lucide-react";
 import logoUrl from "@/assets/logos/moneyclip-logo.png";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function Pricing() {
+  usePageTitle("MoneyClip - Pricing");
+  
   const [, setLocation] = useLocation();
   const [selectedPlan, setSelectedPlan] = useState<PlanId | null>(null);
 

@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { FileText, ArrowLeft, Clock, Users, TrendingUp, DollarSign, Shield } from "lucide-react";
 import AdvisorDropdown from "@/components/advisor-dropdown";
 import logoUrl from "@/assets/logos/moneyclip-logo.png";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 // Mock advisor data
 const mockAdvisor = {
@@ -26,6 +27,8 @@ interface ScriptTemplate {
 }
 
 export default function ScriptedContent() {
+  usePageTitle("MoneyClip - Scripted Content");
+  
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   const scriptTemplates: ScriptTemplate[] = [
