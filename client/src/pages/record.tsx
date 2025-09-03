@@ -28,8 +28,9 @@ export default function RecordPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   
-  const [recordingState, setRecordingState] = useState<RecordingState>("setup");
-  const [showCaptureModal, setShowCaptureModal] = useState(true);
+  const [recordingState, setRecordingState] = useState<RecordingState>("idle");
+  const [showCaptureModal, setShowCaptureModal] = useState(false);
+  const [showPermissionCheck, setShowPermissionCheck] = useState(false);
   const [countdownValue, setCountdownValue] = useState(3);
   const [recordingTime, setRecordingTime] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
@@ -82,6 +83,45 @@ export default function RecordPage() {
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
+  const checkPermissions = async () => {
+    setShowPermissionCheck(true);
+    
+    try {
+      // First check if we can access media devices
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+        throw new Error("Screen recording is not supported in this browser");
+      }
+      
+      // Test microphone access if microphone is selected
+      if (settings.microphone && settings.microphone !== "none") {
+        try {
+          const testAudioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          testAudioStream.getTracks().forEach(track => track.stop());
+        } catch (audioError) {
+          console.warn("Microphone permission check failed:", audioError);
+          toast({
+            title: "Microphone Permission",
+            description: "Microphone access was denied. Recording will continue without audio, or you can allow microphone access and try again.",
+            variant: "default",
+          });
+        }
+      }
+      
+      setShowPermissionCheck(false);
+      setShowCaptureModal(true);
+      setRecordingState("setup");
+      
+    } catch (error) {
+      console.error("Permission check failed:", error);
+      setShowPermissionCheck(false);
+      toast({
+        title: "Browser Not Supported",
+        description: "Your browser does not support screen recording. Please use Chrome, Firefox, or Edge.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const initiateRecordingFlow = async () => {
     setShowCaptureModal(false);
     setRecordingState("setup");
@@ -95,6 +135,10 @@ export default function RecordPage() {
 
       const displayStream = await navigator.mediaDevices.getDisplayMedia(displayConstraints);
       
+      // Check if user cancelled the screen selection
+      if (!displayStream || displayStream.getTracks().length === 0) {
+        throw new Error("Screen selection was cancelled");
+      }
       
       // Now that screen is selected, start countdown
       setRecordingState("countdown");
@@ -110,13 +154,36 @@ export default function RecordPage() {
       
     } catch (error) {
       console.error("Failed to start recording:", error);
+      
+      // Handle specific error cases
+      let errorTitle = "Recording Failed";
+      let errorDescription = "Could not start recording. Please try again.";
+      
+      if (error instanceof Error) {
+        if (error.name === "NotAllowedError" || error.message.includes("Permission denied")) {
+          errorTitle = "Permission Denied";
+          errorDescription = "Screen recording permission was denied. Please allow screen sharing and try again.";
+        } else if (error.name === "NotFoundError") {
+          errorTitle = "No Screen Selected";
+          errorDescription = "No screen was selected for recording. Please choose a screen and try again.";
+        } else if (error.message.includes("cancelled")) {
+          errorTitle = "Recording Cancelled";
+          errorDescription = "Screen selection was cancelled. Click 'Start Recording' to try again.";
+        } else if (error.name === "NotSupportedError") {
+          errorTitle = "Browser Not Supported";
+          errorDescription = "Your browser does not support screen recording. Please use Chrome, Firefox, or Edge.";
+        }
+      }
+      
       toast({
-        title: "Recording Failed",
-        description: "Could not start recording. Please check permissions and try again.",
+        title: errorTitle,
+        description: errorDescription,
         variant: "destructive",
       });
-      setRecordingState("setup");
-      setShowCaptureModal(true);
+      
+      // Reset to initial state so user can try again
+      setRecordingState("idle");
+      setShowCaptureModal(false);
     }
   };
 
@@ -355,6 +422,109 @@ export default function RecordPage() {
     );
   }
 
+  // Show initial setup screen when not in recording flow
+  if (recordingState === "idle") {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        {/* Header */}
+        <header className="bg-white border-b border-gray-200">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-center h-16">
+              <Link href="/dashboard">
+                <img 
+                  src={logoUrl} 
+                  alt="MoneyClip" 
+                  className="h-20 w-auto object-contain cursor-pointer"
+                  data-testid="logo-moneyclip"
+                />
+              </Link>
+              {user && (
+                <AdvisorDropdown
+                  advisorName={user.advisorName}
+                  onSettings={() => navigate("/settings")}
+                  onSignOut={() => {
+                    navigate("/");
+                  }}
+                />
+              )}
+            </div>
+          </div>
+        </header>
+
+        {/* Main Content */}
+        <div className="max-w-4xl mx-auto px-4 py-12">
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 mb-4">Record Your Video</h1>
+            <p className="text-lg text-gray-600">
+              Create professional screen recordings to share with your clients
+            </p>
+          </div>
+
+          <Card className="max-w-2xl mx-auto">
+            <CardContent className="pt-6">
+              <div className="space-y-6">
+                {/* Pre-recording setup */}
+                <div>
+                  <Label htmlFor="pre-microphone" className="text-base font-medium mb-2 block">Microphone</Label>
+                  <Select value={settings.microphone || ""} onValueChange={(value) => setSettings({...settings, microphone: value})}>
+                    <SelectTrigger id="pre-microphone">
+                      <SelectValue placeholder="Select microphone" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No microphone</SelectItem>
+                      <SelectItem value="default">Default microphone</SelectItem>
+                      {availableMicrophones.map(mic => (
+                        <SelectItem key={mic.deviceId} value={mic.deviceId}>
+                          {mic.label || `Microphone ${mic.deviceId.slice(0, 8)}`}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="pre-profile-picture" className="text-sm font-medium">Include profile picture</Label>
+                  <Switch
+                    id="pre-profile-picture"
+                    checked={settings.includeProfilePicture}
+                    onCheckedChange={(checked) => setSettings({...settings, includeProfilePicture: checked})}
+                  />
+                </div>
+
+                {/* Permission info */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <h3 className="font-medium text-blue-900 mb-2">What to expect:</h3>
+                  <ul className="text-sm text-blue-800 space-y-1">
+                    <li>• Your browser will ask for screen sharing permission</li>
+                    <li>• If microphone is selected, you'll be asked for microphone permission</li>
+                    <li>• You'll choose which screen, window, or tab to record</li>
+                    <li>• A 3-second countdown will start the recording</li>
+                  </ul>
+                </div>
+
+                {/* Compliance notice */}
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                  <p className="text-sm text-amber-800">
+                    <strong>Important:</strong> Do not include confidential client information unless you have consent.
+                  </p>
+                </div>
+
+                <div className="flex gap-3">
+                  <Button variant="outline" onClick={() => navigate("/dashboard")} className="flex-1">
+                    Cancel
+                  </Button>
+                  <Button onClick={checkPermissions} className="flex-1" data-testid="button-start-recording">
+                    Start Recording
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-900 relative">
       {/* Header - only show when not in setup mode */}
@@ -384,8 +554,30 @@ export default function RecordPage() {
           </div>
         </header>
       )}
+      {/* Permission Check Modal */}
+      <Dialog open={showPermissionCheck} onOpenChange={setShowPermissionCheck}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Checking Permissions</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-sm text-gray-600">
+                Checking camera and microphone permissions...
+              </p>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Capture Setup Modal */}
-      <Dialog open={showCaptureModal && recordingState === "setup"} onOpenChange={setShowCaptureModal}>
+      <Dialog open={showCaptureModal && recordingState === "setup"} onOpenChange={(open) => {
+        setShowCaptureModal(open);
+        if (!open && recordingState === "setup") {
+          setRecordingState("idle");
+        }
+      }}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Set Up Your Recording</DialogTitle>
@@ -430,6 +622,14 @@ export default function RecordPage() {
               </div>
             </div>
 
+            {/* Compliance Notice */}
+            {/* Permission Info */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <p className="text-sm text-blue-800">
+                <strong>Permissions:</strong> You'll be asked to allow screen sharing and microphone access.
+              </p>
+            </div>
+            
             {/* Compliance Notice */}
             <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
               <p className="text-sm text-amber-800">
