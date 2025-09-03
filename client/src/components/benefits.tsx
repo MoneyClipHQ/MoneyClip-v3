@@ -24,10 +24,10 @@ export default function Features() {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
           <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
-            Built for Advisors by Advisors
+            Professional Video Communication Made Simple
           </h2>
           <p className="text-xl text-secondary max-w-3xl mx-auto">
-            Everything you need to create professional, compliant video communications that your clients will actually watch and understand.
+            The complete toolkit for creating compliant, engaging video content that transforms how you communicate complex financial concepts to clients.
           </p>
         </div>
         <div className="grid md:grid-cols-3 gap-8">
