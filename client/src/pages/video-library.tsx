@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +20,7 @@ const mockAdvisor = {
 export default function VideoLibrary() {
   usePageTitle("MoneyClip - Video Library");
   
+  const [, navigate] = useLocation();
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -35,7 +36,7 @@ export default function VideoLibrary() {
   );
 
   const handleVideoClick = (videoId: string) => {
-    console.log("Opening video:", videoId);
+    navigate(`/video/${videoId}/edit`);
   };
 
   return (

@@ -20,6 +20,7 @@ import About from "@/pages/about";
 import Privacy from "@/pages/privacy";
 import RecordPage from "@/pages/record";
 import RecordPreviewPage from "@/pages/record-preview";
+import VideoEditPage from "@/pages/video-edit";
 import SharePage from "@/pages/share";
 import ComingSoon from "@/pages/coming-soon";
 import NotFound from "@/pages/not-found";
@@ -71,6 +72,9 @@ function Router() {
       </Route>
       <Route path="/record/preview">
         {isAuthenticated ? <RecordPreviewPage /> : <Login />}
+      </Route>
+      <Route path="/video/:id/edit">
+        {isAuthenticated ? <VideoEditPage /> : <Login />}
       </Route>
       
       {/* Public share route - no authentication required */}
