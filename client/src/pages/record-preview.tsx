@@ -993,22 +993,30 @@ export default function RecordPreviewPage() {
                 </div>
 
                 {/* Actions */}
-                <div className="flex gap-3 pt-4">
+                <div className="flex flex-col gap-3 pt-4">
                   <Button
-                    onClick={() => navigate("/dashboard")}
-                    variant="outline"
-                    className="flex-1"
-                    data-testid="button-go-dashboard"
+                    onClick={() => navigate("/video-library")}
+                    className="w-full"
+                    data-testid="button-go-video-library"
                   >
-                    Go to Dashboard
+                    Go to Video Library
                   </Button>
-                  <Button
-                    onClick={() => navigate("/record")}
-                    className="flex-1"
-                    data-testid="button-record-another"
-                  >
-                    Record Another
-                  </Button>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Button
+                      onClick={() => navigate("/dashboard")}
+                      variant="outline"
+                      data-testid="button-go-dashboard"
+                    >
+                      Dashboard
+                    </Button>
+                    <Button
+                      onClick={() => navigate("/record")}
+                      variant="outline"
+                      data-testid="button-record-another"
+                    >
+                      Record Another
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
