@@ -8,14 +8,8 @@ import AdvisorDropdown from "@/components/advisor-dropdown";
 import logoUrl from "@/assets/logos/moneyclip-logo.png";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { DraggableScriptPopup } from "@/components/DraggableScriptPopup";
+import { useAuth } from "@/hooks/useAuth";
 import sp500ChartImage from "@assets/Slide16_1757512208143.png";
-
-// Mock advisor data
-const mockAdvisor = {
-  id: "advisor-1",
-  name: "Sarah Chen",
-  company: "Chen Financial Advisory"
-};
 
 // S&P 500 example data
 const sampleChartScript = {
@@ -35,6 +29,7 @@ const sampleChartScript = {
 export default function ScriptedContent() {
   usePageTitle("MoneyClip - Scripted Content");
   
+  const { user } = useAuth();
   const [showScript, setShowScript] = useState(false);
 
   const handleOpenChart = () => {
@@ -62,7 +57,7 @@ export default function ScriptedContent() {
               />
             </Link>
             <AdvisorDropdown
-              advisorName={mockAdvisor.name}
+              advisorName={user?.name || "Advisor"}
               onSettings={() => console.log("Settings clicked")}
               onSignOut={() => console.log("Sign out clicked")}
             />
