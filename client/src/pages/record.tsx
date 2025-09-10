@@ -6,12 +6,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Mic, MicOff, Pause, Play, StopCircle } from "lucide-react";
+import { Mic, MicOff, Pause, Play, StopCircle, FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import AdvisorDropdown from "@/components/advisor-dropdown";
 import logoUrl from "@/assets/logos/moneyclip-logo.png";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { DraggableScriptPopup } from "@/components/DraggableScriptPopup";
 
 type CaptureMode = "screen" | "window" | "tab";
 type RecordingState = "idle" | "setup" | "countdown" | "recording" | "paused" | "stopped";
@@ -34,6 +35,8 @@ export default function RecordPage() {
   const [countdownValue, setCountdownValue] = useState(3);
   const [recordingTime, setRecordingTime] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
+  const [scriptData, setScriptData] = useState<any>(null);
+  const [showScript, setShowScript] = useState(false);
 
   
   const [settings, setSettings] = useState<RecordingSettings>({
@@ -47,6 +50,23 @@ export default function RecordPage() {
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Load script data from localStorage
+  useEffect(() => {
+    const scriptDataString = localStorage.getItem('recordingScript');
+    if (scriptDataString) {
+      try {
+        const parsed = JSON.parse(scriptDataString);
+        setScriptData(parsed);
+        setShowScript(true); // Show script by default when passed from chart
+        
+        // Clean up after loading
+        localStorage.removeItem('recordingScript');
+      } catch (error) {
+        console.error('Failed to parse script data:', error);
+      }
+    }
+  }, []);
 
   // Load available microphones
   useEffect(() => {
@@ -513,6 +533,12 @@ export default function RecordPage() {
                   <Button variant="outline" onClick={() => navigate("/dashboard")} className="flex-1">
                     Cancel
                   </Button>
+                  {scriptData && (
+                    <Button variant="outline" onClick={() => setShowScript(!showScript)} className="flex items-center gap-2">
+                      <FileText className="h-4 w-4" />
+                      {showScript ? "Hide Script" : "Show Script"}
+                    </Button>
+                  )}
                   <Button onClick={checkPermissions} className="flex-1" data-testid="button-start-recording">
                     Start Recording
                   </Button>
@@ -628,6 +654,11 @@ export default function RecordPage() {
               <p className="text-sm text-blue-800">
                 <strong>Permissions:</strong> You'll be asked to allow screen sharing and microphone access.
               </p>
+              {scriptData && (
+                <p className="text-sm text-blue-800 mt-2">
+                  <strong>Recording Tip:</strong> Select the chart window/tab (not "Entire Screen") to avoid capturing the script popup.
+                </p>
+              )}
             </div>
             
             {/* Compliance Notice */}
@@ -715,7 +746,21 @@ export default function RecordPage() {
                 {isMuted ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
               </Button>
 
-
+              {scriptData && (
+                <>
+                  <div className="w-px h-8 bg-gray-300" />
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => setShowScript(!showScript)}
+                    className="hover:bg-gray-100"
+                    data-testid="button-toggle-script"
+                    title={showScript ? "Hide Script" : "Show Script"}
+                  >
+                    <FileText className="h-5 w-5" />
+                  </Button>
+                </>
+              )}
 
             </div>
           </div>
@@ -731,6 +776,15 @@ export default function RecordPage() {
             <span className="text-sm font-medium">Recording</span>
           </div>
         </div>
+      )}
+
+      {/* Script Popup - Show during setup and recording */}
+      {scriptData && (
+        <DraggableScriptPopup
+          script={scriptData}
+          isVisible={showScript}
+          onClose={() => setShowScript(false)}
+        />
       )}
     </div>
   );

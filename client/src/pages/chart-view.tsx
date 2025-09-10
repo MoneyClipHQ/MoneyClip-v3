@@ -27,8 +27,14 @@ export function ChartViewPage() {
   const [showScript, setShowScript] = useState(true); // Show script by default
 
   const handleStartRecording = () => {
-    // Open recording page in new tab so chart remains visible
+    // Store script in localStorage for the recording page
+    localStorage.setItem('recordingScript', JSON.stringify(sampleChartScript));
+    
+    // Open recording page in new tab
     window.open('/record', '_blank');
+    
+    // Hide script on this page so it's not visible during recording
+    setShowScript(false);
   };
 
   return (
