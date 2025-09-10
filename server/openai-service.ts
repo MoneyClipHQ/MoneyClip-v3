@@ -75,11 +75,25 @@ Respond with JSON in this exact format:
           content: `Please analyze this financial advisor video transcription and generate a professional title and description:\n\n${transcription}`
         }
       ],
-      response_format: { type: "json_object" },
       max_completion_tokens: 300
     });
 
-    const result = JSON.parse(completion.choices[0].message.content || '{}');
+    let result;
+    try {
+      // Try to parse as JSON first in case the AI returns JSON anyway
+      result = JSON.parse(completion.choices[0].message.content || '{}');
+    } catch (error) {
+      // If not JSON, parse the content manually
+      const content = completion.choices[0].message.content || '';
+      // Look for title and description patterns in the response
+      const titleMatch = content.match(/title["\s]*:?\s*["\s]*([^"\n]{1,60})["\n]/i);
+      const descMatch = content.match(/description["\s]*:?\s*["\s]*([^"\n]{1,200})["\n]/i);
+      
+      result = {
+        title: titleMatch ? titleMatch[1].trim() : null,
+        description: descMatch ? descMatch[1].trim() : null
+      };
+    }
     
     return {
       text: transcription,
@@ -185,11 +199,26 @@ Data Summary: ${JSON.stringify(chart.data.slice(0, 5))}... (showing first 5 data
 Create a professional script that explains the key insights from this chart data.`
         }
       ],
-      response_format: { type: "json_object" },
       max_completion_tokens: 400
     });
 
-    const result = JSON.parse(completion.choices[0].message.content || '{}');
+    let result;
+    try {
+      // Try to parse as JSON first in case the AI returns JSON anyway
+      result = JSON.parse(completion.choices[0].message.content || '{}');
+    } catch (error) {
+      // If not JSON, parse the content manually
+      const content = completion.choices[0].message.content || '';
+      // Extract script content (look for main body of text)
+      const scriptMatch = content.match(/script["\s]*:?\s*["\s]*([^"]+)["\s]*[,}]/i) || 
+                         content.match(/([^{}"]*?(?:chart|data|financial|insight|trend)[^}"]*)/i);
+      
+      result = {
+        script: scriptMatch ? scriptMatch[1].trim() : null,
+        estimatedDuration: 25,
+        keyPoints: ["Key financial insights", "Important trends", "Investment implications"]
+      };
+    }
     
     return {
       script: result.script || "This chart shows important financial data that can help guide your investment decisions.",
