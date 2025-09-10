@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 
-// the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
+// Using GPT-4 for reliable and high-quality text generation
 const openai = new OpenAI({ 
   apiKey: process.env.OPENAI_API_KEY 
 });
@@ -52,7 +52,7 @@ export async function transcribeAndGenerateContent(audioBuffer: Buffer, original
 
     // Step 2: Generate title and description based on transcription
     const completion = await openai.chat.completions.create({
-      model: "gpt-5",
+      model: "gpt-4",
       messages: [
         {
           role: "system",
@@ -76,7 +76,7 @@ Respond with JSON in this exact format:
         }
       ],
       response_format: { type: "json_object" },
-      max_tokens: 300
+      max_completion_tokens: 300
     });
 
     const result = JSON.parse(completion.choices[0].message.content || '{}');
@@ -150,7 +150,7 @@ export async function generateChartScript(chart: FinanceChart): Promise<ChartScr
     console.log(`Generating script for chart: ${chart.title}`);
     
     const completion = await openai.chat.completions.create({
-      model: "gpt-5",
+      model: "gpt-4",
       messages: [
         {
           role: "system",
@@ -186,7 +186,7 @@ Create a professional script that explains the key insights from this chart data
         }
       ],
       response_format: { type: "json_object" },
-      max_tokens: 400
+      max_completion_tokens: 400
     });
 
     const result = JSON.parse(completion.choices[0].message.content || '{}');
