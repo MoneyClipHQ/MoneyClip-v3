@@ -4,8 +4,7 @@ import { DraggableScriptPopup } from '@/components/DraggableScriptPopup';
 import { Button } from '@/components/ui/button';
 import { Play, FileText } from 'lucide-react';
 
-// Temporary placeholder image URL
-const sp500ChartImage = "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=800&h=400&fit=crop&crop=entropy&auto=format&fm=jpg&q=60&ixlib=rb-4.0.3";
+import sp500ChartImage from "@assets/Slide16_1757512208143.png";
 
 // S&P 500 example data
 const sampleChartScript = {

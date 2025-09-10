@@ -8,8 +8,7 @@ import AdvisorDropdown from "@/components/advisor-dropdown";
 import logoUrl from "@/assets/logos/moneyclip-logo.png";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { DraggableScriptPopup } from "@/components/DraggableScriptPopup";
-// Temporary placeholder image URL
-const sp500ChartImage = "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=800&h=400&fit=crop&crop=entropy&auto=format&fm=jpg&q=60&ixlib=rb-4.0.3";
+import sp500ChartImage from "@assets/Slide16_1757512208143.png";
 
 // Mock advisor data
 const mockAdvisor = {
