@@ -16,7 +16,7 @@ import {
 } from "@shared/schema";
 import { z } from "zod";
 import { format } from "date-fns";
-import { transcribeAndGenerateContent, generateCaptions } from "./openai-service";
+import { transcribeAndGenerateContent, generateCaptions, generateChartScript } from "./openai-service";
 import { Resend } from 'resend';
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
@@ -234,6 +234,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({
       advisor: req.session.advisor
     });
+  });
+
+  // === CHART ROUTES ===
+  
+  // Generate AI script for finance chart
+  app.post("/api/charts/generate-script", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { chart } = req.body;
+      
+      // Validate chart data
+      if (!chart || !chart.id || !chart.title || !chart.category) {
+        return res.status(400).json({
+          error: "INVALID_CHART_DATA",
+          message: "Chart data is required with id, title, and category"
+        });
+      }
+
+      // Generate AI script using OpenAI
+      const scriptResult = await generateChartScript(chart);
+      
+      // Store script in database for future use
+      try {
+        const chartScript = await storage.createChartScript({
+          advisorId: req.session.advisorId!,
+          chartId: chart.id,
+          chartTitle: chart.title,
+          chartCategory: chart.category,
+          scriptText: scriptResult.script,
+          estimatedDuration: scriptResult.estimatedDuration,
+          keyPoints: scriptResult.keyPoints,
+          isCustom: false
+        });
+
+        res.json({
+          id: chartScript.id,
+          script: scriptResult.script,
+          estimatedDuration: scriptResult.estimatedDuration,
+          keyPoints: scriptResult.keyPoints
+        });
+      } catch (dbError) {
+        console.error("Failed to save chart script to database:", dbError);
+        // Still return the generated script even if DB save fails
+        res.json({
+          id: `temp-${Date.now()}`,
+          script: scriptResult.script,
+          estimatedDuration: scriptResult.estimatedDuration,
+          keyPoints: scriptResult.keyPoints
+        });
+      }
+
+    } catch (error) {
+      console.error("Error generating chart script:", error);
+      res.status(500).json({
+        error: "SCRIPT_GENERATION_ERROR",
+        message: "Failed to generate script. Please try again."
+      });
+    }
+  });
+
+  // Get saved chart scripts for advisor
+  app.get("/api/charts/scripts", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const scripts = await storage.getChartScripts(req.session.advisorId!);
+      res.json(scripts);
+    } catch (error) {
+      console.error("Error fetching chart scripts:", error);
+      res.status(500).json({
+        error: "FETCH_ERROR",
+        message: "Failed to fetch chart scripts"
+      });
+    }
   });
 
   // Signup route

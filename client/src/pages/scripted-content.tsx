@@ -3,10 +3,15 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { FileText, ArrowLeft, Clock, Users, TrendingUp, DollarSign, Shield } from "lucide-react";
+import { FileText, ArrowLeft, Clock, Users, TrendingUp, DollarSign, Shield, BarChart3, PieChart, LineChart, PlayCircle, ExternalLink } from "lucide-react";
 import AdvisorDropdown from "@/components/advisor-dropdown";
 import logoUrl from "@/assets/logos/moneyclip-logo.png";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { FinanceChartComponent } from "@/components/finance-charts";
+import { financeChartData, chartCategories, chartTypeConfig } from "../../../shared/finance-charts";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 // Mock advisor data
 const mockAdvisor = {
@@ -15,91 +20,72 @@ const mockAdvisor = {
   company: "Chen Financial Advisory"
 };
 
-interface ScriptTemplate {
+interface ChartScript {
   id: string;
-  title: string;
-  description: string;
-  category: string;
-  estimatedTime: string;
-  difficulty: "Beginner" | "Intermediate" | "Advanced";
-  tags: string[];
-  content?: string;
+  chartId: string;
+  script: string;
+  estimatedDuration: number;
+  keyPoints: string[];
+  loading?: boolean;
 }
 
 export default function ScriptedContent() {
   usePageTitle("MoneyClip - Scripted Content");
   
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [chartScripts, setChartScripts] = useState<Record<string, ChartScript>>({});
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  const scriptTemplates: ScriptTemplate[] = [
-    {
-      id: "script-1",
-      title: "Quarterly Portfolio Review",
-      description: "A comprehensive script for reviewing client portfolios, including performance analysis, rebalancing recommendations, and market outlook.",
-      category: "Portfolio Management",
-      estimatedTime: "5-8 minutes",
-      difficulty: "Intermediate",
-      tags: ["Portfolio", "Performance", "Rebalancing", "Analysis"]
+  // Generate script mutation
+  const generateScriptMutation = useMutation({
+    mutationFn: async (chartId: string) => {
+      const chart = financeChartData.find(c => c.id === chartId);
+      if (!chart) throw new Error('Chart not found');
+      
+      const response = await apiRequest("POST", "/api/charts/generate-script", {
+        chart
+      });
+      return response.json();
     },
-    {
-      id: "script-2",
-      title: "Market Update Briefing",
-      description: "Keep clients informed with regular market updates covering recent developments, economic indicators, and investment implications.",
-      category: "Market Commentary",
-      estimatedTime: "3-5 minutes",
-      difficulty: "Beginner",
-      tags: ["Market Trends", "Economic News", "Investment Outlook"]
+    onSuccess: (data, chartId) => {
+      setChartScripts(prev => ({
+        ...prev,
+        [chartId]: {
+          id: data.id,
+          chartId,
+          script: data.script,
+          estimatedDuration: data.estimatedDuration,
+          keyPoints: data.keyPoints,
+          loading: false
+        }
+      }));
+      toast({
+        title: "Script Generated",
+        description: "AI script has been generated for this chart.",
+      });
     },
-    {
-      id: "script-3",
-      title: "Retirement Planning Basics",
-      description: "An introductory script covering retirement planning fundamentals, including 401(k) strategies, IRA options, and timing considerations.",
-      category: "Retirement Planning",
-      estimatedTime: "8-12 minutes",
-      difficulty: "Beginner",
-      tags: ["Retirement", "401k", "IRA", "Planning"]
+    onError: (error) => {
+      console.error('Failed to generate script:', error);
+      toast({
+        title: "Error",
+        description: "Failed to generate script. Please try again.",
+        variant: "destructive",
+      });
     },
-    {
-      id: "script-4",
-      title: "Tax-Loss Harvesting Explanation",
-      description: "Explain tax-loss harvesting strategies to clients, including benefits, timing, and potential pitfalls to avoid.",
-      category: "Tax Strategies",
-      estimatedTime: "6-10 minutes",
-      difficulty: "Advanced",
-      tags: ["Tax Planning", "Harvesting", "Optimization"]
-    },
-    {
-      id: "script-5",
-      title: "ESG Investment Overview",
-      description: "Introduce clients to ESG investing principles, impact measurement, and how it fits into their overall investment strategy.",
-      category: "Investment Strategies",
-      estimatedTime: "7-10 minutes",
-      difficulty: "Intermediate",
-      tags: ["ESG", "Sustainable", "Impact Investing"]
-    },
-    {
-      id: "script-6",
-      title: "Risk Tolerance Assessment",
-      description: "Guide clients through understanding their risk tolerance and how it affects their investment portfolio allocation.",
-      category: "Risk Management",
-      estimatedTime: "5-7 minutes",
-      difficulty: "Beginner",
-      tags: ["Risk Assessment", "Portfolio Allocation", "Client Education"]
-    }
-  ];
+  });
 
-  const categories = Array.from(new Set(scriptTemplates.map(script => script.category)));
+  const filteredCharts = selectedCategory 
+    ? financeChartData.filter(chart => chart.category === selectedCategory)
+    : financeChartData;
 
-  const filteredScripts = selectedCategory 
-    ? scriptTemplates.filter(script => script.category === selectedCategory)
-    : scriptTemplates;
-
-  const getDifficultyColor = (difficulty: ScriptTemplate["difficulty"]) => {
-    switch (difficulty) {
-      case "Beginner": return "bg-green-100 text-green-800";
-      case "Intermediate": return "bg-yellow-100 text-yellow-800";
-      case "Advanced": return "bg-red-100 text-red-800";
-      default: return "bg-gray-100 text-gray-800";
+  const getChartTypeIcon = (chartType: string) => {
+    switch (chartType) {
+      case 'line': return LineChart;
+      case 'bar': return BarChart3;
+      case 'pie': return PieChart;
+      case 'area': return TrendingUp;
+      default: return BarChart3;
     }
   };
 
@@ -115,9 +101,43 @@ export default function ScriptedContent() {
     }
   };
 
-  const handleUseScript = (scriptId: string) => {
-    console.log("Using script:", scriptId);
-    // TODO: Navigate to recording flow with pre-selected script
+  const handleGenerateScript = async (chartId: string) => {
+    setChartScripts(prev => ({
+      ...prev,
+      [chartId]: {
+        ...prev[chartId],
+        loading: true
+      }
+    }));
+    
+    generateScriptMutation.mutate(chartId);
+  };
+
+  const handleOpenChart = (chartId: string) => {
+    // Open chart in new tab for screen recording
+    const chartUrl = `/chart/${chartId}`;
+    window.open(chartUrl, '_blank', 'width=1200,height=800');
+  };
+
+  const handleStartRecording = (chartId: string) => {
+    // Navigate to recording flow with pre-selected chart
+    const chart = financeChartData.find(c => c.id === chartId);
+    const script = chartScripts[chartId];
+    
+    if (chart && script) {
+      // Store chart and script data for recording session
+      sessionStorage.setItem('recordingChart', JSON.stringify({
+        chart,
+        script
+      }));
+      window.open(`/record?chart=${chartId}`, '_blank');
+    } else {
+      toast({
+        title: "Generate Script First",
+        description: "Please generate a script before starting recording.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -160,8 +180,8 @@ export default function ScriptedContent() {
         {/* Description */}
         <div className="mb-8">
           <p className="text-gray-600 max-w-2xl">
-            Ready-made scripts to help you create professional, compliant recordings. 
-            Each template includes talking points, key information, and suggested flow.
+            Interactive finance charts with AI-generated scripts for professional client communications. 
+            Click any chart to generate a custom 30-second script, then record your screen explanation.
           </p>
         </div>
 
@@ -176,7 +196,7 @@ export default function ScriptedContent() {
             >
               All Categories
             </Button>
-            {categories.map((category) => (
+            {chartCategories.map((category) => (
               <Button
                 key={category}
                 variant={selectedCategory === category ? "default" : "outline"}
@@ -190,67 +210,91 @@ export default function ScriptedContent() {
           </div>
         </div>
 
-        {/* Script Templates Grid */}
+        {/* Finance Charts Grid */}
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {filteredScripts.map((script) => {
-            const IconComponent = getCategoryIcon(script.category);
+          {filteredCharts.map((chart) => {
+            const IconComponent = getChartTypeIcon(chart.chartType);
+            const script = chartScripts[chart.id];
+            const isGeneratingScript = script?.loading || generateScriptMutation.isPending;
             
             return (
-              <Card key={script.id} className="hover:shadow-md transition-shadow">
+              <Card key={chart.id} className="hover:shadow-md transition-shadow">
                 <CardHeader className="pb-4">
                   <div className="flex items-start justify-between mb-2">
                     <IconComponent className="h-6 w-6 text-primary flex-shrink-0" />
-                    <Badge
-                      className={getDifficultyColor(script.difficulty)}
-                      data-testid={`badge-difficulty-${script.id}`}
-                    >
-                      {script.difficulty}
+                    <Badge variant="outline" className="text-xs">
+                      {chartTypeConfig[chart.chartType]?.name || chart.chartType}
                     </Badge>
                   </div>
-                  <CardTitle className="text-lg" data-testid={`script-title-${script.id}`}>
-                    {script.title}
+                  <CardTitle className="text-lg" data-testid={`chart-title-${chart.id}`}>
+                    {chart.title}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-gray-600 text-sm mb-4 line-clamp-3" data-testid={`script-description-${script.id}`}>
-                    {script.description}
+                  {/* Chart Preview */}
+                  <div className="mb-4 bg-gray-50 rounded-lg p-3 h-32">
+                    <FinanceChartComponent chart={chart} height={100} />
+                  </div>
+                  
+                  <p className="text-gray-600 text-sm mb-4 line-clamp-2" data-testid={`chart-description-${chart.id}`}>
+                    {chart.description}
                   </p>
                   
                   <div className="flex items-center gap-4 text-xs text-gray-500 mb-4">
-                    <div className="flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      <span data-testid={`script-time-${script.id}`}>{script.estimatedTime}</span>
-                    </div>
                     <Badge variant="outline" className="text-xs">
-                      {script.category}
+                      {chart.category}
                     </Badge>
-                  </div>
-
-                  <div className="flex flex-wrap gap-1 mb-4">
-                    {script.tags.slice(0, 3).map((tag) => (
-                      <Badge
-                        key={tag}
-                        variant="secondary"
-                        className="text-xs"
-                        data-testid={`script-tag-${script.id}-${tag.toLowerCase().replace(/\s+/g, '-')}`}
-                      >
-                        {tag}
-                      </Badge>
-                    ))}
-                    {script.tags.length > 3 && (
-                      <Badge variant="secondary" className="text-xs">
-                        +{script.tags.length - 3} more
-                      </Badge>
+                    {script && (
+                      <div className="flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        <span>{script.estimatedDuration}s script</span>
+                      </div>
                     )}
                   </div>
 
-                  <Button
-                    className="w-full"
-                    onClick={() => handleUseScript(script.id)}
-                    data-testid={`button-use-script-${script.id}`}
-                  >
-                    Use This Script
-                  </Button>
+                  {/* Script Status */}
+                  {script && !script.loading && (
+                    <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                      <p className="text-sm text-green-800 font-medium mb-1">✓ Script Ready</p>
+                      <p className="text-xs text-green-600 line-clamp-2">
+                        {script.script.substring(0, 100)}...
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Action Buttons */}
+                  <div className="space-y-2">
+                    {!script ? (
+                      <Button
+                        className="w-full"
+                        onClick={() => handleGenerateScript(chart.id)}
+                        disabled={isGeneratingScript}
+                        data-testid={`button-generate-script-${chart.id}`}
+                      >
+                        {isGeneratingScript ? "Generating Script..." : "Generate AI Script"}
+                      </Button>
+                    ) : (
+                      <div className="grid grid-cols-2 gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleOpenChart(chart.id)}
+                          data-testid={`button-open-chart-${chart.id}`}
+                        >
+                          <ExternalLink className="h-4 w-4 mr-1" />
+                          Open Chart
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => handleStartRecording(chart.id)}
+                          data-testid={`button-start-recording-${chart.id}`}
+                        >
+                          <PlayCircle className="h-4 w-4 mr-1" />
+                          Record
+                        </Button>
+                      </div>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             );
@@ -258,10 +302,10 @@ export default function ScriptedContent() {
         </div>
 
         {/* Results Count */}
-        {filteredScripts.length > 0 && (
+        {filteredCharts.length > 0 && (
           <div className="mt-8 text-center">
-            <p className="text-sm text-gray-600" data-testid="text-scripts-count">
-              Showing {filteredScripts.length} of {scriptTemplates.length} script templates
+            <p className="text-sm text-gray-600" data-testid="text-charts-count">
+              Showing {filteredCharts.length} of {financeChartData.length} finance charts
             </p>
           </div>
         )}

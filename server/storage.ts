@@ -11,8 +11,10 @@ import {
   type ViewerEvent, type InsertViewerEvent,
   type ViewerCompliment, type InsertViewerCompliment,
   type PasswordResetToken, type InsertPasswordResetToken,
+  type ChartScript, type InsertChartScript,
+  type ChartSession, type InsertChartSession,
   PLANS,
-  users, advisors, subscriptions, signupEvents, advisorSettings, settingsEvents, videos, recordingEvents, viewerEvents, viewerCompliments, passwordResetTokens
+  users, advisors, subscriptions, signupEvents, advisorSettings, settingsEvents, videos, recordingEvents, viewerEvents, viewerCompliments, passwordResetTokens, chartScripts, chartSessions
 } from "@shared/schema";
 import { DEFAULT_DISCLOSURE_TEXT } from "@shared/constants";
 import { randomUUID } from "crypto";
@@ -89,6 +91,18 @@ export interface IStorage {
   updateAdvisorPassword(advisorId: string, newPassword: string): Promise<void>;
   deletePasswordResetToken(advisorId: string): Promise<void>;
   logPasswordResetEvent(advisorId: string): Promise<void>;
+  
+  // Chart script methods
+  createChartScript(script: InsertChartScript): Promise<ChartScript>;
+  getChartScripts(advisorId: string): Promise<ChartScript[]>;
+  getChartScript(id: string): Promise<ChartScript | undefined>;
+  updateChartScript(id: string, data: Partial<ChartScript>): Promise<ChartScript | undefined>;
+  deleteChartScript(id: string): Promise<void>;
+  
+  // Chart session methods
+  createChartSession(session: InsertChartSession): Promise<ChartSession>;
+  getChartSessions(advisorId: string): Promise<ChartSession[]>;
+  updateChartSession(id: string, data: Partial<ChartSession>): Promise<ChartSession | undefined>;
 }
 
 export class MemStorage implements IStorage {
@@ -103,6 +117,8 @@ export class MemStorage implements IStorage {
   private captions: Map<string, string>;
   private transcripts: Map<string, string>;
   private passwordResetTokens: Map<string, PasswordResetToken>;
+  private chartScripts: Map<string, ChartScript>;
+  private chartSessions: Map<string, ChartSession>;
 
   constructor() {
     this.users = new Map();
@@ -116,6 +132,8 @@ export class MemStorage implements IStorage {
     this.captions = new Map();
     this.transcripts = new Map();
     this.passwordResetTokens = new Map();
+    this.chartScripts = new Map();
+    this.chartSessions = new Map();
     
     // Initialize with mock advisor for demo
     this.initializeMockData();
@@ -752,6 +770,89 @@ export class MemStorage implements IStorage {
     }
     
     return expiredCount;
+  }
+
+  // Chart script methods
+  async createChartScript(script: InsertChartScript): Promise<ChartScript> {
+    const id = randomUUID();
+    const now = new Date();
+    const chartScript: ChartScript = {
+      ...script,
+      id,
+      estimatedDuration: script.estimatedDuration.toString(), // Convert to string
+      keyPoints: script.keyPoints || null,
+      isCustom: script.isCustom || false,
+      usageCount: "0",
+      lastUsedAt: null,
+      createdAt: now,
+      updatedAt: now
+    };
+    this.chartScripts.set(id, chartScript);
+    return chartScript;
+  }
+
+  async getChartScripts(advisorId: string): Promise<ChartScript[]> {
+    return Array.from(this.chartScripts.values())
+      .filter(script => script.advisorId === advisorId)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }
+
+  async getChartScript(id: string): Promise<ChartScript | undefined> {
+    return this.chartScripts.get(id);
+  }
+
+  async updateChartScript(id: string, data: Partial<ChartScript>): Promise<ChartScript | undefined> {
+    const script = this.chartScripts.get(id);
+    if (!script) return undefined;
+
+    const updatedScript = {
+      ...script,
+      ...data,
+      updatedAt: new Date()
+    };
+    this.chartScripts.set(id, updatedScript);
+    return updatedScript;
+  }
+
+  async deleteChartScript(id: string): Promise<void> {
+    this.chartScripts.delete(id);
+  }
+
+  // Chart session methods
+  async createChartSession(session: InsertChartSession): Promise<ChartSession> {
+    const id = randomUUID();
+    const chartSession: ChartSession = {
+      id,
+      advisorId: session.advisorId,
+      chartScriptId: session.chartScriptId,
+      videoId: session.videoId || null,
+      sessionType: session.sessionType || "practice",
+      startedAt: new Date(),
+      endedAt: session.endedAt || null,
+      duration: session.duration || null,
+      scriptOpened: session.scriptOpened || false,
+      metadata: session.metadata || null
+    };
+    this.chartSessions.set(id, chartSession);
+    return chartSession;
+  }
+
+  async getChartSessions(advisorId: string): Promise<ChartSession[]> {
+    return Array.from(this.chartSessions.values())
+      .filter(session => session.advisorId === advisorId)
+      .sort((a, b) => b.startedAt.getTime() - a.startedAt.getTime());
+  }
+
+  async updateChartSession(id: string, data: Partial<ChartSession>): Promise<ChartSession | undefined> {
+    const session = this.chartSessions.get(id);
+    if (!session) return undefined;
+
+    const updatedSession = {
+      ...session,
+      ...data
+    };
+    this.chartSessions.set(id, updatedSession);
+    return updatedSession;
   }
 }
 
@@ -1390,6 +1491,72 @@ export class DatabaseStorage implements IStorage {
         success: true
       })
     });
+  }
+
+  // Chart script methods
+  async createChartScript(script: InsertChartScript): Promise<ChartScript> {
+    const [chartScript] = await db.insert(chartScripts).values({
+      ...script,
+      estimatedDuration: script.estimatedDuration.toString(), // Convert to string for DB
+      keyPoints: script.keyPoints || null,
+      isCustom: script.isCustom || false
+    }).returning();
+    return chartScript;
+  }
+
+  async getChartScripts(advisorId: string): Promise<ChartScript[]> {
+    return await db.select()
+      .from(chartScripts)
+      .where(eq(chartScripts.advisorId, advisorId))
+      .orderBy(sql`${chartScripts.createdAt} DESC`);
+  }
+
+  async getChartScript(id: string): Promise<ChartScript | undefined> {
+    const [script] = await db.select()
+      .from(chartScripts)
+      .where(eq(chartScripts.id, id));
+    return script;
+  }
+
+  async updateChartScript(id: string, data: Partial<ChartScript>): Promise<ChartScript | undefined> {
+    const [updatedScript] = await db.update(chartScripts)
+      .set({
+        ...data,
+        updatedAt: new Date()
+      })
+      .where(eq(chartScripts.id, id))
+      .returning();
+    return updatedScript;
+  }
+
+  async deleteChartScript(id: string): Promise<void> {
+    await db.delete(chartScripts)
+      .where(eq(chartScripts.id, id));
+  }
+
+  // Chart session methods
+  async createChartSession(session: InsertChartSession): Promise<ChartSession> {
+    const [chartSession] = await db.insert(chartSessions).values({
+      ...session,
+      sessionType: session.sessionType || "practice",
+      scriptOpened: session.scriptOpened || false
+    }).returning();
+    return chartSession;
+  }
+
+  async getChartSessions(advisorId: string): Promise<ChartSession[]> {
+    return await db.select()
+      .from(chartSessions)
+      .where(eq(chartSessions.advisorId, advisorId))
+      .orderBy(sql`${chartSessions.startedAt} DESC`);
+  }
+
+  async updateChartSession(id: string, data: Partial<ChartSession>): Promise<ChartSession | undefined> {
+    const [updatedSession] = await db.update(chartSessions)
+      .set(data)
+      .where(eq(chartSessions.id, id))
+      .returning();
+    return updatedSession;
   }
 }
 
