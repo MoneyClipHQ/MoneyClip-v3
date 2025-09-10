@@ -27,8 +27,8 @@ export function ChartViewPage() {
   const [showScript, setShowScript] = useState(true); // Show script by default
 
   const handleStartRecording = () => {
-    // Navigate to recording page with chart context
-    setLocation('/record?source=chart&chartId=sp500-example');
+    // Navigate to recording page
+    setLocation('/record');
   };
 
   return (
