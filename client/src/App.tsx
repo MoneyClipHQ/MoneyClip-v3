@@ -12,6 +12,7 @@ import ResetPassword from "@/pages/reset-password";
 import Dashboard from "@/pages/dashboard";
 import VideoLibrary from "@/pages/video-library";
 import ScriptedContent from "@/pages/scripted-content";
+import { ChartViewPage } from "@/pages/chart-view";
 import Settings from "@/pages/settings";
 import Terms from "@/pages/terms";
 import Billing from "@/pages/billing";
@@ -60,6 +61,9 @@ function Router() {
       </Route>
       <Route path="/scripted-content">
         {isAuthenticated ? <ScriptedContent /> : <Login />}
+      </Route>
+      <Route path="/chart/:chartId">
+        {isAuthenticated ? <ChartViewPage /> : <Login />}
       </Route>
       <Route path="/settings">
         {isAuthenticated ? <Settings /> : <Login />}

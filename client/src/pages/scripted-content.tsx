@@ -12,6 +12,7 @@ import { financeChartData, chartCategories, chartTypeConfig } from "../../../sha
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import type { ChartScript } from '@shared/schema';
 
 // Mock advisor data
 const mockAdvisor = {
@@ -20,12 +21,7 @@ const mockAdvisor = {
   company: "Chen Financial Advisory"
 };
 
-interface ChartScript {
-  id: string;
-  chartId: string;
-  script: string;
-  estimatedDuration: number;
-  keyPoints: string[];
+interface ChartScriptState {
   loading?: boolean;
 }
 
@@ -33,7 +29,12 @@ export default function ScriptedContent() {
   usePageTitle("MoneyClip - Scripted Content");
   
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [chartScripts, setChartScripts] = useState<Record<string, ChartScript>>({});
+  const [chartScripts, setChartScripts] = useState<Record<string, ChartScript & ChartScriptState>>({});
+  
+  // Fetch existing chart scripts
+  const { data: existingScripts = [] } = useQuery<ChartScript[]>({
+    queryKey: ['/api/chart-scripts']
+  });
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -43,26 +44,25 @@ export default function ScriptedContent() {
       const chart = financeChartData.find(c => c.id === chartId);
       if (!chart) throw new Error('Chart not found');
       
-      const response = await apiRequest("POST", "/api/charts/generate-script", {
-        chart
+      const response = await apiRequest('/api/chart-scripts/generate', 'POST', {
+        chartId: chart.id,
+        chartTitle: chart.title,
+        chartCategory: chart.category
       });
-      return response.json();
+      return response as unknown as ChartScript;
     },
-    onSuccess: (data, chartId) => {
+    onSuccess: (script, chartId) => {
       setChartScripts(prev => ({
         ...prev,
         [chartId]: {
-          id: data.id,
-          chartId,
-          script: data.script,
-          estimatedDuration: data.estimatedDuration,
-          keyPoints: data.keyPoints,
+          ...script,
           loading: false
         }
       }));
+      queryClient.invalidateQueries({ queryKey: ['/api/chart-scripts'] });
       toast({
         title: "Script Generated",
-        description: "AI script has been generated for this chart.",
+        description: `Created a ${script.estimatedDuration} second script.`,
       });
     },
     onError: (error) => {
@@ -119,25 +119,9 @@ export default function ScriptedContent() {
     window.open(chartUrl, '_blank', 'width=1200,height=800');
   };
 
-  const handleStartRecording = (chartId: string) => {
-    // Navigate to recording flow with pre-selected chart
-    const chart = financeChartData.find(c => c.id === chartId);
-    const script = chartScripts[chartId];
-    
-    if (chart && script) {
-      // Store chart and script data for recording session
-      sessionStorage.setItem('recordingChart', JSON.stringify({
-        chart,
-        script
-      }));
-      window.open(`/record?chart=${chartId}`, '_blank');
-    } else {
-      toast({
-        title: "Generate Script First",
-        description: "Please generate a script before starting recording.",
-        variant: "destructive",
-      });
-    }
+  // Get script for chart (from existing scripts or generated)
+  const getScriptForChart = (chartId: string) => {
+    return chartScripts[chartId] || existingScripts.find(s => s.chartId === chartId);
   };
 
   return (
@@ -214,8 +198,8 @@ export default function ScriptedContent() {
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {filteredCharts.map((chart) => {
             const IconComponent = getChartTypeIcon(chart.chartType);
-            const script = chartScripts[chart.id];
-            const isGeneratingScript = script?.loading || generateScriptMutation.isPending;
+            const script = getScriptForChart(chart.id);
+            const isGeneratingScript = chartScripts[chart.id]?.loading || generateScriptMutation.isPending;
             
             return (
               <Card key={chart.id} className="hover:shadow-md transition-shadow">
@@ -253,11 +237,11 @@ export default function ScriptedContent() {
                   </div>
 
                   {/* Script Status */}
-                  {script && !script.loading && (
+                  {script && !isGeneratingScript && (
                     <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
                       <p className="text-sm text-green-800 font-medium mb-1">✓ Script Ready</p>
                       <p className="text-xs text-green-600 line-clamp-2">
-                        {script.script.substring(0, 100)}...
+                        {script.scriptText.substring(0, 100)}...
                       </p>
                     </div>
                   )}
@@ -274,25 +258,14 @@ export default function ScriptedContent() {
                         {isGeneratingScript ? "Generating Script..." : "Generate AI Script"}
                       </Button>
                     ) : (
-                      <div className="grid grid-cols-2 gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleOpenChart(chart.id)}
-                          data-testid={`button-open-chart-${chart.id}`}
-                        >
-                          <ExternalLink className="h-4 w-4 mr-1" />
-                          Open Chart
-                        </Button>
-                        <Button
-                          size="sm"
-                          onClick={() => handleStartRecording(chart.id)}
-                          data-testid={`button-start-recording-${chart.id}`}
-                        >
-                          <PlayCircle className="h-4 w-4 mr-1" />
-                          Record
-                        </Button>
-                      </div>
+                      <Button
+                        className="w-full"
+                        onClick={() => handleOpenChart(chart.id)}
+                        data-testid={`button-open-chart-${chart.id}`}
+                      >
+                        <ExternalLink className="h-4 w-4 mr-2" />
+                        Open Chart & Script
+                      </Button>
                     )}
                   </div>
                 </CardContent>
