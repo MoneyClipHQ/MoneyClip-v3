@@ -37,7 +37,7 @@ const STATUS_CONFIG = {
 };
 
 const FILTER_OPTIONS = [
-  { value: "", label: "All" },
+  { value: "all", label: "All" },
   { value: "draft", label: "Draft" },
   { value: "in_review", label: "In Review" },
   { value: "approved", label: "Approved" },
@@ -62,14 +62,14 @@ export default function VideoLibrary() {
   // UI State
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [sortBy, setSortBy] = useState("newest");
 
   // Fetch videos with status filtering
   const { data: videos = [], isLoading, error } = useQuery<Video[]>({
     queryKey: ["/api/videos", statusFilter],
     queryFn: async () => {
-      const endpoint = statusFilter ? `/api/videos/status/${statusFilter}` : "/api/videos";
+      const endpoint = statusFilter === "all" ? "/api/videos" : `/api/videos/status/${statusFilter}`;
       const response = await fetch(endpoint);
       if (!response.ok) throw new Error('Failed to fetch videos');
       return response.json();
@@ -79,7 +79,11 @@ export default function VideoLibrary() {
 
   // Video management mutations
   const softDeleteMutation = useMutation({
-    mutationFn: (videoId: string) => apiRequest(`/api/videos/${videoId}/delete`, { method: "PATCH" }),
+    mutationFn: async (videoId: string) => {
+      const response = await fetch(`/api/videos/${videoId}/delete`, { method: "PATCH" });
+      if (!response.ok) throw new Error('Failed to delete video');
+      return response.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/videos"] });
       toast({ title: "Video moved to trash", description: "You have 30 days to restore it." });
@@ -90,7 +94,11 @@ export default function VideoLibrary() {
   });
 
   const restoreMutation = useMutation({
-    mutationFn: (videoId: string) => apiRequest(`/api/videos/${videoId}/restore`, { method: "PATCH" }),
+    mutationFn: async (videoId: string) => {
+      const response = await fetch(`/api/videos/${videoId}/restore`, { method: "PATCH" });
+      if (!response.ok) throw new Error('Failed to restore video');
+      return response.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/videos"] });
       toast({ title: "Video restored", description: "Video has been restored from trash." });
@@ -101,7 +109,11 @@ export default function VideoLibrary() {
   });
 
   const renewMutation = useMutation({
-    mutationFn: (videoId: string) => apiRequest(`/api/videos/${videoId}/renew`, { method: "PATCH" }),
+    mutationFn: async (videoId: string) => {
+      const response = await fetch(`/api/videos/${videoId}/renew`, { method: "PATCH" });
+      if (!response.ok) throw new Error('Failed to renew video');
+      return response.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/videos"] });
       toast({ title: "Video renewed", description: "Video expiration extended by 30 days." });
@@ -366,10 +378,10 @@ export default function VideoLibrary() {
           <div className="text-center py-16 bg-white rounded-lg border-2 border-dashed border-gray-200">
             <VideoIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2" data-testid="text-no-videos">
-              {searchQuery || statusFilter ? "No results match your filters" : "No videos yet"}
+              {searchQuery || (statusFilter !== "all") ? "No results match your filters" : "No videos yet"}
             </h3>
             <p className="text-gray-600 mb-6">
-              {searchQuery || statusFilter 
+              {searchQuery || (statusFilter !== "all") 
                 ? "Try adjusting your search terms or filters" 
                 : "Create your first clip to get started"
               }
