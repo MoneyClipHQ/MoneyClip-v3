@@ -57,7 +57,7 @@ export default function ScriptedContent() {
               />
             </Link>
             <AdvisorDropdown
-              advisorName={user?.name || "Advisor"}
+              advisorName={user?.advisorName || "Advisor"}
               onSettings={() => console.log("Settings clicked")}
               onSignOut={() => console.log("Sign out clicked")}
             />
