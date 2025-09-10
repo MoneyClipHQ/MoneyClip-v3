@@ -1,0 +1,76 @@
+Goal:
+Make the Video Library reliably show every video an advisor has created, allow re-watching and editing/resending, and automatically expire items after 30 days.
+
+What’s broken today
+
+The Video Library doesn’t consistently display all past videos for the logged-in advisor.
+
+Some videos can’t be opened to re-watch or edit.
+
+There’s no working 30-day expiration.
+
+What I want
+
+Library list for the logged-in advisor only
+
+Show all videos created by this advisor, newest first.
+
+Each row/tile shows: title, created date/time, duration, status (Draft, In Review, Approved, Expired), and actions.
+
+Actions per video
+
+Watch: Open a player modal or detail page that plays the stored file.
+
+Edit: Open the existing clip in the editing screen (trim/title/description/thumbnail/notes/compliance toggle).
+
+Resend/Share: Opens the share flow (copy link, send email, or CRM push).
+
+Delete: Moves to Trash (soft-delete) with an “Undo” for 10 seconds.
+
+30-day retention policy
+
+A video becomes Expired exactly 30 days after its created_at (or published_at if that’s how we define “age”).
+
+Expired videos are still visible for the advisor for audit/reference, but cannot be played or shared without renewal.
+
+Add a Renew for 30 more days button on expired items. Renewal resets the 30-day clock and requires compliance re-approval if the status was “Approved” before.
+
+A nightly job (or equivalent scheduler) should set videos to Expired status when they hit 30 days.
+
+Filtering and search
+
+Filters: All, Draft, In Review, Approved, Expired, and Trash.
+
+Text search across title and description.
+
+Sort by: Newest, Oldest, Title A–Z.
+
+Permissions & privacy
+
+Advisors can only see their own videos.
+
+If there’s a firm admin role, they can see firm-wide videos (separate view) — not required for this task, but don’t break it if it exists.
+
+Compliance gating
+
+If a video is set to “Needs compliance review,” it must show status In Review and disable Share until approval.
+
+On Edit, if any content changes (video file, title, description, thumbnail), status returns to In Review until re-approved.
+
+Empty states & errors
+
+If no videos: show “No videos yet. Create your first clip.” with a button to Create a new clip.
+
+If query returns nothing after filters/search: “No results match your filters.”
+
+On load error: “We couldn’t load your library. Try again.” with a Retry button.
+
+Performance & UX polish
+
+Paginate or infinite-scroll if more than 20 items.
+
+Thumbnails should not block page render; lazy-load them.
+
+Show skeleton loaders while fetching.
+
+All actions should show toasts on success/failure.
