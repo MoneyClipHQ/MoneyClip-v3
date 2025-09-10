@@ -3,16 +3,13 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { FileText, ArrowLeft, Clock, Users, TrendingUp, DollarSign, Shield, BarChart3, PieChart, LineChart, PlayCircle, ExternalLink } from "lucide-react";
+import { FileText, ArrowLeft, Clock, ExternalLink, Play } from "lucide-react";
 import AdvisorDropdown from "@/components/advisor-dropdown";
 import logoUrl from "@/assets/logos/moneyclip-logo.png";
 import { usePageTitle } from "@/hooks/usePageTitle";
-import { FinanceChartComponent } from "@/components/finance-charts";
-import { financeChartData, chartCategories, chartTypeConfig } from "../../../shared/finance-charts";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
-import type { ChartScript } from '@shared/schema';
+import { DraggableScriptPopup } from "@/components/DraggableScriptPopup";
+// Using placeholder for now - image will be displayed via static path
+const sp500ChartImage = "/api/static/Screenshot%202025-09-10%20at%209.00.11%20AM_1757510793768.png";
 
 // Mock advisor data
 const mockAdvisor = {
@@ -21,107 +18,34 @@ const mockAdvisor = {
   company: "Chen Financial Advisory"
 };
 
-interface ChartScriptState {
-  loading?: boolean;
-}
+// S&P 500 example data
+const sampleChartScript = {
+  id: "sp500-example",
+  chartTitle: "S&P 500 Annual Returns and Intra-Year Declines",
+  chartCategory: "Market Analysis",
+  scriptText: `What this chart shows are the returns of the S&P 500 going all the way back to 1980. Each gray bar is where the market ended for the year, and the red dots are the pullbacks that happened along the way. What's interesting is that in over 40 years, there have only been about 8 or 9 years that finished negative. But in every single year, you can see those red dots — meaning there was always a period where the market dropped, sometimes by a lot. Take 1998 for example: at one point the market was down 19%, but by the end of the year it finished up 27%. The big lesson here is that corrections and scary headlines are completely normal, but history tells us that staying invested through those ups and downs has worked out over time.`,
+  estimatedDuration: "30",
+  keyPoints: [
+    "Only 8-9 negative years out of 40+ years",
+    "Every year has intra-year pullbacks (red dots)",
+    "1998: Down 19% mid-year, finished +27%",
+    "Corrections are normal, staying invested pays off"
+  ]
+};
 
 export default function ScriptedContent() {
   usePageTitle("MoneyClip - Scripted Content");
   
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [chartScripts, setChartScripts] = useState<Record<string, ChartScript & ChartScriptState>>({});
-  
-  // Fetch existing chart scripts
-  const { data: existingScripts = [] } = useQuery<ChartScript[]>({
-    queryKey: ['/api/chart-scripts']
-  });
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
+  const [showScript, setShowScript] = useState(false);
 
-  // Generate script mutation
-  const generateScriptMutation = useMutation({
-    mutationFn: async (chartId: string) => {
-      const chart = financeChartData.find(c => c.id === chartId);
-      if (!chart) throw new Error('Chart not found');
-      
-      const response = await apiRequest('POST', '/api/chart-scripts/generate', {
-        chartId: chart.id,
-        chartTitle: chart.title,
-        chartCategory: chart.category
-      });
-      return response as unknown as ChartScript;
-    },
-    onSuccess: (script, chartId) => {
-      setChartScripts(prev => ({
-        ...prev,
-        [chartId]: {
-          ...script,
-          loading: false
-        }
-      }));
-      queryClient.invalidateQueries({ queryKey: ['/api/chart-scripts'] });
-      toast({
-        title: "Script Generated",
-        description: `Created a ${script.estimatedDuration} second script.`,
-      });
-    },
-    onError: (error) => {
-      console.error('Failed to generate script:', error);
-      toast({
-        title: "Error",
-        description: "Failed to generate script. Please try again.",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const filteredCharts = selectedCategory 
-    ? financeChartData.filter(chart => chart.category === selectedCategory)
-    : financeChartData;
-
-  const getChartTypeIcon = (chartType: string) => {
-    switch (chartType) {
-      case 'line': return LineChart;
-      case 'bar': return BarChart3;
-      case 'pie': return PieChart;
-      case 'area': return TrendingUp;
-      default: return BarChart3;
-    }
-  };
-
-  const getCategoryIcon = (category: string) => {
-    switch (category) {
-      case "Portfolio Management": return TrendingUp;
-      case "Market Commentary": return DollarSign;
-      case "Retirement Planning": return Users;
-      case "Tax Strategies": return Shield;
-      case "Investment Strategies": return TrendingUp;
-      case "Risk Management": return Shield;
-      default: return FileText;
-    }
-  };
-
-  const handleGenerateScript = async (chartId: string) => {
-    setChartScripts(prev => ({
-      ...prev,
-      [chartId]: {
-        ...prev[chartId],
-        loading: true
-      }
-    }));
-    
-    generateScriptMutation.mutate(chartId);
-  };
-
-  const handleOpenChart = (chartId: string) => {
+  const handleOpenChart = () => {
     // Open chart in new tab for screen recording
-    const chartUrl = `/chart/${chartId}`;
+    const chartUrl = `/chart/sp500-example`;
     window.open(chartUrl, '_blank', 'width=1200,height=800');
   };
 
-  // Get script for chart (from existing scripts or generated)
-  const getScriptForChart = (chartId: string) => {
-    return chartScripts[chartId] || existingScripts.find(s => s.chartId === chartId);
+  const handleShowScript = () => {
+    setShowScript(true);
   };
 
   return (
@@ -164,125 +88,104 @@ export default function ScriptedContent() {
         {/* Description */}
         <div className="mb-8">
           <p className="text-gray-600 max-w-2xl">
-            Interactive finance charts with AI-generated scripts for professional client communications. 
-            Click any chart to generate a custom 30-second script, then record your screen explanation.
+            Professional scripted content for client communications. Practice your presentation with our sample S&P 500 analysis, 
+            then record your screen explanation using the provided 30-second script.
           </p>
         </div>
 
-        {/* Category Filter */}
-        <div className="mb-8">
-          <div className="flex flex-wrap gap-2">
-            <Button
-              variant={selectedCategory === null ? "default" : "outline"}
-              size="sm"
-              onClick={() => setSelectedCategory(null)}
-              data-testid="button-all-categories"
-            >
-              All Categories
-            </Button>
-            {chartCategories.map((category) => (
-              <Button
-                key={category}
-                variant={selectedCategory === category ? "default" : "outline"}
-                size="sm"
-                onClick={() => setSelectedCategory(category)}
-                data-testid={`button-category-${category.toLowerCase().replace(/\s+/g, '-')}`}
-              >
-                {category}
-              </Button>
-            ))}
-          </div>
+        {/* Single Example Chart */}
+        <div className="max-w-4xl mx-auto">
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardHeader className="pb-4">
+              <div className="flex items-start justify-between mb-2">
+                <FileText className="h-6 w-6 text-primary flex-shrink-0" />
+                <Badge variant="outline" className="text-xs">
+                  Market Analysis
+                </Badge>
+              </div>
+              <CardTitle className="text-xl" data-testid="chart-title-sp500">
+                {sampleChartScript.chartTitle}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {/* Chart Image */}
+              <div className="mb-6 bg-white rounded-lg p-4 border">
+                <img 
+                  src={sp500ChartImage} 
+                  alt="S&P 500 Annual Returns and Intra-Year Declines Chart"
+                  className="w-full h-auto rounded"
+                  data-testid="img-sp500-chart"
+                />
+              </div>
+              
+              <div className="flex items-center gap-4 text-sm text-gray-500 mb-6">
+                <Badge variant="outline" className="text-xs">
+                  {sampleChartScript.chartCategory}
+                </Badge>
+                <div className="flex items-center gap-1">
+                  <Clock className="h-4 w-4" />
+                  <span>{sampleChartScript.estimatedDuration} second script</span>
+                </div>
+              </div>
+
+              {/* Script Preview */}
+              <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-sm text-blue-800 font-medium mb-2">📝 Ready-to-Use Script</p>
+                <p className="text-xs text-blue-700 leading-relaxed line-clamp-3">
+                  {sampleChartScript.scriptText.substring(0, 200)}...
+                </p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <Button
+                  variant="outline"
+                  onClick={handleShowScript}
+                  data-testid="button-view-script"
+                  className="flex items-center justify-center gap-2"
+                >
+                  <FileText className="h-4 w-4" />
+                  View Full Script
+                </Button>
+                <Button
+                  onClick={handleOpenChart}
+                  data-testid="button-open-chart"
+                  className="flex items-center justify-center gap-2"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  Open Chart & Record
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Finance Charts Grid */}
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {filteredCharts.map((chart) => {
-            const IconComponent = getChartTypeIcon(chart.chartType);
-            const script = getScriptForChart(chart.id);
-            const isGeneratingScript = chartScripts[chart.id]?.loading || generateScriptMutation.isPending;
-            
-            return (
-              <Card key={chart.id} className="hover:shadow-md transition-shadow">
-                <CardHeader className="pb-4">
-                  <div className="flex items-start justify-between mb-2">
-                    <IconComponent className="h-6 w-6 text-primary flex-shrink-0" />
-                    <Badge variant="outline" className="text-xs">
-                      {chartTypeConfig[chart.chartType]?.name || chart.chartType}
-                    </Badge>
-                  </div>
-                  <CardTitle className="text-lg" data-testid={`chart-title-${chart.id}`}>
-                    {chart.title}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {/* Chart Preview */}
-                  <div className="mb-4 bg-gray-50 rounded-lg p-3 h-32">
-                    <FinanceChartComponent chart={chart} height={100} />
-                  </div>
-                  
-                  <p className="text-gray-600 text-sm mb-4 line-clamp-2" data-testid={`chart-description-${chart.id}`}>
-                    {chart.description}
-                  </p>
-                  
-                  <div className="flex items-center gap-4 text-xs text-gray-500 mb-4">
-                    <Badge variant="outline" className="text-xs">
-                      {chart.category}
-                    </Badge>
-                    {script && (
-                      <div className="flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        <span>{script.estimatedDuration}s script</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Script Status */}
-                  {script && !isGeneratingScript && (
-                    <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-                      <p className="text-sm text-green-800 font-medium mb-1">✓ Script Ready</p>
-                      <p className="text-xs text-green-600 line-clamp-2">
-                        {script.scriptText.substring(0, 100)}...
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Action Buttons */}
-                  <div className="space-y-2">
-                    {!script ? (
-                      <Button
-                        className="w-full"
-                        onClick={() => handleGenerateScript(chart.id)}
-                        disabled={isGeneratingScript}
-                        data-testid={`button-generate-script-${chart.id}`}
-                      >
-                        {isGeneratingScript ? "Generating Script..." : "Generate AI Script"}
-                      </Button>
-                    ) : (
-                      <Button
-                        className="w-full"
-                        onClick={() => handleOpenChart(chart.id)}
-                        data-testid={`button-open-chart-${chart.id}`}
-                      >
-                        <ExternalLink className="h-4 w-4 mr-2" />
-                        Open Chart & Script
-                      </Button>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-
-        {/* Results Count */}
-        {filteredCharts.length > 0 && (
-          <div className="mt-8 text-center">
-            <p className="text-sm text-gray-600" data-testid="text-charts-count">
-              Showing {filteredCharts.length} of {financeChartData.length} finance charts
-            </p>
+        {/* How it Works */}
+        <div className="mt-12 max-w-2xl mx-auto text-center">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">How it Works</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm text-gray-600">
+            <div className="flex flex-col items-center">
+              <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mb-2 font-semibold">1</div>
+              <p>View the provided script and chart</p>
+            </div>
+            <div className="flex flex-col items-center">
+              <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mb-2 font-semibold">2</div>
+              <p>Open chart in new tab for recording</p>
+            </div>
+            <div className="flex flex-col items-center">
+              <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mb-2 font-semibold">3</div>
+              <p>Record your screen and share with clients</p>
+            </div>
           </div>
-        )}
+        </div>
       </div>
+
+      {/* Draggable Script Popup */}
+      <DraggableScriptPopup
+        script={sampleChartScript}
+        isVisible={showScript}
+        onClose={() => setShowScript(false)}
+      />
     </div>
   );
 }

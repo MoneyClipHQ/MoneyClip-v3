@@ -1,111 +1,36 @@
-import { useEffect, useState } from 'react';
-import { useLocation, useRoute } from 'wouter';
-import { FinanceChartComponent } from '@/components/finance-charts';
+import { useState } from 'react';
+import { useLocation } from 'wouter';
 import { DraggableScriptPopup } from '@/components/DraggableScriptPopup';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiRequest } from '@/lib/queryClient';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/hooks/use-toast';
-import { Play, FileText, RotateCcw } from 'lucide-react';
-import { financeChartData } from '@shared/finance-charts';
-import type { FinanceChart } from '../../../server/openai-service';
-import type { ChartScript } from '@shared/schema';
+import { Play, FileText } from 'lucide-react';
 
-// Chart view page - displays a single chart in full-screen for recording
+// Using placeholder for now - image will be displayed via static path
+const sp500ChartImage = "/api/static/Screenshot%202025-09-10%20at%209.00.11%20AM_1757510793768.png";
+
+// S&P 500 example data
+const sampleChartScript = {
+  id: "sp500-example",
+  chartTitle: "S&P 500 Annual Returns and Intra-Year Declines",
+  chartCategory: "Market Analysis",
+  scriptText: `What this chart shows are the returns of the S&P 500 going all the way back to 1980. Each gray bar is where the market ended for the year, and the red dots are the pullbacks that happened along the way. What's interesting is that in over 40 years, there have only been about 8 or 9 years that finished negative. But in every single year, you can see those red dots — meaning there was always a period where the market dropped, sometimes by a lot. Take 1998 for example: at one point the market was down 19%, but by the end of the year it finished up 27%. The big lesson here is that corrections and scary headlines are completely normal, but history tells us that staying invested through those ups and downs has worked out over time.`,
+  estimatedDuration: "30",
+  keyPoints: [
+    "Only 8-9 negative years out of 40+ years",
+    "Every year has intra-year pullbacks (red dots)",
+    "1998: Down 19% mid-year, finished +27%",
+    "Corrections are normal, staying invested pays off"
+  ]
+};
+
+// Chart view page - displays the S&P 500 chart for recording
 export function ChartViewPage() {
-  const [match, params] = useRoute('/chart/:chartId');
   const [, setLocation] = useLocation();
-  const [showScript, setShowScript] = useState(false);
-  const [currentScript, setCurrentScript] = useState<any>(null);
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-
-  const chartId = params?.chartId;
-  const chart = chartId ? financeChartData.find((c: FinanceChart) => c.id === chartId) : null;
-
-  // Fetch existing script for this chart
-  const { data: existingScripts = [] } = useQuery<ChartScript[]>({
-    queryKey: ['/api/chart-scripts', chartId],
-    enabled: !!chartId
-  });
-
-  // Generate new script mutation
-  const generateScriptMutation = useMutation({
-    mutationFn: async () => {
-      if (!chart) throw new Error('Chart not found');
-      
-      const response = await apiRequest('POST', '/api/chart-scripts/generate', {
-        chartId: chart.id,
-        chartTitle: chart.title,
-        chartCategory: chart.category
-      });
-      return response as unknown as ChartScript;
-    },
-    onSuccess: (script) => {
-      setCurrentScript(script);
-      setShowScript(true);
-      queryClient.invalidateQueries({ queryKey: ['/api/chart-scripts'] });
-      toast({
-        title: "Script Generated",
-        description: `Created a ${script.estimatedDuration} second script for ${chart?.title}`
-      });
-    },
-    onError: () => {
-      toast({
-        title: "Script Generation Failed",
-        description: "Unable to generate script. Please try again.",
-        variant: "destructive"
-      });
-    }
-  });
-
-  // Create chart session for tracking
-  const createSessionMutation = useMutation({
-    mutationFn: async () => {
-      if (!currentScript) throw new Error('No script available');
-      
-      return await apiRequest('/api/chart-sessions', 'POST', {
-        chartScriptId: currentScript.id,
-        sessionType: 'recording'
-      });
-    }
-  });
-
-  const handleScriptOpened = () => {
-    if (currentScript) {
-      createSessionMutation.mutate();
-    }
-  };
-
-  const handleGenerateScript = () => {
-    generateScriptMutation.mutate();
-  };
-
-  const handleUseExistingScript = (script: any) => {
-    setCurrentScript(script);
-    setShowScript(true);
-  };
+  const [showScript, setShowScript] = useState(true); // Show script by default
 
   const handleStartRecording = () => {
     // Navigate to recording page with chart context
-    setLocation('/record?source=chart&chartId=' + chartId + '&scriptId=' + currentScript?.id);
+    setLocation('/record?source=chart&chartId=sp500-example');
   };
-
-  // Redirect if chart not found
-  useEffect(() => {
-    if (!chart && chartId) {
-      toast({
-        title: "Chart Not Found",
-        description: "The requested chart could not be found.",
-        variant: "destructive"
-      });
-      setLocation('/scripted-content');
-    }
-  }, [chart, chartId, setLocation, toast]);
-
-  if (!chart) {
-    return null;
-  }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -114,67 +39,31 @@ export function ChartViewPage() {
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white" data-testid="text-chart-title">
-              {chart.title}
+              {sampleChartScript.chartTitle}
             </h1>
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-1" data-testid="text-chart-category">
-              {chart.category} • Chart View for Recording
+              {sampleChartScript.chartCategory} • Chart View for Recording
             </p>
           </div>
           
           <div className="flex items-center gap-3">
-            {!showScript && (
-              <>
-                {/* Generate new script */}
-                <Button
-                  onClick={handleGenerateScript}
-                  disabled={generateScriptMutation.isPending}
-                  className="bg-blue-600 hover:bg-blue-700"
-                  data-testid="button-generate-script"
-                >
-                  <FileText className="h-4 w-4 mr-2" />
-                  {generateScriptMutation.isPending ? "Generating..." : "Generate Script"}
-                </Button>
+            <Button
+              onClick={handleStartRecording}
+              className="bg-red-600 hover:bg-red-700"
+              data-testid="button-start-recording"
+            >
+              <Play className="h-4 w-4 mr-2" />
+              Start Recording
+            </Button>
 
-                {/* Use existing script */}
-                {existingScripts.length > 0 && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-600 dark:text-gray-400">or use:</span>
-                    {existingScripts.slice(0, 2).map((script: any) => (
-                      <Button
-                        key={script.id}
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleUseExistingScript(script)}
-                        data-testid={`button-use-script-${script.id}`}
-                      >
-                        Latest ({script.estimatedDuration}s)
-                      </Button>
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
-
-            {showScript && currentScript && (
-              <Button
-                onClick={handleStartRecording}
-                className="bg-red-600 hover:bg-red-700"
-                data-testid="button-start-recording"
-              >
-                <Play className="h-4 w-4 mr-2" />
-                Start Recording
-              </Button>
-            )}
-
-            {showScript && (
-              <Button
-                variant="outline"
-                onClick={() => setShowScript(false)}
-                data-testid="button-hide-script"
-              >
-                Hide Script
-              </Button>
-            )}
+            <Button
+              variant="outline"
+              onClick={() => setShowScript(!showScript)}
+              data-testid="button-toggle-script"
+            >
+              <FileText className="h-4 w-4 mr-2" />
+              {showScript ? "Hide Script" : "Show Script"}
+            </Button>
           </div>
         </div>
       </div>
@@ -182,9 +71,11 @@ export function ChartViewPage() {
       {/* Chart Display */}
       <div className="max-w-7xl mx-auto p-8">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-8">
-          <FinanceChartComponent 
-            chart={chart} 
-            height={600}
+          <img 
+            src={sp500ChartImage} 
+            alt="S&P 500 Annual Returns and Intra-Year Declines Chart"
+            className="w-full h-auto rounded"
+            data-testid="img-sp500-chart"
           />
         </div>
 
@@ -200,10 +91,9 @@ export function ChartViewPage() {
 
       {/* Draggable Script Popup */}
       <DraggableScriptPopup
-        script={currentScript}
-        isVisible={showScript && !!currentScript}
+        script={sampleChartScript}
+        isVisible={showScript}
         onClose={() => setShowScript(false)}
-        onScriptOpened={handleScriptOpened}
       />
     </div>
   );
