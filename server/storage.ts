@@ -17,7 +17,7 @@ import {
 import { DEFAULT_DISCLOSURE_TEXT } from "@shared/constants";
 import { randomUUID } from "crypto";
 import { addDays } from "date-fns";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { db } from "./db";
 import bcrypt from "bcryptjs";
 
@@ -64,7 +64,13 @@ export interface IStorage {
   getVideoByShareLink(shareLink: string): Promise<Video | undefined>;
   getRecentVideos(advisorId: string, limit?: number): Promise<Video[]>;
   getAllVideos(advisorId: string): Promise<Video[]>;
+  getVideosByStatus(advisorId: string, status?: string): Promise<Video[]>;
   deleteVideo(id: string): Promise<void>;
+  softDeleteVideo(id: string, advisorId: string): Promise<Video | undefined>;
+  restoreVideo(id: string, advisorId: string): Promise<Video | undefined>;
+  updateVideoStatus(id: string, advisorId: string, status: string): Promise<Video | undefined>;
+  renewVideo(id: string, advisorId: string): Promise<Video | undefined>;
+  expireVideos(): Promise<number>; // Returns number of videos expired
   logRecordingEvent(event: InsertRecordingEvent): Promise<RecordingEvent>;
   
   // Viewer interaction methods
@@ -499,8 +505,25 @@ export class MemStorage implements IStorage {
 
   async getAllVideos(advisorId: string): Promise<Video[]> {
     return Array.from(this.videos.values())
-      .filter(video => video.advisorId === advisorId)
+      .filter(video => video.advisorId === advisorId && !video.deletedAt)
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }
+
+  async getVideosByStatus(advisorId: string, status?: string): Promise<Video[]> {
+    let videos = Array.from(this.videos.values())
+      .filter(video => video.advisorId === advisorId);
+    
+    if (status) {
+      if (status === "trash") {
+        videos = videos.filter(video => video.deletedAt);
+      } else {
+        videos = videos.filter(video => !video.deletedAt && video.status === status);
+      }
+    } else {
+      videos = videos.filter(video => !video.deletedAt);
+    }
+    
+    return videos.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   }
 
   async deleteVideo(id: string): Promise<void> {
@@ -645,6 +668,91 @@ export class MemStorage implements IStorage {
       })
     });
   }
+
+  async softDeleteVideo(id: string, advisorId: string): Promise<Video | undefined> {
+    const video = this.videos.get(id);
+    if (!video || video.advisorId !== advisorId) return undefined;
+    
+    const updatedVideo = { 
+      ...video, 
+      deletedAt: new Date(),
+      status: "trash",
+      updatedAt: new Date()
+    };
+    this.videos.set(id, updatedVideo);
+    return updatedVideo;
+  }
+
+  async restoreVideo(id: string, advisorId: string): Promise<Video | undefined> {
+    const video = this.videos.get(id);
+    if (!video || video.advisorId !== advisorId) return undefined;
+    
+    const updatedVideo = { 
+      ...video, 
+      deletedAt: null,
+      status: "draft", // Reset to draft when restored
+      updatedAt: new Date()
+    };
+    this.videos.set(id, updatedVideo);
+    return updatedVideo;
+  }
+
+  async updateVideoStatus(id: string, advisorId: string, status: string): Promise<Video | undefined> {
+    const video = this.videos.get(id);
+    if (!video || video.advisorId !== advisorId) return undefined;
+    
+    const now = new Date();
+    const updatedVideo = { 
+      ...video, 
+      status,
+      updatedAt: now
+    };
+
+    // Handle status-specific logic
+    if (status === "approved") {
+      updatedVideo.publishedAt = now;
+      updatedVideo.expiresAt = new Date(now.getTime() + (30 * 24 * 60 * 60 * 1000)); // 30 days from now
+    }
+
+    this.videos.set(id, updatedVideo);
+    return updatedVideo;
+  }
+
+  async renewVideo(id: string, advisorId: string): Promise<Video | undefined> {
+    const video = this.videos.get(id);
+    if (!video || video.advisorId !== advisorId) return undefined;
+    
+    const now = new Date();
+    const updatedVideo = { 
+      ...video, 
+      status: video.status === "approved" ? "in_review" : "draft", // Reset to review if previously approved
+      renewedAt: now,
+      expiresAt: new Date(now.getTime() + (30 * 24 * 60 * 60 * 1000)), // 30 days from now
+      updatedAt: now
+    };
+    
+    this.videos.set(id, updatedVideo);
+    return updatedVideo;
+  }
+
+  async expireVideos(): Promise<number> {
+    const now = new Date();
+    let expiredCount = 0;
+    
+    for (const [id, video] of Array.from(this.videos.entries())) {
+      if (video.expiresAt && video.expiresAt <= now && video.status !== "expired") {
+        const updatedVideo = { 
+          ...video, 
+          status: "expired",
+          updatedAt: now
+        };
+        this.videos.set(id, updatedVideo);
+        expiredCount++;
+      }
+    }
+    
+    return expiredCount;
+  }
 }
 
 // Database Storage Implementation
@@ -707,6 +815,113 @@ export class DatabaseStorage implements IStorage {
 
   async deleteVideo(id: string): Promise<void> {
     await db.delete(videos).where(eq(videos.id, id));
+  }
+
+  async getVideosByStatus(advisorId: string, status?: string): Promise<Video[]> {
+    let whereConditions = [eq(videos.advisorId, advisorId)];
+
+    if (status) {
+      if (status === "trash") {
+        whereConditions.push(sql`${videos.deletedAt} IS NOT NULL`);
+      } else {
+        whereConditions.push(eq(videos.status, status));
+        whereConditions.push(sql`${videos.deletedAt} IS NULL`);
+      }
+    } else {
+      whereConditions.push(sql`${videos.deletedAt} IS NULL`);
+    }
+
+    const result = await db
+      .select()
+      .from(videos)
+      .where(and(...whereConditions))
+      .orderBy(videos.createdAt);
+    return result;
+  }
+
+  async softDeleteVideo(id: string, advisorId: string): Promise<Video | undefined> {
+    const [updatedVideo] = await db
+      .update(videos)
+      .set({
+        deletedAt: new Date(),
+        status: "trash",
+        updatedAt: new Date()
+      })
+      .where(and(eq(videos.id, id), eq(videos.advisorId, advisorId)))
+      .returning();
+    return updatedVideo;
+  }
+
+  async restoreVideo(id: string, advisorId: string): Promise<Video | undefined> {
+    const [updatedVideo] = await db
+      .update(videos)
+      .set({
+        deletedAt: null,
+        status: "draft",
+        updatedAt: new Date()
+      })
+      .where(and(eq(videos.id, id), eq(videos.advisorId, advisorId)))
+      .returning();
+    return updatedVideo;
+  }
+
+  async updateVideoStatus(id: string, advisorId: string, status: string): Promise<Video | undefined> {
+    const now = new Date();
+    const updateData: any = {
+      status,
+      updatedAt: now
+    };
+
+    if (status === "approved") {
+      updateData.publishedAt = now;
+      updateData.expiresAt = new Date(now.getTime() + (30 * 24 * 60 * 60 * 1000)); // 30 days from now
+    }
+
+    const [updatedVideo] = await db
+      .update(videos)
+      .set(updateData)
+      .where(and(eq(videos.id, id), eq(videos.advisorId, advisorId)))
+      .returning();
+    return updatedVideo;
+  }
+
+  async renewVideo(id: string, advisorId: string): Promise<Video | undefined> {
+    const now = new Date();
+    
+    const [currentVideo] = await db
+      .select()
+      .from(videos)
+      .where(and(eq(videos.id, id), eq(videos.advisorId, advisorId)));
+      
+    if (!currentVideo) return undefined;
+
+    const [updatedVideo] = await db
+      .update(videos)
+      .set({
+        status: currentVideo.status === "approved" ? "in_review" : "draft",
+        renewedAt: now,
+        expiresAt: new Date(now.getTime() + (30 * 24 * 60 * 60 * 1000)), // 30 days from now
+        updatedAt: now
+      })
+      .where(and(eq(videos.id, id), eq(videos.advisorId, advisorId)))
+      .returning();
+    return updatedVideo;
+  }
+
+  async expireVideos(): Promise<number> {
+    const now = new Date();
+    const result = await db
+      .update(videos)
+      .set({
+        status: "expired",
+        updatedAt: now
+      })
+      .where(and(
+        sql`${videos.expiresAt} <= ${now}`,
+        sql`${videos.status} != 'expired'`
+      ))
+      .returning();
+    return result.length;
   }
 
   async logRecordingEvent(event: InsertRecordingEvent): Promise<RecordingEvent> {
