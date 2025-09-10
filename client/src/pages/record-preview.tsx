@@ -11,7 +11,7 @@ import { Slider } from "@/components/ui/slider";
 import { Copy, Mail, MessageSquare, Save, Trash2, Share2, Lock, User } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { InsertVideo } from "@shared/schema";
 import { usePageTitle } from "@/hooks/usePageTitle";
 
@@ -553,7 +553,7 @@ export default function RecordPreviewPage() {
         videoData: base64VideoData || undefined, // Send base64 video data
         thumbnailUrl: null, // TODO: Generate thumbnail
         duration: videoDuration.toString(),
-        status: "published", // Set to published since we have the video data
+        status: "approved", // Set to approved since we have the video data
         password: (showPassword && password) ? password : undefined,
         shareLink: `moneyclip-${Date.now()}-${Math.random().toString(36).substring(7)}`,
         captionsEnabled: true, // Always enabled
@@ -575,6 +575,12 @@ export default function RecordPreviewPage() {
     onSuccess: (data) => {
       const link = `${window.location.origin}/share/${data?.shareLink}`;
       setShareLink(link);
+      
+      // Invalidate video library cache to show new video immediately
+      queryClient.invalidateQueries({ predicate: (query) => 
+        query.queryKey[0] === "/api/videos" || 
+        (Array.isArray(query.queryKey) && query.queryKey[0] === "/api/videos")
+      });
       
       // Log compliance event
       logEvent("SAVED", {

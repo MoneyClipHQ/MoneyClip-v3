@@ -85,7 +85,10 @@ export default function VideoLibrary() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/videos"] });
+      queryClient.invalidateQueries({ predicate: (query) => 
+        query.queryKey[0] === "/api/videos" || 
+        (Array.isArray(query.queryKey) && query.queryKey[0] === "/api/videos")
+      });
       toast({ title: "Video moved to trash", description: "You have 30 days to restore it." });
     },
     onError: () => {
@@ -100,7 +103,10 @@ export default function VideoLibrary() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/videos"] });
+      queryClient.invalidateQueries({ predicate: (query) => 
+        query.queryKey[0] === "/api/videos" || 
+        (Array.isArray(query.queryKey) && query.queryKey[0] === "/api/videos")
+      });
       toast({ title: "Video restored", description: "Video has been restored from trash." });
     },
     onError: () => {
@@ -115,7 +121,10 @@ export default function VideoLibrary() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/videos"] });
+      queryClient.invalidateQueries({ predicate: (query) => 
+        query.queryKey[0] === "/api/videos" || 
+        (Array.isArray(query.queryKey) && query.queryKey[0] === "/api/videos")
+      });
       toast({ title: "Video renewed", description: "Video expiration extended by 30 days." });
     },
     onError: () => {
