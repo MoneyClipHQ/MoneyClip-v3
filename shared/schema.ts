@@ -161,7 +161,7 @@ export const videos = pgTable("videos", {
   videoData: text("video_data"), // Base64 encoded video data for MVP
   thumbnailUrl: text("thumbnail_url"), // URL to the video thumbnail
   duration: numeric("duration"), // Duration in seconds
-  status: text("status").notNull().default("draft"), // draft, published, archived
+  status: text("status").notNull().default("draft"), // draft, in_review, approved, expired, trash
   viewCount: numeric("view_count").default("0"),
   password: text("password"), // Optional password protection
   shareLink: text("share_link"), // Unique shareable link
@@ -170,6 +170,10 @@ export const videos = pgTable("videos", {
   transcriptText: text("transcript_text"), // Actual transcript text
   captionsEnabled: boolean("captions_enabled").default(true), // Whether captions are enabled
   includeProfilePicture: boolean("include_profile_picture").default(true), // Whether to include profile picture
+  publishedAt: timestamp("published_at"), // When video was published/approved
+  expiresAt: timestamp("expires_at"), // When video expires (30 days after publishedAt)
+  renewedAt: timestamp("renewed_at"), // Last renewal date
+  deletedAt: timestamp("deleted_at"), // Soft delete timestamp
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -192,6 +196,10 @@ export const insertVideoSchema = createInsertSchema(videos).pick({
   transcriptText: true,
   captionsEnabled: true,
   includeProfilePicture: true,
+  publishedAt: true,
+  expiresAt: true,
+  renewedAt: true,
+  deletedAt: true,
 });
 
 export const updateVideoSchema = insertVideoSchema.partial();
