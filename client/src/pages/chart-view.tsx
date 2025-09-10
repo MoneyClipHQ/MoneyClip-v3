@@ -34,7 +34,7 @@ export function ChartViewPage() {
     mutationFn: async () => {
       if (!chart) throw new Error('Chart not found');
       
-      const response = await apiRequest('/api/chart-scripts/generate', 'POST', {
+      const response = await apiRequest('POST', '/api/chart-scripts/generate', {
         chartId: chart.id,
         chartTitle: chart.title,
         chartCategory: chart.category
