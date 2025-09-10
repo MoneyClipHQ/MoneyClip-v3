@@ -2,7 +2,8 @@ import {
   LineChart, Line, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer 
 } from 'recharts';
-import type { FinanceChart } from '../../../shared/finance-charts';
+import type { FinanceChart } from '../../../server/openai-service';
+import { financeChartData } from '../../../shared/finance-charts';
 
 interface FinanceChartComponentProps {
   chart: FinanceChart;

@@ -407,6 +407,78 @@ export const loginSchema = z.object({
 
 export type LoginData = z.infer<typeof loginSchema>;
 
+// Chart scripts table for storing AI-generated scripts for finance charts
+export const chartScripts = pgTable("chart_scripts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  advisorId: varchar("advisor_id").notNull().references(() => advisors.id),
+  chartId: text("chart_id").notNull(), // Reference to chart ID from finance-charts.ts
+  chartTitle: text("chart_title").notNull(),
+  chartCategory: text("chart_category").notNull(),
+  scriptText: text("script_text").notNull(), // AI-generated script
+  estimatedDuration: numeric("estimated_duration").notNull(), // Duration in seconds
+  keyPoints: text("key_points").array(), // Array of key points from script
+  isCustom: boolean("is_custom").default(false), // True if advisor customized the script
+  usageCount: numeric("usage_count").default("0"), // How many times script has been used
+  lastUsedAt: timestamp("last_used_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Chart recording sessions for tracking advisor usage
+export const chartSessions = pgTable("chart_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  advisorId: varchar("advisor_id").notNull().references(() => advisors.id),
+  chartScriptId: varchar("chart_script_id").notNull().references(() => chartScripts.id),
+  videoId: varchar("video_id").references(() => videos.id), // Linked if recording was completed
+  sessionType: text("session_type").notNull().default("practice"), // practice, recording, review
+  startedAt: timestamp("started_at").defaultNow().notNull(),
+  endedAt: timestamp("ended_at"),
+  duration: numeric("duration"), // Session duration in seconds
+  scriptOpened: boolean("script_opened").default(false), // Whether script popup was opened
+  metadata: text("metadata"), // JSON string for additional session data
+});
+
+// Chart scripts schemas
+export const insertChartScriptSchema = createInsertSchema(chartScripts, {
+  chartId: z.string().min(1, "Chart ID is required"),
+  chartTitle: z.string().min(1, "Chart title is required"),
+  chartCategory: z.string().min(1, "Chart category is required"),
+  scriptText: z.string().min(1, "Script text is required"),
+  estimatedDuration: z.number().min(1).max(30, "Script duration must be 30 seconds or less"),
+  keyPoints: z.array(z.string()).optional(),
+}).pick({
+  advisorId: true,
+  chartId: true,
+  chartTitle: true,
+  chartCategory: true,
+  scriptText: true,
+  estimatedDuration: true,
+  keyPoints: true,
+  isCustom: true,
+});
+
+export const updateChartScriptSchema = insertChartScriptSchema.partial().extend({
+  id: z.string(),
+});
+
+// Chart sessions schemas
+export const insertChartSessionSchema = createInsertSchema(chartSessions).pick({
+  advisorId: true,
+  chartScriptId: true,
+  videoId: true,
+  sessionType: true,
+  endedAt: true,
+  duration: true,
+  scriptOpened: true,
+  metadata: true,
+});
+
+export type InsertChartScript = z.infer<typeof insertChartScriptSchema>;
+export type UpdateChartScript = z.infer<typeof updateChartScriptSchema>;
+export type ChartScript = typeof chartScripts.$inferSelect;
+export type InsertChartSession = z.infer<typeof insertChartSessionSchema>;
+export type ChartSession = typeof chartSessions.$inferSelect;
+
 // Session type extensions
 declare module "express-session" {
   interface SessionData {
