@@ -9,25 +9,20 @@ import VideoThumbnail from "@/components/video-thumbnail";
 import type { Video } from "@shared/schema";
 import logoUrl from "@/assets/logos/moneyclip-logo.png";
 import { usePageTitle } from "@/hooks/usePageTitle";
-
-// Mock advisor data
-const mockAdvisor = {
-  id: "advisor-1",
-  name: "Sarah Chen",
-  company: "Chen Financial Advisory"
-};
+import { useAuth } from "@/hooks/useAuth";
 
 export default function VideoLibrary() {
   usePageTitle("MoneyClip - Video Library");
   
   const [, navigate] = useLocation();
+  const { user, isAuthenticated } = useAuth();
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Fetch videos from API instead of using mock data
-  const { data: videos = [], isLoading } = useQuery<Video[]>({
+  // Fetch videos from API for the authenticated user
+  const { data: videos = [], isLoading, error } = useQuery<Video[]>({
     queryKey: ["/api/videos"],
-    enabled: !!mockAdvisor.id
+    enabled: isAuthenticated
   });
 
   const filteredVideos = videos.filter((video: Video) =>
@@ -54,9 +49,9 @@ export default function VideoLibrary() {
               />
             </Link>
             <AdvisorDropdown
-              advisorName={mockAdvisor.name}
-              onSettings={() => console.log("Settings clicked")}
-              onSignOut={() => console.log("Sign out clicked")}
+              advisorName={user?.advisorName || "User"}
+              onSettings={() => navigate("/settings")}
+              onSignOut={() => navigate("/login")}
             />
           </div>
         </div>
