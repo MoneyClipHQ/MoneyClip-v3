@@ -51,7 +51,7 @@ export default function RecordPage() {
   // Load available microphones
   useEffect(() => {
     navigator.mediaDevices.enumerateDevices().then(devices => {
-      const mics = devices.filter(device => device.kind === "audioinput");
+      const mics = devices.filter(device => device.kind === "audioinput" && device.deviceId.trim() !== "");
       setAvailableMicrophones(mics);
     });
   }, []);
@@ -466,7 +466,7 @@ export default function RecordPage() {
                 {/* Pre-recording setup */}
                 <div>
                   <Label htmlFor="pre-microphone" className="text-base font-medium mb-2 block">Microphone</Label>
-                  <Select value={settings.microphone || ""} onValueChange={(value) => setSettings({...settings, microphone: value})}>
+                  <Select value={settings.microphone || "default"} onValueChange={(value) => setSettings({...settings, microphone: value})}>
                     <SelectTrigger id="pre-microphone">
                       <SelectValue placeholder="Select microphone" />
                     </SelectTrigger>
@@ -588,7 +588,7 @@ export default function RecordPage() {
             {/* Microphone Selection */}
             <div>
               <Label htmlFor="microphone" className="text-base font-medium mb-2 block">Microphone</Label>
-              <Select value={settings.microphone || ""} onValueChange={(value) => setSettings({...settings, microphone: value})}>
+              <Select value={settings.microphone || "default"} onValueChange={(value) => setSettings({...settings, microphone: value})}>
                 <SelectTrigger id="microphone">
                   <SelectValue placeholder="Select microphone" />
                 </SelectTrigger>
