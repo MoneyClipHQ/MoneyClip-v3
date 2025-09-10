@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 
-// the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+// the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
 const openai = new OpenAI({ 
   apiKey: process.env.OPENAI_API_KEY 
 });
@@ -12,6 +12,21 @@ if (!process.env.OPENAI_API_KEY) {
 export interface TranscriptionResult {
   text: string;
   title: string;
+  description: string;
+}
+
+export interface ChartScriptResult {
+  script: string;
+  estimatedDuration: number;
+  keyPoints: string[];
+}
+
+export interface FinanceChart {
+  id: string;
+  title: string;
+  category: string;
+  chartType: 'line' | 'bar' | 'pie' | 'area';
+  data: any[];
   description: string;
 }
 
@@ -37,7 +52,7 @@ export async function transcribeAndGenerateContent(audioBuffer: Buffer, original
 
     // Step 2: Generate title and description based on transcription
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-5",
       messages: [
         {
           role: "system",
@@ -127,7 +142,75 @@ export function generateCaptions(transcriptionText: string, videoDurationSeconds
   return captions;
 }
 
+/**
+ * Generate a professional 30-second script for explaining a finance chart
+ */
+export async function generateChartScript(chart: FinanceChart): Promise<ChartScriptResult> {
+  try {
+    console.log(`Generating script for chart: ${chart.title}`);
+    
+    const completion = await openai.chat.completions.create({
+      model: "gpt-5",
+      messages: [
+        {
+          role: "system",
+          content: `You are a professional financial advisor creating scripts for client video explanations. Generate a clear, professional script that can be read aloud in 30 seconds or less.
+
+The script should:
+- Be conversational and engaging
+- Explain the chart data in simple terms
+- Highlight key insights and trends
+- Be suitable for financial advisor-client communications
+- Focus on actionable insights
+- Be exactly 30 seconds or shorter when read aloud (approximately 75-90 words)
+
+Respond with JSON in this exact format:
+{
+  "script": "Complete script text to be read aloud",
+  "estimatedDuration": number (in seconds, max 30),
+  "keyPoints": ["key point 1", "key point 2", "key point 3"]
+}`
+        },
+        {
+          role: "user",
+          content: `Generate a 30-second script for this finance chart:
+
+Title: ${chart.title}
+Category: ${chart.category}
+Chart Type: ${chart.chartType}
+Description: ${chart.description}
+
+Data Summary: ${JSON.stringify(chart.data.slice(0, 5))}... (showing first 5 data points)
+
+Create a professional script that explains the key insights from this chart data.`
+        }
+      ],
+      response_format: { type: "json_object" },
+      max_tokens: 400
+    });
+
+    const result = JSON.parse(completion.choices[0].message.content || '{}');
+    
+    return {
+      script: result.script || "This chart shows important financial data that can help guide your investment decisions.",
+      estimatedDuration: Math.min(30, result.estimatedDuration || 25),
+      keyPoints: result.keyPoints || ["Key financial insights", "Important trends", "Investment implications"]
+    };
+
+  } catch (error) {
+    console.error("OpenAI chart script generation error:", error);
+    
+    // Return fallback script if OpenAI fails
+    return {
+      script: `Looking at this ${chart.title.toLowerCase()}, we can see important trends in the ${chart.category.toLowerCase()} data. The chart reveals key insights that can help inform your financial decisions. Let me walk you through the most significant patterns and what they mean for your portfolio.`,
+      estimatedDuration: 25,
+      keyPoints: ["Important trends identified", "Key financial insights", "Portfolio implications"]
+    };
+  }
+}
+
 export default {
   transcribeAndGenerateContent,
-  generateCaptions
+  generateCaptions,
+  generateChartScript
 };
