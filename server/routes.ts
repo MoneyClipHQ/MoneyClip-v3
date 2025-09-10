@@ -992,6 +992,181 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
+
+  // Get videos by status with filtering
+  app.get("/api/videos/status/:status?", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const advisorId = req.session.advisorId!;
+      const status = req.params.status;
+      const videos = await storage.getVideosByStatus(advisorId, status);
+      res.json(videos);
+    } catch (error) {
+      console.error("Get videos by status error:", error);
+      res.status(500).json({
+        error: "Failed to retrieve videos by status"
+      });
+    }
+  });
+
+  // Soft delete a video (move to trash)
+  app.patch("/api/videos/:id/delete", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const advisorId = req.session.advisorId!;
+      const video = await storage.softDeleteVideo(req.params.id, advisorId);
+      
+      if (!video) {
+        return res.status(404).json({
+          error: "VIDEO_NOT_FOUND",
+          message: "Video not found or you don't have permission to delete it"
+        });
+      }
+      
+      // Log event
+      await storage.logRecordingEvent({
+        advisorId,
+        videoId: video.id,
+        event: "VIDEO_DELETED",
+        metadata: JSON.stringify({
+          method: "soft_delete",
+          title: video.title
+        })
+      });
+      
+      res.json({ success: true, video });
+    } catch (error) {
+      console.error("Soft delete video error:", error);
+      res.status(500).json({
+        error: "Failed to delete video"
+      });
+    }
+  });
+
+  // Restore a video from trash
+  app.patch("/api/videos/:id/restore", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const advisorId = req.session.advisorId!;
+      const video = await storage.restoreVideo(req.params.id, advisorId);
+      
+      if (!video) {
+        return res.status(404).json({
+          error: "VIDEO_NOT_FOUND",
+          message: "Video not found or you don't have permission to restore it"
+        });
+      }
+      
+      // Log event
+      await storage.logRecordingEvent({
+        advisorId,
+        videoId: video.id,
+        event: "VIDEO_RESTORED",
+        metadata: JSON.stringify({
+          title: video.title
+        })
+      });
+      
+      res.json({ success: true, video });
+    } catch (error) {
+      console.error("Restore video error:", error);
+      res.status(500).json({
+        error: "Failed to restore video"
+      });
+    }
+  });
+
+  // Update video status
+  app.patch("/api/videos/:id/status", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const advisorId = req.session.advisorId!;
+      const { status } = req.body;
+      
+      if (!status || !["draft", "in_review", "approved", "expired"].includes(status)) {
+        return res.status(400).json({
+          error: "INVALID_STATUS",
+          message: "Status must be one of: draft, in_review, approved, expired"
+        });
+      }
+      
+      const video = await storage.updateVideoStatus(req.params.id, advisorId, status);
+      
+      if (!video) {
+        return res.status(404).json({
+          error: "VIDEO_NOT_FOUND",
+          message: "Video not found or you don't have permission to update it"
+        });
+      }
+      
+      // Log event
+      await storage.logRecordingEvent({
+        advisorId,
+        videoId: video.id,
+        event: "STATUS_UPDATED",
+        metadata: JSON.stringify({
+          newStatus: status,
+          title: video.title
+        })
+      });
+      
+      res.json({ success: true, video });
+    } catch (error) {
+      console.error("Update video status error:", error);
+      res.status(500).json({
+        error: "Failed to update video status"
+      });
+    }
+  });
+
+  // Renew video (extend expiration by 30 days)
+  app.patch("/api/videos/:id/renew", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const advisorId = req.session.advisorId!;
+      const video = await storage.renewVideo(req.params.id, advisorId);
+      
+      if (!video) {
+        return res.status(404).json({
+          error: "VIDEO_NOT_FOUND",
+          message: "Video not found or you don't have permission to renew it"
+        });
+      }
+      
+      // Log event
+      await storage.logRecordingEvent({
+        advisorId,
+        videoId: video.id,
+        event: "VIDEO_RENEWED",
+        metadata: JSON.stringify({
+          newExpiresAt: video.expiresAt,
+          title: video.title
+        })
+      });
+      
+      res.json({ success: true, video });
+    } catch (error) {
+      console.error("Renew video error:", error);
+      res.status(500).json({
+        error: "Failed to renew video"
+      });
+    }
+  });
+
+  // Admin endpoint to expire videos (for scheduled job)
+  app.post("/api/videos/expire", async (req: Request, res: Response) => {
+    try {
+      // This endpoint should be called by a scheduler/cron job
+      // In production, you might want to add authentication for this endpoint
+      const expiredCount = await storage.expireVideos();
+      
+      res.json({ 
+        success: true, 
+        expiredCount,
+        message: `${expiredCount} videos expired`
+      });
+    } catch (error) {
+      console.error("Expire videos error:", error);
+      res.status(500).json({
+        error: "Failed to expire videos"
+      });
+    }
+  });
   
   // Public route to get video by share link (for sharing with clients)
   app.get("/api/share/:shareLink", async (req: Request, res: Response) => {
