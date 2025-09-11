@@ -50,7 +50,39 @@ app.use((req, res, next) => {
   next();
 });
 
+// Validate required environment variables for object storage
+function validateEnvironmentVariables() {
+  const requiredEnvVars = [
+    'PRIVATE_OBJECT_DIR',
+    'PUBLIC_OBJECT_SEARCH_PATHS'
+  ];
+  
+  const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
+  
+  if (missingVars.length > 0) {
+    console.error(`❌ Missing required environment variables: ${missingVars.join(', ')}`);
+    console.error('💡 Please set up object storage in the Object Storage tool pane to configure these variables.');
+    process.exit(1);
+  }
+  
+  // Validate PUBLIC_OBJECT_SEARCH_PATHS format
+  const searchPaths = process.env.PUBLIC_OBJECT_SEARCH_PATHS!.split(',');
+  const invalidPaths = searchPaths.filter(path => !path.trim() || !path.startsWith('/'));
+  
+  if (invalidPaths.length > 0) {
+    console.error(`❌ Invalid PUBLIC_OBJECT_SEARCH_PATHS format. All paths must start with '/': ${invalidPaths.join(', ')}`);
+    process.exit(1);
+  }
+  
+  console.log(`✅ Object storage environment variables validated successfully`);
+  console.log(`   PRIVATE_OBJECT_DIR: ${process.env.PRIVATE_OBJECT_DIR}`);
+  console.log(`   PUBLIC_OBJECT_SEARCH_PATHS: ${process.env.PUBLIC_OBJECT_SEARCH_PATHS}`);
+}
+
 (async () => {
+  // Validate environment variables before starting server
+  validateEnvironmentVariables();
+  
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

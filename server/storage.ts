@@ -64,6 +64,7 @@ export interface IStorage {
   updateVideo(id: string, data: UpdateVideo): Promise<Video | undefined>;
   getVideo(id: string): Promise<Video | undefined>;
   getVideoByShareLink(shareLink: string): Promise<Video | undefined>;
+  getVideoByFileUrl(fileUrl: string): Promise<Video | undefined>;
   getRecentVideos(advisorId: string, limit?: number): Promise<Video[]>;
   getAllVideos(advisorId: string): Promise<Video[]>;
   getVideosByStatus(advisorId: string, status?: string): Promise<Video[]>;
@@ -514,6 +515,12 @@ export class MemStorage implements IStorage {
     );
   }
 
+  async getVideoByFileUrl(fileUrl: string): Promise<Video | undefined> {
+    return Array.from(this.videos.values()).find(
+      (video) => video.fileUrl === fileUrl
+    );
+  }
+
   async getRecentVideos(advisorId: string, limit: number = 3): Promise<Video[]> {
     return Array.from(this.videos.values())
       .filter(video => video.advisorId === advisorId)
@@ -892,6 +899,14 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(videos)
       .where(eq(videos.shareLink, shareLink));
+    return video;
+  }
+
+  async getVideoByFileUrl(fileUrl: string): Promise<Video | undefined> {
+    const [video] = await db
+      .select()
+      .from(videos)
+      .where(eq(videos.fileUrl, fileUrl));
     return video;
   }
 

@@ -18,6 +18,7 @@ import { z } from "zod";
 import { format } from "date-fns";
 import { transcribeAndGenerateContent, generateCaptions, generateChartScript } from "./openai-service";
 import { Resend } from 'resend';
+import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
@@ -1438,6 +1439,130 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({
         error: "Failed to log event"
       });
+    }
+  });
+
+  // === OBJECT STORAGE VIDEO ROUTES ===
+
+  // Get upload URL for video
+  app.post("/api/videos/upload-url", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const objectStorageService = new ObjectStorageService();
+      const videoId = `${Date.now()}-${Math.random().toString(36).substring(7)}`;
+      const uploadURL = await objectStorageService.getVideoUploadURL(`${videoId}.webm`);
+      
+      res.json({ 
+        uploadURL,
+        videoPath: `${videoId}.webm`
+      });
+    } catch (error) {
+      console.error("Error getting video upload URL:", error);
+      res.status(500).json({ 
+        error: "Failed to get upload URL" 
+      });
+    }
+  });
+
+  // Create video with object storage URL
+  app.post("/api/videos/object-storage", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const advisorId = req.session.advisorId!;
+      const videoData = {
+        ...req.body,
+        advisorId,
+        shareLink: req.body.shareLink || `moneyclip-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+        transcriptUrl: null,
+        videoData: null // Don't store base64 data for object storage videos
+      };
+      
+      // Set fileUrl to object storage path instead of data URL
+      if (req.body.videoPath) {
+        videoData.fileUrl = `/objects/videos/${req.body.videoPath}`;
+      }
+      
+      const validatedData = insertVideoSchema.parse(videoData);
+      const video = await storage.createVideo(validatedData);
+      
+      // If captions data was provided, set the transcript URL
+      if (video.captionsData) {
+        await storage.updateVideo(video.id, {
+          transcriptUrl: `/api/videos/${video.id}/captions`
+        });
+      }
+      
+      // Log event
+      await storage.logRecordingEvent({
+        advisorId,
+        videoId: video.id,
+        event: "VIDEO_SAVED",
+        metadata: JSON.stringify({
+          hasPassword: !!video.password,
+          hasClientName: !!video.clientName,
+          captionsEnabled: video.captionsEnabled,
+          storageType: "object_storage"
+        })
+      });
+      
+      res.json(video);
+    } catch (error) {
+      console.error("Create object storage video error:", error);
+      
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({
+          error: "VALIDATION_ERROR",
+          message: "Invalid video data",
+          errors: error.errors
+        });
+      }
+      
+      res.status(500).json({
+        error: "Failed to create video"
+      });
+    }
+  });
+
+  // Serve videos from object storage with access control
+  app.get("/objects/videos/:videoPath(*)", async (req: Request, res: Response) => {
+    const objectStorageService = new ObjectStorageService();
+    try {
+      // Extract video path (format: timestamp-random.webm)
+      const videoPath = req.params.videoPath;
+      
+      // Construct the full file URL as stored in database
+      const privateObjectDir = objectStorageService.getPrivateObjectDir();
+      const fullFileUrl = `${privateObjectDir}/videos/${videoPath}`;
+      
+      // Find video in database efficiently using file URL
+      const video = await storage.getVideoByFileUrl(fullFileUrl);
+      
+      if (!video) {
+        return res.sendStatus(404);
+      }
+      
+      // Check access: either owner or valid share token/session
+      const isOwner = req.session?.advisorId === video.advisorId;
+      const shareToken = req.query.share;
+      const isValidShare = shareToken && shareToken === video.shareLink?.split('-').pop();
+      
+      if (!isOwner && !isValidShare) {
+        // For share links, also check if this is a public share (no password)
+        const isPublicShare = !video.password;
+        if (!isPublicShare) {
+          return res.status(401).json({
+            error: "UNAUTHORIZED",
+            message: "Access denied to this video"
+          });
+        }
+      }
+      
+      const videoFile = await objectStorageService.getVideoFile(req.params.videoPath);
+      objectStorageService.downloadObject(videoFile, res, 86400); // Cache videos for 24 hours
+    } catch (error) {
+      console.error("Error serving video from object storage:", error);
+      if (error instanceof ObjectNotFoundError) {
+        return res.sendStatus(404);
+      }
+      return res.sendStatus(500);
     }
   });
 

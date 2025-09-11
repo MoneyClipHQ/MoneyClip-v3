@@ -505,31 +505,42 @@ export default function RecordPreviewPage() {
     mutationFn: async () => {
       setIsSaving(true);
       
-      // Get video blob from session storage or IndexedDB
-      const recordedVideoData = sessionStorage.getItem("recordedVideoBlob");
-      const usingIndexedDB = sessionStorage.getItem("usingIndexedDB");
+      const storageType = sessionStorage.getItem("storageType");
+      const videoPath = sessionStorage.getItem("videoPath");
+      
       let videoBlob: Blob | null = null;
       let base64VideoData: string | null = null;
+      let useObjectStorage = false;
       
-      if (recordedVideoData) {
-        // From sessionStorage - already base64
-        base64VideoData = recordedVideoData;
-        // Convert base64 back to blob for processing
-        const binaryString = atob(recordedVideoData);
-        const bytes = new Uint8Array(binaryString.length);
-        for (let i = 0; i < binaryString.length; i++) {
-          bytes[i] = binaryString.charCodeAt(i);
-        }
-        videoBlob = new Blob([bytes], { type: 'video/webm' });
-      } else if (usingIndexedDB === "true") {
-        // From IndexedDB - need to convert blob to base64
-        videoBlob = await loadVideoBlobFromIndexedDB();
-        if (videoBlob) {
-          // Convert blob to base64 for backend
-          const arrayBuffer = await videoBlob.arrayBuffer();
-          const uint8Array = new Uint8Array(arrayBuffer);
-          const binaryString = Array.from(uint8Array, byte => String.fromCharCode(byte)).join('');
-          base64VideoData = btoa(binaryString);
+      if (storageType === "object_storage" && videoPath) {
+        // Video is already uploaded to object storage
+        useObjectStorage = true;
+        console.log("Using object storage video:", videoPath);
+      } else {
+        // Fall back to old browser storage system
+        const recordedVideoData = sessionStorage.getItem("recordedVideoBlob");
+        const usingIndexedDB = sessionStorage.getItem("usingIndexedDB");
+        
+        if (recordedVideoData) {
+          // From sessionStorage - already base64
+          base64VideoData = recordedVideoData;
+          // Convert base64 back to blob for processing
+          const binaryString = atob(recordedVideoData);
+          const bytes = new Uint8Array(binaryString.length);
+          for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+          }
+          videoBlob = new Blob([bytes], { type: 'video/webm' });
+        } else if (usingIndexedDB === "true" || storageType === "indexeddb") {
+          // From IndexedDB - need to convert blob to base64
+          videoBlob = await loadVideoBlobFromIndexedDB();
+          if (videoBlob) {
+            // Convert blob to base64 for backend
+            const arrayBuffer = await videoBlob.arrayBuffer();
+            const uint8Array = new Uint8Array(arrayBuffer);
+            const binaryString = Array.from(uint8Array, byte => String.fromCharCode(byte)).join('');
+            base64VideoData = btoa(binaryString);
+          }
         }
       }
       
@@ -544,13 +555,11 @@ export default function RecordPreviewPage() {
         }
       }
       
-      const videoData: Partial<InsertVideo> = {
+      const baseVideoData = {
         advisorId: user?.id,
         clientName: clientName || undefined,
         title: title || "Processing...",
         description: description || "AI is analyzing content...",
-        fileUrl: undefined, // Will be generated from videoData
-        videoData: base64VideoData || undefined, // Send base64 video data
         thumbnailUrl: null, // TODO: Generate thumbnail
         duration: videoDuration.toString(),
         status: "approved", // Set to approved since we have the video data
@@ -561,7 +570,24 @@ export default function RecordPreviewPage() {
         captionsData: captionsData, // Include caption data if available
       };
 
-      const response = await apiRequest('POST', "/api/videos", videoData);
+      let response;
+      if (useObjectStorage) {
+        // Use object storage endpoint
+        const objectStorageVideoData = {
+          ...baseVideoData,
+          videoPath: videoPath, // Path in object storage
+        };
+        response = await apiRequest('POST', "/api/videos/object-storage", objectStorageVideoData);
+      } else {
+        // Use traditional base64 endpoint
+        const legacyVideoData: Partial<InsertVideo> = {
+          ...baseVideoData,
+          fileUrl: undefined, // Will be generated from videoData
+          videoData: base64VideoData || undefined, // Send base64 video data
+        };
+        response = await apiRequest('POST', "/api/videos", legacyVideoData);
+      }
+
       const data = await response.json();
 
       // Only start AI processing if we haven't already processed during preview

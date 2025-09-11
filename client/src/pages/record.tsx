@@ -254,61 +254,110 @@ export default function RecordPage() {
         }
       };
 
-      recorder.onstop = () => {
+      recorder.onstop = async () => {
         const blob = new Blob(chunksRef.current, { type: mimeType });
         const url = URL.createObjectURL(blob);
         
-        // Convert blob to base64 for storage and later AI processing
-        const reader = new FileReader();
-        reader.onload = () => {
-          try {
-            const base64Data = (reader.result as string).split(',')[1]; // Remove data URL prefix
-            
-            // Try to store in sessionStorage, fallback to IndexedDB if quota exceeded
+        try {
+          // Upload directly to object storage instead of using browser storage
+          console.log("Uploading video to object storage...");
+          
+          // Get upload URL from backend
+          const uploadResponse = await fetch("/api/videos/upload-url", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+          });
+          
+          if (!uploadResponse.ok) {
+            throw new Error("Failed to get upload URL");
+          }
+          
+          const { uploadURL, videoPath } = await uploadResponse.json();
+          
+          // Upload video directly to object storage with proper Content-Type
+          const uploadResult = await fetch(uploadURL, {
+            method: "PUT",
+            body: blob,
+            headers: {
+              "Content-Type": "video/webm",
+            },
+          });
+          
+          if (!uploadResult.ok) {
+            throw new Error("Failed to upload video to storage");
+          }
+          
+          console.log("Video uploaded successfully to object storage");
+          
+          // Store video info in sessionStorage for preview (no large blob data)
+          sessionStorage.setItem("recordedVideo", url);
+          sessionStorage.setItem("recordingSettings", JSON.stringify(settings));
+          sessionStorage.setItem("videoPath", videoPath);
+          sessionStorage.setItem("storageType", "object_storage");
+          
+          navigate("/record/preview");
+          
+        } catch (uploadError) {
+          console.error("Object storage upload failed:", uploadError);
+          
+          // Fallback to old storage system for backwards compatibility
+          console.log("Falling back to browser storage...");
+          
+          const reader = new FileReader();
+          reader.onload = () => {
             try {
-              sessionStorage.setItem("recordedVideoBlob", base64Data);
-              sessionStorage.setItem("recordedVideo", url);
-              sessionStorage.setItem("recordingSettings", JSON.stringify(settings));
-              navigate("/record/preview");
-            } catch (storageError) {
-              console.warn("SessionStorage quota exceeded, using IndexedDB fallback:", storageError);
+              const base64Data = (reader.result as string).split(',')[1];
               
-              // Fallback: Store directly as blob without base64 conversion
-              storeVideoInIndexedDB(blob, url, settings)
-                .then(() => {
-                  navigate("/record/preview");
-                })
-                .catch((indexedDBError) => {
-                  console.error("IndexedDB storage failed:", indexedDBError);
-                  toast({
-                    title: "Storage Error",
-                    description: "Video too large for browser storage. Please record shorter videos or try again.",
-                    variant: "destructive",
+              // Try sessionStorage first
+              try {
+                sessionStorage.setItem("recordedVideoBlob", base64Data);
+                sessionStorage.setItem("recordedVideo", url);
+                sessionStorage.setItem("recordingSettings", JSON.stringify(settings));
+                sessionStorage.setItem("storageType", "browser_storage");
+                navigate("/record/preview");
+              } catch (storageError) {
+                console.warn("SessionStorage quota exceeded, using IndexedDB fallback:", storageError);
+                
+                // Fallback to IndexedDB
+                storeVideoInIndexedDB(blob, url, settings)
+                  .then(() => {
+                    sessionStorage.setItem("storageType", "indexeddb");
+                    navigate("/record/preview");
+                  })
+                  .catch((indexedDBError) => {
+                    console.error("All storage methods failed:", indexedDBError);
+                    toast({
+                      title: "Storage Error",
+                      description: "Unable to save video. Please try recording a shorter video or try again.",
+                      variant: "destructive",
+                    });
+                    setRecordingState("idle");
                   });
-                  setRecordingState("idle");
-                });
+              }
+            } catch (conversionError) {
+              console.error("Error processing recorded video:", conversionError);
+              toast({
+                title: "Processing Error", 
+                description: "Failed to process recorded video. Please try again.",
+                variant: "destructive",
+              });
+              setRecordingState("idle");
             }
-          } catch (conversionError) {
-            console.error("Error processing recorded video:", conversionError);
+          };
+          
+          reader.onerror = () => {
+            console.error("FileReader error");
             toast({
-              title: "Processing Error", 
+              title: "Processing Error",
               description: "Failed to process recorded video. Please try again.",
-              variant: "destructive",
+              variant: "destructive", 
             });
             setRecordingState("idle");
-          }
-        };
-        
-        reader.onerror = () => {
-          console.error("FileReader error");
-          toast({
-            title: "Processing Error",
-            description: "Failed to process recorded video. Please try again.",
-            variant: "destructive", 
-          });
-          setRecordingState("idle");
-        };
-        reader.readAsDataURL(blob);
+          };
+          
+          reader.readAsDataURL(blob);
+        }
       };
 
       mediaRecorderRef.current = recorder;
