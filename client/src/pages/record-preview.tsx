@@ -638,12 +638,38 @@ export default function RecordPreviewPage() {
     },
     onError: (error) => {
       console.error("Save error:", error);
+      setIsSaving(false);
+      
+      // Provide more detailed error messages based on error type
+      let errorTitle = "Save Failed";
+      let errorDescription = "Could not save your recording. Please try again.";
+      
+      if (error instanceof Error) {
+        if (error.message.includes("upload") || error.message.includes("storage")) {
+          errorTitle = "Upload Error";
+          errorDescription = "Failed to upload video to cloud storage. Please check your internet connection and try again.";
+        } else if (error.message.includes("network") || error.message.includes("fetch")) {
+          errorTitle = "Network Error";
+          errorDescription = "Unable to connect to server. Please check your internet connection and try again.";
+        } else if (error.message.includes("413") || error.message.includes("too large") || error.message.includes("quota")) {
+          errorTitle = "Video Too Large";
+          errorDescription = "Video file is too large to save. Please record a shorter video or try again.";
+        } else if (error.message.includes("401") || error.message.includes("unauthorized")) {
+          errorTitle = "Authentication Error";
+          errorDescription = "Your session has expired. Please refresh the page and try again.";
+        } else if (error.message.includes("timeout")) {
+          errorTitle = "Upload Timeout";
+          errorDescription = "Upload took too long and timed out. Please try recording a shorter video.";
+        } else {
+          errorDescription = `Save failed: ${error.message}. Please try again.`;
+        }
+      }
+      
       toast({
-        title: "Save Failed",
-        description: "Could not save your recording. Please try again.",
+        title: errorTitle,
+        description: errorDescription,
         variant: "destructive",
       });
-      setIsSaving(false);
     },
   });
 

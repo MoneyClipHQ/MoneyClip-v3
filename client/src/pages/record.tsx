@@ -267,6 +267,14 @@ export default function RecordPage() {
           
           let videoPath: string;
           
+          // Show progress toast for large files
+          if (isLargeFile) {
+            toast({
+              title: "Large Video Detected",
+              description: `Uploading ${Math.round(fileSize / 1024 / 1024)}MB video to cloud storage. This may take a few minutes.`,
+            });
+          }
+          
           if (isLargeFile) {
             // Use chunked upload for large files
             console.log(`Large file detected (${Math.round(fileSize / 1024 / 1024)}MB), using chunked upload`);
@@ -315,6 +323,15 @@ export default function RecordPage() {
           
         } catch (uploadError) {
           console.error("Object storage upload failed:", uploadError);
+          
+          // Show user-friendly error message
+          toast({
+            title: "Upload Failed", 
+            description: uploadError instanceof Error ? 
+              `Failed to upload video: ${uploadError.message}. Trying browser storage as backup.` :
+              "Failed to upload video to cloud storage. Trying browser storage as backup.",
+            variant: "destructive",
+          });
           
           // Fallback to old storage system for backwards compatibility
           console.log("Falling back to browser storage...");
