@@ -741,18 +741,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const result = await transcribeAndGenerateContent(buffer, `video-${videoId}.webm`);
         
         // Generate captions if transcription successful
+        console.log(`Generating captions for video ${videoId} with duration ${duration || 300}s`);
         const captions = result.text !== "Transcription unavailable" 
           ? generateCaptions(result.text, duration || 300)
           : "";
+        console.log(`Generated ${captions.length} bytes of caption data`);
 
         // Update video with AI-generated content and store captions directly
         const updatedVideo = await storage.updateVideo(videoId, {
           title: result.title,
           description: result.description,
-          transcriptUrl: captions ? `/api/videos/${videoId}/captions` : null,
-          captionsData: captions || null,
+          transcriptUrl: captions && captions.length > 0 ? `/api/videos/${videoId}/captions` : null,
+          captionsData: captions && captions.length > 0 ? captions : null,
           transcriptText: result.text !== "Transcription unavailable" ? result.text : null,
           captionsEnabled: true
+        });
+        
+        console.log(`Video ${videoId} updated with AI content:`, {
+          hasTitle: !!result.title,
+          hasDescription: !!result.description,
+          hasCaptions: captions && captions.length > 0,
+          captionLength: captions?.length || 0,
+          hasTranscriptText: result.text !== "Transcription unavailable"
         });
 
         // Log processing success
@@ -846,8 +856,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // If no duration provided, estimate from transcription length (more conservative estimate)
         if (!effectiveDuration && result.text !== "Transcription unavailable") {
           const wordCount = result.text.split(' ').length;
-          // More conservative: ~120 words per minute = 2 words/sec  
-          effectiveDuration = Math.max(30, Math.ceil(wordCount / 2.0));
+          // More conservative: ~150 words per minute = 2.5 words/sec  
+          effectiveDuration = Math.max(30, Math.ceil(wordCount / 2.5));
           console.log(`No duration provided, estimated ${effectiveDuration}s from ${wordCount} words`);
         }
         
@@ -856,9 +866,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           effectiveDuration = 60; // Much more reasonable 1-minute fallback
         }
         
+        console.log(`Generating preview captions with duration ${effectiveDuration}s`);
         const captions = result.text !== "Transcription unavailable" 
           ? generateCaptions(result.text, effectiveDuration)
           : "";
+        console.log(`Generated preview ${captions.length} bytes of caption data`);
 
         console.log("AI preview processing completed");
 
@@ -900,6 +912,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // First try to get from new database field
       const video = await storage.getVideo(videoId);
       const captions = video?.captionsData || await storage.getCaptions(videoId);
+      
+      console.log(`Serving captions for video ${videoId}:`, {
+        hasCaptionsData: !!video?.captionsData,
+        captionsLength: captions?.length || 0
+      });
       
       if (!captions) {
         return res.status(404).json({

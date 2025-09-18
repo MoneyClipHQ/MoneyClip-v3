@@ -65,6 +65,9 @@ export default function VideoEditPage() {
         const blob = new Blob([video.captionsData], { type: 'text/vtt' });
         const blobUrl = URL.createObjectURL(blob);
         setCaptionBlobUrl(blobUrl);
+      } else if (video.transcriptUrl) {
+        // If captionsData is not in the video object, but transcriptUrl exists, use it
+        setCaptionBlobUrl(video.transcriptUrl);
       }
     }
   }, [video]);
@@ -274,6 +277,17 @@ export default function VideoEditPage() {
                     data-testid="video-preview"
                     crossOrigin="anonymous"
                     preload="metadata"
+                    onLoadedMetadata={() => {
+                      // Ensure captions are visible when video loads
+                      if (videoRef.current && captionsEnabled && captionBlobUrl) {
+                        const tracks = videoRef.current.textTracks;
+                        for (let i = 0; i < tracks.length; i++) {
+                          if (tracks[i].kind === 'captions' || tracks[i].kind === 'subtitles') {
+                            tracks[i].mode = captionsEnabled ? 'showing' : 'hidden';
+                          }
+                        }
+                      }
+                    }}
                   >
                     {captionsEnabled && captionBlobUrl && (
                       <track
@@ -281,7 +295,7 @@ export default function VideoEditPage() {
                         src={captionBlobUrl}
                         srcLang="en"
                         label="English"
-                        default
+                        default={captionsEnabled}
                       />
                     )}
                   </video>

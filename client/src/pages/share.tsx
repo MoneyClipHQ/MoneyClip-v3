@@ -237,6 +237,18 @@ export default function SharePage() {
       }
     }
   }, [video, showCaptions]);
+  
+  // Log caption availability for debugging
+  useEffect(() => {
+    if (video) {
+      console.log('Video caption status:', {
+        captionsEnabled: video.captionsEnabled,
+        transcriptUrl: video.transcriptUrl,
+        hasCaption: !!video.transcriptUrl,
+        showCaptions: showCaptions
+      });
+    }
+  }, [video, showCaptions]);
 
   // Handle terms acceptance
   const handleAcceptTerms = () => {
@@ -578,7 +590,7 @@ export default function SharePage() {
                         src={video.transcriptUrl}
                         srcLang="en"
                         label="English"
-                        default
+                        default={showCaptions}
                       />
                     )}
                   </video>

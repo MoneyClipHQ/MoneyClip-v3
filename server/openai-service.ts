@@ -122,24 +122,34 @@ Respond with JSON in this exact format:
  */
 export function generateCaptions(transcriptionText: string, videoDurationSeconds: number): string {
   if (!transcriptionText || transcriptionText === "Transcription unavailable") {
+    console.log("No transcription available for caption generation");
     return "";
   }
 
+  console.log(`Generating captions from transcription (${transcriptionText.length} chars) for ${videoDurationSeconds}s video`);
+
   // Improved caption generation - split text into segments with realistic timing
-  const words = transcriptionText.split(' ');
-  const wordsPerSegment = 6; // ~2-3 seconds of speech (more natural)
+  const words = transcriptionText.split(' ').filter(word => word.trim());
+  
+  // More natural words per segment based on average speech rate
+  // Average speech is 150 words per minute = 2.5 words per second
+  const avgSecondsPerSegment = 3; // Show each caption for ~3 seconds
+  const wordsPerSecond = 2.5;
+  const wordsPerSegment = Math.round(avgSecondsPerSegment * wordsPerSecond); // About 7-8 words
+  
   const totalSegments = Math.ceil(words.length / wordsPerSegment);
   
-  // Calculate more realistic segment duration (aim for 2-4 seconds per segment)
-  const segmentDuration = Math.min(4, Math.max(2, videoDurationSeconds / totalSegments));
+  // Calculate segment duration evenly across the video
+  const segmentDuration = videoDurationSeconds / totalSegments;
   
   let captions = "WEBVTT\n\n";
-  let segmentNumber = 1;
   
-  for (let i = 0; i < words.length; i += wordsPerSegment) {
-    const segmentWords = words.slice(i, i + wordsPerSegment);
-    const startTime = (segmentNumber - 1) * segmentDuration;
-    const endTime = Math.min(segmentNumber * segmentDuration, videoDurationSeconds);
+  for (let i = 0; i < totalSegments; i++) {
+    const segmentWords = words.slice(i * wordsPerSegment, (i + 1) * wordsPerSegment);
+    if (segmentWords.length === 0) continue;
+    
+    const startTime = i * segmentDuration;
+    const endTime = Math.min((i + 1) * segmentDuration, videoDurationSeconds);
     
     // Format time as WebVTT timestamp (HH:MM:SS.mmm)
     const formatTime = (seconds: number) => {
@@ -152,9 +162,9 @@ export function generateCaptions(transcriptionText: string, videoDurationSeconds
     
     captions += `${formatTime(startTime)} --> ${formatTime(endTime)}\n`;
     captions += `${segmentWords.join(' ')}\n\n`;
-    
-    segmentNumber++;
   }
+  
+  console.log(`Generated ${totalSegments} caption segments`);
   
   return captions;
 }
