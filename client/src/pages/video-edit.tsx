@@ -34,6 +34,27 @@ export default function VideoEditPage() {
   const [shareLink, setShareLink] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [captionBlobUrl, setCaptionBlobUrl] = useState<string | null>(null);
+  
+  // Clean up caption blob URL on unmount
+  useEffect(() => {
+    return () => {
+      if (captionBlobUrl && captionBlobUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(captionBlobUrl);
+      }
+    };
+  }, [captionBlobUrl]);
+  
+  // Control caption visibility when toggled
+  useEffect(() => {
+    if (videoRef.current && captionBlobUrl) {
+      const tracks = videoRef.current.textTracks;
+      for (let i = 0; i < tracks.length; i++) {
+        if (tracks[i].kind === 'captions' || tracks[i].kind === 'subtitles') {
+          tracks[i].mode = captionsEnabled ? 'showing' : 'hidden';
+        }
+      }
+    }
+  }, [captionsEnabled, captionBlobUrl]);
 
   // Fetch video data
   const { data: video, isLoading, error } = useQuery<Video>({
@@ -65,9 +86,13 @@ export default function VideoEditPage() {
         const blob = new Blob([video.captionsData], { type: 'text/vtt' });
         const blobUrl = URL.createObjectURL(blob);
         setCaptionBlobUrl(blobUrl);
+        console.log('Loaded captions from captionsData');
       } else if (video.transcriptUrl) {
         // If captionsData is not in the video object, but transcriptUrl exists, use it
         setCaptionBlobUrl(video.transcriptUrl);
+        console.log('Using transcriptUrl for captions:', video.transcriptUrl);
+      } else {
+        console.log('No captions available for video');
       }
     }
   }, [video]);
@@ -314,9 +339,12 @@ export default function VideoEditPage() {
                       id="preview-captions"
                       checked={captionsEnabled}
                       onCheckedChange={setCaptionsEnabled}
-                      disabled={isSaving}
+                      disabled={isSaving || !captionBlobUrl}
                     />
                   </div>
+                  {!captionBlobUrl && (
+                    <p className="text-xs text-gray-500">Captions not available for this video</p>
+                  )}
                 </div>
               </CardContent>
             </Card>
