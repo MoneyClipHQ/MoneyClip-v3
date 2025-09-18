@@ -156,7 +156,9 @@ export function generateCaptions(transcriptionText: string, videoDurationSeconds
       const hours = Math.floor(seconds / 3600);
       const minutes = Math.floor((seconds % 3600) / 60);
       const secs = Math.floor(seconds % 60);
-      const milliseconds = Math.floor((seconds % 1) * 1000);
+      // Use Math.round to avoid floating point precision issues
+      const milliseconds = Math.round((seconds % 1) * 1000);
+      // Ensure proper format with zero padding
       return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}.${milliseconds.toString().padStart(3, '0')}`;
     };
     

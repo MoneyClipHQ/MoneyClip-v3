@@ -316,10 +316,15 @@ export default function SharePage() {
     // Programmatically control caption track visibility
     if (videoRef.current) {
       const tracks = videoRef.current.textTracks;
+      let captionTrackFound = false;
       for (let i = 0; i < tracks.length; i++) {
         if (tracks[i].kind === 'captions' || tracks[i].kind === 'subtitles') {
           tracks[i].mode = newShowCaptions ? 'showing' : 'hidden';
+          captionTrackFound = true;
         }
+      }
+      if (!captionTrackFound) {
+        console.warn('No caption tracks available to toggle');
       }
     }
     
