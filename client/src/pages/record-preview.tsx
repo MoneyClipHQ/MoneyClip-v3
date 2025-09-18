@@ -192,39 +192,31 @@ export default function RecordPreviewPage() {
         // Handle duration - if null/undefined, try to get a reasonable default or wait
         const effectiveDuration = duration && !isNaN(duration) && duration > 0 ? duration : null;
         
-        // Only process if we haven't processed yet (regardless of current videoDuration state)
-        if (!aiProcessingRef.current) {
-          console.log('Starting initial video processing with duration:', effectiveDuration);
+        if (effectiveDuration) {
+          // We have a valid duration now
+          setVideoDuration(effectiveDuration);
+          setTrimRange({ start: 0, end: effectiveDuration });
           
-          if (effectiveDuration) {
-            setVideoDuration(effectiveDuration);
-            setTrimRange({ start: 0, end: effectiveDuration });
+          // Only process AI if we haven't processed yet
+          if (!aiProcessingRef.current && !isProcessingAI && !aiProcessingComplete) {
+            console.log('Starting initial video processing with duration:', effectiveDuration);
+            // Generate preview captions immediately
             generatePreviewCaptions(effectiveDuration);
-            
-            // Only start AI processing when we have valid duration
-            if (!isProcessingAI && !aiProcessingComplete) {
-              // Mark as processing to prevent duplicate calls (set BEFORE processing)
-              aiProcessingRef.current = true;
-              generateAIContent(effectiveDuration);
-            }
-          } else {
-            // If duration not loaded from video element, use stored duration as fallback
-            if (videoDuration > 0) {
-              console.log('Using stored duration as fallback:', videoDuration);
-              if (!isProcessingAI && !aiProcessingComplete) {
-                aiProcessingRef.current = true;
-                generateAIContent(videoDuration);
-              }
-            } else {
-              // If still no duration, retry in a short while, but DON'T mark as processed yet
-              setTimeout(() => {
-                if (videoRef.current && videoRef.current.readyState >= 1) {
-                  handleMetadataLoaded();
-                }
-              }, 500);
-            }
+            // Mark as processing to prevent duplicate calls
+            aiProcessingRef.current = true;
+            // Start AI content generation
+            generateAIContent(effectiveDuration);
+          }
+        } else if (videoDuration > 0 && !aiProcessingRef.current) {
+          // Use stored duration as fallback
+          console.log('Using stored duration as fallback:', videoDuration);
+          if (!isProcessingAI && !aiProcessingComplete) {
+            generatePreviewCaptions(videoDuration);
+            aiProcessingRef.current = true;
+            generateAIContent(videoDuration);
           }
         }
+        // Don't retry here - let the durationchange event handle it
       };
       
       // Add error handling for video loading
@@ -244,20 +236,37 @@ export default function RecordPreviewPage() {
       videoRef.current.oncanplay = handleVideoCanPlay;
       
       // Check if metadata is already loaded
-      if (videoRef.current.readyState >= 1) {
+      if (videoRef.current.readyState >= 1 && videoRef.current.duration && !isNaN(videoRef.current.duration)) {
         console.log('Video metadata already loaded, duration:', videoRef.current.duration);
         handleMetadataLoaded();
       } else {
         console.log('Waiting for video metadata to load, current readyState:', videoRef.current.readyState);
+        
+        // Listen for both events to catch duration when it's available
         videoRef.current.onloadedmetadata = handleMetadataLoaded;
         
-        // Also listen for durationchange event as backup
+        // Also listen for durationchange event which fires when duration becomes available
         videoRef.current.ondurationchange = () => {
-          console.log('Duration changed event fired, new duration:', videoRef.current?.duration);
-          if (videoRef.current?.duration && !isNaN(videoRef.current.duration) && videoRef.current.duration > 0) {
+          const newDuration = videoRef.current?.duration;
+          console.log('Duration changed event fired, new duration:', newDuration);
+          if (newDuration && !isNaN(newDuration) && newDuration > 0 && !aiProcessingRef.current) {
             handleMetadataLoaded();
           }
         };
+        
+        // Fallback: Check periodically if duration is available
+        const checkDuration = setInterval(() => {
+          if (videoRef.current?.duration && !isNaN(videoRef.current.duration) && videoRef.current.duration > 0) {
+            console.log('Duration available via interval check:', videoRef.current.duration);
+            clearInterval(checkDuration);
+            if (!aiProcessingRef.current) {
+              handleMetadataLoaded();
+            }
+          }
+        }, 100);
+        
+        // Clear interval after 5 seconds to prevent memory leak
+        setTimeout(() => clearInterval(checkDuration), 5000);
       }
     }
   }, [videoUrl]); // Remove isProcessingAI and aiProcessingComplete from dependencies to prevent re-triggers

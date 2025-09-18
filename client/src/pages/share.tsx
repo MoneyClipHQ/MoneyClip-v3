@@ -548,6 +548,18 @@ export default function SharePage() {
                     onCanPlay={() => {
                       console.log('Video can play, ready state:', videoRef.current?.readyState);
                     }}
+                    onLoadedMetadata={() => {
+                      // Ensure captions are visible by default
+                      if (videoRef.current && video.captionsEnabled && showCaptions) {
+                        const tracks = videoRef.current.textTracks;
+                        for (let i = 0; i < tracks.length; i++) {
+                          if (tracks[i].kind === 'captions' || tracks[i].kind === 'subtitles') {
+                            tracks[i].mode = 'showing';
+                            console.log('Captions track set to showing');
+                          }
+                        }
+                      }
+                    }}
                     onPlay={() => {
                       setIsPlaying(true);
                       logViewerEventMutation.mutate({ event: 'VIDEO_PLAYED' });
@@ -566,7 +578,7 @@ export default function SharePage() {
                         src={video.transcriptUrl}
                         srcLang="en"
                         label="English"
-                        default={showCaptions}
+                        default
                       />
                     )}
                   </video>
