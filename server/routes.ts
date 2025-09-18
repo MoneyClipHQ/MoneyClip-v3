@@ -1630,9 +1630,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Extract video path (format: timestamp-random.webm)
       const videoPath = req.params.videoPath;
       
-      // Construct the full file URL as stored in database
-      const privateObjectDir = objectStorageService.getPrivateObjectDir();
-      const fullFileUrl = `${privateObjectDir}/videos/${videoPath}`;
+      // Construct the file URL exactly as it's stored in the database
+      const fullFileUrl = `/objects/videos/${videoPath}`;
       
       // Find video in database efficiently using file URL
       const video = await storage.getVideoByFileUrl(fullFileUrl);
