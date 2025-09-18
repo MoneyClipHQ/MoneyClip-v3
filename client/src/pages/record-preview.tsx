@@ -249,25 +249,23 @@ export default function RecordPreviewPage() {
         videoRef.current.ondurationchange = () => {
           const newDuration = videoRef.current?.duration;
           console.log('Duration changed event fired, new duration:', newDuration);
-          // Check if we need to process AI when duration becomes available
-          if (newDuration && !isNaN(newDuration) && newDuration > 0) {
+          // Only process AI if we have a valid duration and haven't processed yet
+          if (newDuration && !isNaN(newDuration) && newDuration > 0 && !aiProcessingRef.current && !isProcessingAI && !aiProcessingComplete) {
+            console.log('Duration now available via durationchange event, starting AI processing:', newDuration);
             // Update duration state
             setVideoDuration(newDuration);
             setTrimRange({ start: 0, end: newDuration });
             
-            // Check if AI processing is needed
-            if (!aiProcessingRef.current && !isProcessingAI && !aiProcessingComplete) {
-              console.log('Duration now available via durationchange event, starting AI processing:', newDuration);
-              generatePreviewCaptions(newDuration);
-              aiProcessingRef.current = true;
-              generateAIContent(newDuration);
-            }
+            // Start AI processing
+            generatePreviewCaptions(newDuration);
+            aiProcessingRef.current = true;
+            generateAIContent(newDuration);
           }
         };
         
         // Fallback: Check periodically if duration is available
         const checkDuration = setInterval(() => {
-          if (videoRef.current?.duration && !isNaN(videoRef.current.duration) && videoRef.current.duration > 0) {
+          if (videoRef.current?.duration && !isNaN(videoRef.current.duration) && videoRef.current.duration > 0 && !aiProcessingRef.current && !isProcessingAI && !aiProcessingComplete) {
             const duration = videoRef.current.duration;
             console.log('Duration available via interval check:', duration);
             clearInterval(checkDuration);
@@ -276,13 +274,11 @@ export default function RecordPreviewPage() {
             setVideoDuration(duration);
             setTrimRange({ start: 0, end: duration });
             
-            // Check if AI processing is needed
-            if (!aiProcessingRef.current && !isProcessingAI && !aiProcessingComplete) {
-              console.log('Duration now available via interval, starting AI processing:', duration);
-              generatePreviewCaptions(duration);
-              aiProcessingRef.current = true;
-              generateAIContent(duration);
-            }
+            // Start AI processing
+            console.log('Duration now available via interval, starting AI processing:', duration);
+            generatePreviewCaptions(duration);
+            aiProcessingRef.current = true;
+            generateAIContent(duration);
           }
         }, 100);
         
@@ -360,12 +356,15 @@ export default function RecordPreviewPage() {
     
     // Start AI processing immediately during preview
     try {
+      console.log('Getting video data from storage...');
       const recordedVideoData = sessionStorage.getItem("recordedVideoBlob");
       const usingIndexedDB = sessionStorage.getItem("usingIndexedDB");
+      console.log('Session storage data:', recordedVideoData ? 'found' : 'not found', 'IndexedDB:', usingIndexedDB);
       
       let videoBlob: Blob | null = null;
       
       if (recordedVideoData) {
+        console.log('Converting base64 data to blob...');
         // Convert base64 back to blob for AI processing
         const binaryString = atob(recordedVideoData);
         const bytes = new Uint8Array(binaryString.length);
@@ -373,9 +372,12 @@ export default function RecordPreviewPage() {
           bytes[i] = binaryString.charCodeAt(i);
         }
         videoBlob = new Blob([bytes], { type: 'video/webm' });
+        console.log('Video blob created from session storage, size:', videoBlob.size);
       } else if (usingIndexedDB === "true") {
+        console.log('Loading from IndexedDB...');
         // Load from IndexedDB
         videoBlob = await loadVideoBlobFromIndexedDB();
+        console.log('Video blob loaded from IndexedDB:', videoBlob ? videoBlob.size : 'null');
       }
       
       if (videoBlob) {
@@ -384,8 +386,11 @@ export default function RecordPreviewPage() {
         console.log('AI processing with duration values - param:', duration, 'state:', videoDuration, 'video element:', videoRef.current?.duration, 'using:', actualDuration);
         
         // Process with AI immediately for preview
+        console.log('Calling processVideoWithAIForPreview...');
         await processVideoWithAIForPreview(videoBlob, actualDuration);
         setAiProcessingComplete(true);
+      } else {
+        console.log('No video blob found - cannot process AI');
       }
     } catch (error) {
       console.error('AI processing error during preview:', error);
@@ -402,11 +407,17 @@ export default function RecordPreviewPage() {
   // Process video with AI for preview (before saving)
   const processVideoWithAIForPreview = async (videoBlob: Blob, duration: number | undefined) => {
     try {
+      console.log('processVideoWithAIForPreview called with blob size:', videoBlob.size, 'duration:', duration);
+      
       // Convert video blob to base64 for sending to server
+      console.log('Converting video blob to array buffer...');
       const arrayBuffer = await videoBlob.arrayBuffer();
+      console.log('Array buffer size:', arrayBuffer.byteLength);
+      
       const uint8Array = new Uint8Array(arrayBuffer);
       const binaryString = Array.from(uint8Array, byte => String.fromCharCode(byte)).join('');
       const audioBuffer = btoa(binaryString);
+      console.log('Audio buffer created, size:', audioBuffer.length);
       
       // Try to get duration from multiple sources if not provided
       let effectiveDuration = duration;
@@ -684,9 +695,10 @@ export default function RecordPreviewPage() {
         description: "Your recording has been saved successfully.",
       });
       
-      // Clean up session storage and blob URLs
+      // Clean up session storage and blob URLs - but preserve recordedVideoBlob for AI processing
       sessionStorage.removeItem("recordedVideo");
-      sessionStorage.removeItem("recordedVideoBlob");
+      // Don't remove recordedVideoBlob yet - AI processing might need it
+      // sessionStorage.removeItem("recordedVideoBlob");
       sessionStorage.removeItem("recordingSettings");
       sessionStorage.removeItem("usingIndexedDB");
       
