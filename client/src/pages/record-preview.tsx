@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
-import { Copy, Mail, MessageSquare, Save, Trash2, Share2, Lock, User } from "lucide-react";
+import { Copy, Mail, MessageSquare, Save, Trash2, Share2, Lock, User, AlertCircle, CheckCircle, Loader2, RefreshCw, Subtitles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -43,6 +43,10 @@ export default function RecordPreviewPage() {
   const [captionBlobUrl, setCaptionBlobUrl] = useState<string | null>(null);
   const [isProcessingAI, setIsProcessingAI] = useState(false);
   const [aiProcessingComplete, setAiProcessingComplete] = useState(false);
+  const [aiProcessingError, setAiProcessingError] = useState(false);
+  const [suggestedTitle, setSuggestedTitle] = useState<string | null>(null);
+  const [suggestedDescription, setSuggestedDescription] = useState<string | null>(null);
+  const [transcriptText, setTranscriptText] = useState<string | null>(null);
   const aiProcessingRef = useRef(false); // Use ref to track processing without triggering re-renders
 
   // Load recorded video from session storage or IndexedDB
@@ -84,6 +88,10 @@ export default function RecordPreviewPage() {
     aiProcessingRef.current = false;
     setAiProcessingComplete(false);
     setIsProcessingAI(false);
+    setAiProcessingError(false);
+    setSuggestedTitle(null);
+    setSuggestedDescription(null);
+    setTranscriptText(null);
     
     setVideoUrl(recordedVideoUrl);
     
@@ -195,7 +203,7 @@ export default function RecordPreviewPage() {
             
             // Only start AI processing when we have valid duration
             if (!isProcessingAI && !aiProcessingComplete) {
-              // Mark as processing to prevent duplicate calls (set after check, before processing)
+              // Mark as processing to prevent duplicate calls (set BEFORE processing)
               aiProcessingRef.current = true;
               generateAIContent(effectiveDuration);
             }
@@ -208,12 +216,12 @@ export default function RecordPreviewPage() {
                 generateAIContent(videoDuration);
               }
             } else {
-              // If still no duration, retry in a short while
+              // If still no duration, retry in a short while, but DON'T mark as processed yet
               setTimeout(() => {
                 if (videoRef.current && videoRef.current.readyState >= 1) {
                   handleMetadataLoaded();
                 }
-              }, 200);
+              }, 500);
             }
           }
         }
@@ -305,10 +313,17 @@ export default function RecordPreviewPage() {
     // Note: aiProcessingRef check is now done before calling this function
     console.log('Starting AI content generation with duration:', duration);
     
+    // If no valid duration provided, don't proceed
+    if (!duration || duration <= 0) {
+      console.log('Invalid duration for AI processing, skipping');
+      aiProcessingRef.current = false; // Reset so it can be tried again
+      return;
+    }
+    
     setIsProcessingAI(true);
     
     // Set initial placeholder content while processing
-    setTitle("Processing...");
+    setTitle("Generating title...");
     setDescription("AI is analyzing your video content...");
     
     // Start AI processing immediately during preview
@@ -345,8 +360,10 @@ export default function RecordPreviewPage() {
       // Fallback content if AI processing fails
       setTitle("Financial Advisory Video");
       setDescription("Professional financial guidance and insights.");
+      setAiProcessingError(true);
     } finally {
       setIsProcessingAI(false);
+      setAiProcessingComplete(true);
     }
   };
 
@@ -380,8 +397,18 @@ export default function RecordPreviewPage() {
       console.log('AI processing data:', data);
       
       if (data?.title || data?.description) {
+        // Store suggested values
+        setSuggestedTitle(data.title || "Financial Advisory Video");
+        setSuggestedDescription(data.description || "Professional financial guidance and insights.");
+        
+        // Auto-populate the fields
         setTitle(data.title || "Financial Advisory Video");
         setDescription(data.description || "Professional financial guidance and insights.");
+        
+        // Store transcript if available
+        if (data.transcription && data.transcription !== "Transcription unavailable") {
+          setTranscriptText(data.transcription);
+        }
         
         // Update captions with AI-generated captions if available
         if (data.captions && data.captions.length > 0) {
@@ -412,9 +439,12 @@ export default function RecordPreviewPage() {
           }
         }
         
+        setAiProcessingError(false);
+        setAiProcessingComplete(true);
+        
         toast({
           title: "AI Content Generated",
-          description: "Title and description generated from video content. You can edit them before saving.",
+          description: "Title, description, and captions generated from video content.",
         });
       }
     } catch (error) {
@@ -422,10 +452,12 @@ export default function RecordPreviewPage() {
       // Keep fallback content if AI processing fails
       setTitle("Financial Advisory Video");
       setDescription("Professional financial guidance and insights.");
+      setAiProcessingError(true);
+      setAiProcessingComplete(true);
       
       toast({
         title: "AI Processing Failed",
-        description: "Using fallback title and description. You can edit them before saving.",
+        description: "Unable to generate captions. You can retry or continue without AI-generated content.",
         variant: "destructive",
       });
     }
@@ -827,15 +859,65 @@ export default function RecordPreviewPage() {
                         </div>
                       </div>
 
-                      {/* Captions Toggle */}
-                      <div className="flex items-center justify-between">
-                        <Label htmlFor="preview-captions">Show Captions</Label>
-                        <Switch
-                          id="preview-captions"
-                          checked={captionsEnabled}
-                          onCheckedChange={setCaptionsEnabled}
-                          disabled={isSaving}
-                        />
+                      {/* Captions Section */}
+                      <div className="space-y-3 p-4 rounded-lg border bg-gray-50">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Subtitles className="h-4 w-4 text-gray-600" />
+                            <Label htmlFor="preview-captions">Closed Captions</Label>
+                          </div>
+                          <Switch
+                            id="preview-captions"
+                            checked={captionsEnabled}
+                            onCheckedChange={setCaptionsEnabled}
+                            disabled={isSaving || !captionBlobUrl}
+                          />
+                        </div>
+                        
+                        {/* Caption Status */}
+                        {isProcessingAI && (
+                          <div className="flex items-center gap-2 text-sm text-blue-600">
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                            <span>Generating captions...</span>
+                          </div>
+                        )}
+                        
+                        {!isProcessingAI && aiProcessingComplete && !aiProcessingError && captionBlobUrl && (
+                          <div className="flex items-center gap-2 text-sm text-green-600">
+                            <CheckCircle className="h-3 w-3" />
+                            <span>Captions ready</span>
+                          </div>
+                        )}
+                        
+                        {aiProcessingError && (
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2 text-sm text-red-600">
+                              <AlertCircle className="h-3 w-3" />
+                              <span>Caption generation failed</span>
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setAiProcessingError(false);
+                                aiProcessingRef.current = false;
+                                generateAIContent(videoDuration);
+                              }}
+                              disabled={isSaving || isProcessingAI || !videoDuration}
+                              className="w-full"
+                            >
+                              <RefreshCw className="h-3 w-3 mr-2" />
+                              Retry Caption Generation
+                            </Button>
+                          </div>
+                        )}
+                        
+                        {/* Caption disclaimer */}
+                        {captionBlobUrl && (
+                          <p className="text-xs text-gray-500 italic">
+                            Note: Captions are machine-generated and may contain errors.
+                          </p>
+                        )}
                       </div>
 
                       {/* Profile Picture Toggle */}
@@ -885,8 +967,66 @@ export default function RecordPreviewPage() {
                   <CardTitle>Video Details</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  {/* AI Processing Status */}
+                  {isProcessingAI && (
+                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+                      <span className="text-sm text-blue-700">AI is analyzing your video content...</span>
+                    </div>
+                  )}
+                  
+                  {/* Suggested content alert */}
+                  {!isProcessingAI && aiProcessingComplete && suggestedTitle && (
+                    <div className="p-3 bg-green-50 border border-green-200 rounded-lg space-y-2">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                        <span className="text-sm font-medium text-green-700">AI Suggestions Available</span>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setTitle(suggestedTitle || "");
+                            setDescription(suggestedDescription || "");
+                            toast({
+                              title: "Suggestions Applied",
+                              description: "You can still edit the title and description."
+                            });
+                          }}
+                          disabled={isSaving}
+                        >
+                          Accept All
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            setSuggestedTitle(null);
+                            setSuggestedDescription(null);
+                          }}
+                          disabled={isSaving}
+                        >
+                          Dismiss
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                  
                   <div className="space-y-2">
-                    <Label htmlFor="title">Title * {isProcessingAI && <span className="text-sm text-blue-600">(AI processing...)</span>}</Label>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="title">Title *</Label>
+                      {suggestedTitle && title !== suggestedTitle && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setTitle(suggestedTitle)}
+                          disabled={isSaving || isProcessingAI}
+                        >
+                          Use Suggestion
+                        </Button>
+                      )}
+                    </div>
                     <Input
                       id="title"
                       placeholder="Enter video title"
@@ -895,10 +1035,25 @@ export default function RecordPreviewPage() {
                       disabled={isSaving || isProcessingAI}
                       data-testid="input-title"
                     />
+                    {suggestedTitle && suggestedTitle !== title && (
+                      <p className="text-xs text-gray-500">Suggested: "{suggestedTitle}"</p>
+                    )}
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="description">Description</Label>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="description">Description</Label>
+                      {suggestedDescription && description !== suggestedDescription && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setDescription(suggestedDescription)}
+                          disabled={isSaving || isProcessingAI}
+                        >
+                          Use Suggestion
+                        </Button>
+                      )}
+                    </div>
                     <Textarea
                       id="description"
                       placeholder="Add a description..."
@@ -908,6 +1063,9 @@ export default function RecordPreviewPage() {
                       disabled={isSaving || isProcessingAI}
                       data-testid="textarea-description"
                     />
+                    {suggestedDescription && suggestedDescription !== description && (
+                      <p className="text-xs text-gray-500">Suggested: "{suggestedDescription}"</p>
+                    )}
                   </div>
                 </CardContent>
               </Card>
