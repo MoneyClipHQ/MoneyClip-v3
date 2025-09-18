@@ -635,17 +635,18 @@ export default function SharePage() {
                     </select>
                   </div>
                   
-                  {/* Captions Toggle */}
-                  {video.captionsEnabled && (
+                  {/* Captions Toggle - Only show if captions are available */}
+                  {video.captionsEnabled && video.transcriptUrl && (
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={toggleCaptions}
                       className="text-white hover:bg-gray-800"
                       data-testid="captions-toggle"
+                      title={showCaptions ? "Hide captions" : "Show captions"}
                     >
                       {showCaptions ? <Captions className="h-4 w-4" /> : <CaptionsOff className="h-4 w-4" />}
-                      <span className="ml-1 text-xs">CC</span>
+                      <span className="ml-1 text-xs">{showCaptions ? 'ON' : 'OFF'}</span>
                     </Button>
                   )}
                 </div>
