@@ -20,6 +20,11 @@ import { transcribeAndGenerateContent, generateCaptions, generateChartScript } f
 import { Resend } from 'resend';
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 
+// Global type declarations for upload sessions
+declare global {
+  var uploadSessions: Map<string, any> | undefined;
+}
+
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 // Auth middleware
@@ -1488,10 +1493,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
       
       // For now, store in memory (should be Redis in production)
-      if (!global.uploadSessions) {
-        global.uploadSessions = new Map();
+      if (!(global as any).uploadSessions) {
+        (global as any).uploadSessions = new Map();
       }
-      global.uploadSessions.set(sessionId, uploadSession);
+      (global as any).uploadSessions.set(sessionId, uploadSession);
       
       res.json({
         sessionId,
@@ -1513,7 +1518,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Missing sessionId or chunkIndex" });
       }
       
-      const uploadSession = global.uploadSessions?.get(sessionId);
+      const uploadSession = (global as any).uploadSessions?.get(sessionId);
       if (!uploadSession) {
         return res.status(404).json({ error: "Upload session not found" });
       }
@@ -1538,7 +1543,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Missing sessionId or totalChunks" });
       }
       
-      const uploadSession = global.uploadSessions?.get(sessionId);
+      const uploadSession = (global as any).uploadSessions?.get(sessionId);
       if (!uploadSession) {
         return res.status(404).json({ error: "Upload session not found" });
       }
@@ -1548,7 +1553,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const videoPath = uploadSession.videoPath;
       
       // Clean up session
-      global.uploadSessions?.delete(sessionId);
+      (global as any).uploadSessions?.delete(sessionId);
       
       res.json({
         videoPath,
