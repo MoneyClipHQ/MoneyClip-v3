@@ -1,4 +1,4 @@
-import OpenAI from "openai";
+import OpenAI, { toFile } from "openai";
 
 // Using GPT-4 for reliable and high-quality text generation
 const openai = new OpenAI({ 
@@ -35,9 +35,10 @@ export interface FinanceChart {
  */
 export async function transcribeAndGenerateContent(audioBuffer: Buffer, originalFilename?: string): Promise<TranscriptionResult> {
   try {
-    // Create a File object from buffer for OpenAI
-    const audioFile = new File([audioBuffer], originalFilename || 'audio.webm', {
-      type: 'audio/webm'
+    // Create a proper file object for OpenAI using their helper
+    console.log("Converting audio buffer to file object...");
+    const audioFile = await toFile(audioBuffer, originalFilename || 'audio.webm', { 
+      type: 'audio/webm' 
     });
 
     // Step 1: Transcribe audio using Whisper
@@ -47,6 +48,8 @@ export async function transcribeAndGenerateContent(audioBuffer: Buffer, original
       model: "whisper-1",
       response_format: "text"
     });
+    
+    console.log(`Transcription completed. Length: ${transcription.length} characters`);
 
     console.log("Transcription completed, generating title and description...");
 

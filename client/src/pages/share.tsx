@@ -537,6 +537,17 @@ export default function SharePage() {
                     className="w-full h-full"
                     data-testid="public-video-player"
                     controls
+                    onError={(e) => {
+                      console.error('Video playback error:', e);
+                      console.error('Video URL:', verifiedVideoUrl || video.fileUrl);
+                      console.error('Video element error:', videoRef.current?.error);
+                    }}
+                    onLoadStart={() => {
+                      console.log('Video loading started for URL:', verifiedVideoUrl || video.fileUrl);
+                    }}
+                    onCanPlay={() => {
+                      console.log('Video can play, ready state:', videoRef.current?.readyState);
+                    }}
                     onPlay={() => {
                       setIsPlaying(true);
                       logViewerEventMutation.mutate({ event: 'VIDEO_PLAYED' });
