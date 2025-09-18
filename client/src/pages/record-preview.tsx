@@ -249,18 +249,39 @@ export default function RecordPreviewPage() {
         videoRef.current.ondurationchange = () => {
           const newDuration = videoRef.current?.duration;
           console.log('Duration changed event fired, new duration:', newDuration);
-          if (newDuration && !isNaN(newDuration) && newDuration > 0 && !aiProcessingRef.current) {
-            handleMetadataLoaded();
+          // Check if we need to process AI when duration becomes available
+          if (newDuration && !isNaN(newDuration) && newDuration > 0) {
+            // Update duration state
+            setVideoDuration(newDuration);
+            setTrimRange({ start: 0, end: newDuration });
+            
+            // Check if AI processing is needed
+            if (!aiProcessingRef.current && !isProcessingAI && !aiProcessingComplete) {
+              console.log('Duration now available via durationchange event, starting AI processing:', newDuration);
+              generatePreviewCaptions(newDuration);
+              aiProcessingRef.current = true;
+              generateAIContent(newDuration);
+            }
           }
         };
         
         // Fallback: Check periodically if duration is available
         const checkDuration = setInterval(() => {
           if (videoRef.current?.duration && !isNaN(videoRef.current.duration) && videoRef.current.duration > 0) {
-            console.log('Duration available via interval check:', videoRef.current.duration);
+            const duration = videoRef.current.duration;
+            console.log('Duration available via interval check:', duration);
             clearInterval(checkDuration);
-            if (!aiProcessingRef.current) {
-              handleMetadataLoaded();
+            
+            // Update duration state  
+            setVideoDuration(duration);
+            setTrimRange({ start: 0, end: duration });
+            
+            // Check if AI processing is needed
+            if (!aiProcessingRef.current && !isProcessingAI && !aiProcessingComplete) {
+              console.log('Duration now available via interval, starting AI processing:', duration);
+              generatePreviewCaptions(duration);
+              aiProcessingRef.current = true;
+              generateAIContent(duration);
             }
           }
         }, 100);
@@ -322,10 +343,12 @@ export default function RecordPreviewPage() {
     // Note: aiProcessingRef check is now done before calling this function
     console.log('Starting AI content generation with duration:', duration);
     
-    // If no valid duration provided, don't proceed
+    // If no valid duration provided, wait and retry later
     if (!duration || duration <= 0) {
-      console.log('Invalid duration for AI processing, skipping');
+      console.log('Invalid duration for AI processing, will retry when duration is available');
       aiProcessingRef.current = false; // Reset so it can be tried again
+      setIsProcessingAI(false);
+      // Don't set processing complete, so it can be retried
       return;
     }
     
