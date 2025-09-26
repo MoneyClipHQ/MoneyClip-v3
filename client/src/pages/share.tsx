@@ -554,16 +554,37 @@ export default function SharePage() {
                     className="w-full h-full"
                     data-testid="public-video-player"
                     controls
+                    preload="metadata"
+                    playsInline
+                    webkit-playsinline="true"
+                    crossOrigin="anonymous"
                     onError={(e) => {
                       console.error('Video playback error:', e);
                       console.error('Video URL:', verifiedVideoUrl || video.fileUrl);
                       console.error('Video element error:', videoRef.current?.error);
+                      
+                      // Log mobile-specific error details
+                      if (videoRef.current?.error) {
+                        const error = videoRef.current.error;
+                        console.error('Video error code:', error.code);
+                        console.error('Video error message:', error.message);
+                        
+                        // Check for common mobile video issues
+                        if (error.code === MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED) {
+                          console.error('Video format not supported on this device');
+                        } else if (error.code === MediaError.MEDIA_ERR_DECODE) {
+                          console.error('Video decoding error - possibly codec incompatibility');
+                        }
+                      }
                     }}
                     onLoadStart={() => {
                       console.log('Video loading started for URL:', verifiedVideoUrl || video.fileUrl);
+                      console.log('User agent:', navigator.userAgent);
+                      console.log('Is mobile device:', /Mobi|Android/i.test(navigator.userAgent));
                     }}
                     onCanPlay={() => {
                       console.log('Video can play, ready state:', videoRef.current?.readyState);
+                      console.log('Video format:', videoRef.current?.src);
                     }}
                     onLoadedMetadata={() => {
                       // Ensure captions are visible by default
