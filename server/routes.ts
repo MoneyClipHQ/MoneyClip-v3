@@ -1810,6 +1810,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // REMOVED - Insecure streaming endpoint that bypassed authentication
+  // Will be replaced with secure implementation in next version
+
+  // REMOVED - Video processing endpoint with placeholder implementation
+  // Will be replaced with secure FFmpeg-based processing in next version
+
   const httpServer = createServer(app);
 
   return httpServer;

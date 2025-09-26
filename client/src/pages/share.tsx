@@ -28,6 +28,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { MobileVideoPlayer, MobileVideoPlayerRef } from "@/components/mobile-video-player";
 
 interface SharedVideo {
   id: string;
@@ -44,6 +45,12 @@ interface SharedVideo {
   transcriptUrl: string | null;
   createdAt: string;
   passwordProtected: boolean;
+  // Adaptive streaming fields
+  hlsManifestUrl: string | null;
+  dashManifestUrl: string | null;
+  availableQualities: string | null;
+  preferredQuality: string | null;
+  processingStatus: string | null;
 }
 
 interface AdvisorBranding {
@@ -82,7 +89,7 @@ export default function SharePage() {
   const [isMobile, setIsMobile] = useState(false);
   const [showCaptions, setShowCaptions] = useState(true);
   const [volume, setVolume] = useState(1);
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const playerRef = useRef<MobileVideoPlayerRef>(null);
   
   // Comment state
   const [commentText, setCommentText] = useState("");
@@ -223,9 +230,10 @@ export default function SharePage() {
   
   // Initialize caption visibility when video loads
   useEffect(() => {
-    if (videoRef.current && video?.captionsEnabled && video?.transcriptUrl) {
+    if (playerRef.current && video?.captionsEnabled && video?.transcriptUrl) {
       const handleLoadedMetadata = () => {
-        const tracks = videoRef.current?.textTracks;
+        const videoElement = playerRef.current.getVideoElement();
+        const tracks = videoElement?.textTracks;
         if (tracks) {
           for (let i = 0; i < tracks.length; i++) {
             if (tracks[i].kind === 'captions' || tracks[i].kind === 'subtitles') {
@@ -236,12 +244,13 @@ export default function SharePage() {
       };
       
       // Check if metadata is already loaded
-      if (videoRef.current.readyState >= 1) {
+      const videoElement = playerRef.current.getVideoElement();
+      if (videoElement && videoElement.readyState >= 1) {
         handleLoadedMetadata();
       } else {
-        videoRef.current.addEventListener('loadedmetadata', handleLoadedMetadata);
+        videoElement.addEventListener('loadedmetadata', handleLoadedMetadata);
         return () => {
-          videoRef.current?.removeEventListener('loadedmetadata', handleLoadedMetadata);
+          videoElement?.removeEventListener('loadedmetadata', handleLoadedMetadata);
         };
       }
     }
@@ -305,12 +314,12 @@ export default function SharePage() {
   
   // Video player controls
   const togglePlayPause = () => {
-    if (videoRef.current) {
+    if (playerRef.current) {
       if (isPlaying) {
-        videoRef.current.pause();
+        playerRef.current.pause();
         logViewerEventMutation.mutate({ event: 'VIDEO_PAUSED' });
       } else {
-        videoRef.current.play();
+        playerRef.current.play();
         logViewerEventMutation.mutate({ event: 'VIDEO_PLAYED' });
       }
       setIsPlaying(!isPlaying);
@@ -319,8 +328,8 @@ export default function SharePage() {
   
   const handleSpeedChange = (speed: number) => {
     setPlaybackSpeed(speed);
-    if (videoRef.current) {
-      videoRef.current.playbackRate = speed;
+    if (playerRef.current) {
+      playerRef.current.setPlaybackRate(speed);
     }
     logViewerEventMutation.mutate({
       event: 'SPEED_CHANGED',
@@ -333,17 +342,20 @@ export default function SharePage() {
     setShowCaptions(newShowCaptions);
     
     // Programmatically control caption track visibility
-    if (videoRef.current) {
-      const tracks = videoRef.current.textTracks;
-      let captionTrackFound = false;
-      for (let i = 0; i < tracks.length; i++) {
-        if (tracks[i].kind === 'captions' || tracks[i].kind === 'subtitles') {
-          tracks[i].mode = newShowCaptions ? 'showing' : 'hidden';
-          captionTrackFound = true;
+    if (playerRef.current) {
+      const videoElement = playerRef.current.getVideoElement();
+      if (videoElement) {
+        const tracks = videoElement.textTracks;
+        let captionTrackFound = false;
+        for (let i = 0; i < tracks.length; i++) {
+          if (tracks[i].kind === 'captions' || tracks[i].kind === 'subtitles') {
+            tracks[i].mode = newShowCaptions ? 'showing' : 'hidden';
+            captionTrackFound = true;
+          }
         }
-      }
-      if (!captionTrackFound) {
-        console.warn('No caption tracks available to toggle');
+        if (!captionTrackFound) {
+          console.warn('No caption tracks available to toggle');
+        }
       }
     }
     
@@ -614,75 +626,15 @@ export default function SharePage() {
               {/* Video Player */}
               <div className="aspect-video bg-black relative">
                 {(video.fileUrl || verifiedVideoUrl) ? (
-                  <video
-                    ref={videoRef}
-                    src={verifiedVideoUrl || video.fileUrl || undefined}
+                  <MobileVideoPlayer
+                    ref={playerRef}
+                    src={verifiedVideoUrl || video.fileUrl || ""}
+                    poster={video.thumbnailUrl || undefined}
                     className="w-full h-full"
                     data-testid="public-video-player"
-                    controls
-                    preload="metadata"
-                    playsInline
-                    webkit-playsinline="true"
-                    crossOrigin="anonymous"
-                    onError={(e) => {
-                      console.error('Video playback error:', e);
-                      console.error('Video URL:', verifiedVideoUrl || video.fileUrl);
-                      console.error('Video element error:', videoRef.current?.error);
-                      console.error('Is mobile device:', isMobile);
-                      
-                      // Handle mobile-specific error feedback
-                      if (videoRef.current?.error) {
-                        const error = videoRef.current.error;
-                        console.error('Video error code:', error.code);
-                        console.error('Video error message:', error.message);
-                        
-                        let errorMessage = "Video playback failed. Please try refreshing the page.";
-                        
-                        // Check for common mobile video issues
-                        if (error.code === MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED) {
-                          console.error('Video format not supported on this device');
-                          if (isMobile) {
-                            errorMessage = "Video format not supported on your mobile device. Please try opening this link on a desktop computer or different browser.";
-                          } else {
-                            errorMessage = "Video format not supported. Please try a different browser like Chrome or Firefox.";
-                          }
-                        } else if (error.code === MediaError.MEDIA_ERR_DECODE) {
-                          console.error('Video decoding error - possibly codec incompatibility');
-                          if (isMobile) {
-                            errorMessage = "Video playback error on mobile device. Please try opening this link on a desktop computer.";
-                          } else {
-                            errorMessage = "Video decoding error. Please try refreshing the page or using a different browser.";
-                          }
-                        } else if (error.code === MediaError.MEDIA_ERR_NETWORK) {
-                          errorMessage = "Network error loading video. Please check your internet connection and try again.";
-                        } else if (error.code === MediaError.MEDIA_ERR_ABORTED) {
-                          errorMessage = "Video loading was interrupted. Please try again.";
-                        }
-                        
-                        setVideoError(errorMessage);
-                      }
-                    }}
-                    onLoadStart={() => {
-                      console.log('Video loading started for URL:', verifiedVideoUrl || video.fileUrl);
-                      console.log('User agent:', navigator.userAgent);
-                      console.log('Is mobile device:', /Mobi|Android/i.test(navigator.userAgent));
-                    }}
-                    onCanPlay={() => {
-                      console.log('Video can play, ready state:', videoRef.current?.readyState);
-                      console.log('Video format:', videoRef.current?.src);
-                    }}
-                    onLoadedMetadata={() => {
-                      // Ensure captions are visible by default
-                      if (videoRef.current && video.captionsEnabled && showCaptions) {
-                        const tracks = videoRef.current.textTracks;
-                        for (let i = 0; i < tracks.length; i++) {
-                          if (tracks[i].kind === 'captions' || tracks[i].kind === 'subtitles') {
-                            tracks[i].mode = 'showing';
-                            console.log('Captions track set to showing');
-                          }
-                        }
-                      }
-                    }}
+                    showControls={true}
+                    captionsEnabled={video.captionsEnabled}
+                    captionsUrl={video.transcriptUrl || undefined}
                     onPlay={() => {
                       setIsPlaying(true);
                       logViewerEventMutation.mutate({ event: 'VIDEO_PLAYED' });
@@ -691,20 +643,23 @@ export default function SharePage() {
                       setIsPlaying(false);
                       logViewerEventMutation.mutate({ event: 'VIDEO_PAUSED' });
                     }}
-                    onEnded={() => {
-                      logViewerEventMutation.mutate({ event: 'VIDEO_COMPLETED' });
+                    onError={(error) => {
+                      console.error('Video player error:', error);
+                      setVideoError(error);
                     }}
-                  >
-                    {video.captionsEnabled && video.transcriptUrl && (
-                      <track
-                        kind="captions"
-                        src={video.transcriptUrl}
-                        srcLang="en"
-                        label="English"
-                        default={showCaptions}
-                      />
-                    )}
-                  </video>
+                    onSpeedChange={(speed) => {
+                      logViewerEventMutation.mutate({
+                        event: 'SPEED_CHANGED',
+                        metadata: { speed }
+                      });
+                    }}
+                    onSeek={(time) => {
+                      logViewerEventMutation.mutate({
+                        event: 'VIDEO_SEEKED',
+                        metadata: { time }
+                      });
+                    }}
+                  />
                 ) : (
                   <div className="text-white text-center flex items-center justify-center h-full">
                     <div>
@@ -731,8 +686,11 @@ export default function SharePage() {
                         <Button
                           onClick={() => {
                             setVideoError(null);
-                            if (videoRef.current) {
-                              videoRef.current.load(); // Reload the video
+                            if (playerRef.current) {
+                              const videoElement = playerRef.current.getVideoElement();
+                              if (videoElement) {
+                                videoElement.load(); // Reload the video
+                              }
                             }
                           }}
                           variant="outline"

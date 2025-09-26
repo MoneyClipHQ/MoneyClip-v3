@@ -175,6 +175,13 @@ export const videos = pgTable("videos", {
   expiryDuration: text("expiry_duration").default("7d"), // Duration preset: 24h, 7d, 30d, custom
   renewedAt: timestamp("renewed_at"), // Last renewal date
   deletedAt: timestamp("deleted_at"), // Soft delete timestamp
+  // Adaptive streaming support
+  hlsManifestUrl: text("hls_manifest_url"), // .m3u8 master playlist URL
+  dashManifestUrl: text("dash_manifest_url"), // .mpd manifest URL  
+  availableQualities: text("available_qualities").default("360p,720p"), // comma-separated quality levels
+  preferredQuality: text("preferred_quality").default("auto"), // auto, 360p, 480p, 720p, 1080p
+  processingStatus: text("processing_status").default("pending"), // pending, processing, completed, failed
+  originalFormat: text("original_format").default("webm"), // webm, mp4
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
