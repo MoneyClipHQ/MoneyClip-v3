@@ -87,9 +87,28 @@ export const MobileVideoPlayer = forwardRef<MobileVideoPlayerRef, MobileVideoPla
     const checkMobile = () => {
       const userAgent = navigator.userAgent;
       const mobile = /Mobi|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
-      setIsMobile(mobile);
+      
+      // Additional mobile detection methods
+      const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+      const smallScreen = window.innerWidth <= 768;
+      const isMobileDevice = mobile || (hasTouch && smallScreen);
+      
+      console.log('Mobile detection:', {
+        userAgent,
+        mobile,
+        hasTouch,
+        smallScreen,
+        screenWidth: window.innerWidth,
+        finalIsMobile: isMobileDevice
+      });
+      
+      setIsMobile(isMobileDevice);
     };
     checkMobile();
+    
+    // Re-check on window resize
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
   // Auto-hide controls on mobile after inactivity
@@ -154,6 +173,15 @@ export const MobileVideoPlayer = forwardRef<MobileVideoPlayerRef, MobileVideoPla
       const error = video.error;
       let errorMessage = "Video playback failed. Please try refreshing the page.";
       
+      console.error('Video error details:', {
+        error,
+        errorCode: error?.code,
+        errorMessage: error?.message,
+        videoSrc: src,
+        isMobile,
+        userAgent: navigator.userAgent
+      });
+      
       if (error) {
         if (error.code === MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED) {
           if (isMobile) {
@@ -212,14 +240,28 @@ export const MobileVideoPlayer = forwardRef<MobileVideoPlayerRef, MobileVideoPla
   // Control handlers
   const togglePlayPause = useCallback(() => {
     const video = videoRef.current;
-    if (!video) return;
+    if (!video) {
+      console.error('Video element not found when trying to toggle play/pause');
+      return;
+    }
+
+    console.log('Attempting to toggle play/pause:', {
+      isPlaying,
+      videoCurrentTime: video.currentTime,
+      videoDuration: video.duration,
+      videoReadyState: video.readyState,
+      isMobile
+    });
 
     if (isPlaying) {
       video.pause();
     } else {
-      video.play().catch(console.error);
+      video.play().catch(error => {
+        console.error('Error playing video:', error);
+        setPlayerError(`Unable to play video: ${error.message}`);
+      });
     }
-  }, [isPlaying]);
+  }, [isPlaying, isMobile]);
 
   const handleSeek = useCallback((value: number[]) => {
     const video = videoRef.current;
@@ -424,20 +466,29 @@ export const MobileVideoPlayer = forwardRef<MobileVideoPlayerRef, MobileVideoPla
 
   return (
     <div 
-      className={cn("relative group", className)} 
+      className={cn("relative group w-full h-full", className)} 
       data-testid={testId}
       onClick={() => isMobile && togglePlayPause()}
+      style={{ minHeight: '200px' }}
     >
       <video
         ref={videoRef}
         src={src}
         poster={poster}
-        className="w-full h-full object-contain"
+        className="w-full h-full object-contain bg-black"
         playsInline
         webkit-playsinline="true"
+        x-webkit-airplay="allow"
         crossOrigin="anonymous"
         muted={muted}
         autoPlay={autoplay}
+        controls={false}
+        preload="metadata"
+        style={{ 
+          maxWidth: '100%', 
+          maxHeight: '100%',
+          objectFit: 'contain'
+        }}
       >
         {captionsUrl && (
           <track
@@ -462,7 +513,7 @@ export const MobileVideoPlayer = forwardRef<MobileVideoPlayerRef, MobileVideoPla
 
       {/* Mobile Play Button Overlay */}
       {isMobile && !isPlaying && !isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center">
+        <div className="absolute inset-0 flex items-center justify-center z-10">
           <Button
             size="lg"
             variant="ghost"
@@ -472,6 +523,19 @@ export const MobileVideoPlayer = forwardRef<MobileVideoPlayerRef, MobileVideoPla
           >
             <Play className="h-12 w-12" />
           </Button>
+        </div>
+      )}
+
+      {/* Debug info - remove in production */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="absolute top-2 left-2 bg-black/90 text-white text-xs p-2 rounded z-20 max-w-xs">
+          <div>Mobile: {isMobile ? 'YES' : 'NO'}</div>
+          <div>Playing: {isPlaying ? 'YES' : 'NO'}</div>
+          <div>Loading: {isLoading ? 'YES' : 'NO'}</div>
+          <div>Controls: {controlsVisible ? 'YES' : 'NO'}</div>
+          <div>Has Src: {src ? 'YES' : 'NO'}</div>
+          <div>Duration: {duration.toFixed(1)}s</div>
+          {playerError && <div className="text-red-300">Error: {playerError.substring(0, 50)}</div>}
         </div>
       )}
 
@@ -594,7 +658,7 @@ export const MobileVideoPlayer = forwardRef<MobileVideoPlayerRef, MobileVideoPla
 
       {/* Mobile Controls */}
       {showControls && isMobile && controlsVisible && (
-        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent p-4">
+        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent p-4 z-10">
           {/* Progress Bar */}
           <div className="mb-4">
             <Slider
@@ -603,7 +667,7 @@ export const MobileVideoPlayer = forwardRef<MobileVideoPlayerRef, MobileVideoPla
               max={duration || 1}
               step={0.1}
               onValueChange={handleSeek}
-              className="cursor-pointer"
+              className="cursor-pointer touch-manipulation"
             />
             <div className="flex justify-between text-xs text-white mt-1">
               <span>{formatTime(currentTime)}</span>
