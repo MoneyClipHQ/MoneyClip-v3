@@ -98,7 +98,14 @@ export default function SharePage() {
     queryFn: async () => {
       const response = await fetch(`/api/share/${shareLink}`);
       if (!response.ok) {
-        throw new Error(`${response.status}: ${response.statusText}`);
+        const errorData = await response.json().catch(() => ({}));
+        const customError = new Error(errorData.message || response.statusText);
+        (customError as any).status = response.status;
+        (customError as any).code = errorData.error;
+        (customError as any).linkExpired = errorData.linkExpired;
+        (customError as any).linkDisabled = errorData.linkDisabled;
+        (customError as any).expiresAt = errorData.expiresAt;
+        throw customError;
       }
       return response.json();
     },
@@ -405,13 +412,60 @@ export default function SharePage() {
   }
 
   if (error || !video || !branding) {
+    // Handle specific error types
+    const errorCode = (error as any)?.code;
+    const linkExpired = (error as any)?.linkExpired;
+    const linkDisabled = (error as any)?.linkDisabled;
+    const expiresAt = (error as any)?.expiresAt;
+    
+    let errorTitle = "Video Not Available";
+    let errorMessage = "Video not found or link has expired";
+    let showContactAdvisor = false;
+    
+    if (linkExpired) {
+      errorTitle = "Link Expired";
+      errorMessage = `This video link expired on ${new Date(expiresAt).toLocaleDateString()}. Please contact the advisor for a new link.`;
+      showContactAdvisor = true;
+    } else if (linkDisabled) {
+      errorTitle = "Link Disabled";
+      errorMessage = "This video link has been disabled by the advisor. Please contact them for access.";
+      showContactAdvisor = true;
+    } else if (errorCode === "VIDEO_NOT_FOUND") {
+      errorTitle = "Video Not Found";
+      errorMessage = "This video link is invalid or no longer exists.";
+    }
+    
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
-          <CardContent className="pt-6">
-            <p className="text-center text-gray-600" data-testid="error-video-not-found">
-              Video not found or link has expired
-            </p>
+          <CardContent className="pt-6 text-center">
+            <div className="mb-4">
+              <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+              <h2 className="text-xl font-semibold text-gray-900 mb-2" data-testid="error-title">
+                {errorTitle}
+              </h2>
+              <p className="text-gray-600" data-testid="error-message">
+                {errorMessage}
+              </p>
+            </div>
+            {showContactAdvisor && (
+              <div className="pt-4 border-t border-gray-200">
+                <p className="text-sm text-gray-500 mb-3">
+                  Need access? Contact your advisor to get a new link.
+                </p>
+                <div className="flex gap-2 justify-center">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => window.location.href = `mailto:?subject=New Video Link Request&body=Hi, I need a new link for the MoneyClip video that expired. Thanks!`}
+                    data-testid="button-email-advisor"
+                  >
+                    <Mail className="h-4 w-4 mr-2" />
+                    Email Request
+                  </Button>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

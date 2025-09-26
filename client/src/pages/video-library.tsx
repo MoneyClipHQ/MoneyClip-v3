@@ -10,7 +10,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import {
   VideoIcon, Search, ArrowLeft, Grid, List, Filter, Play, Edit3, Share2, Trash2, 
-  Clock, Calendar, MoreVertical, RefreshCw, Eye, Download, Undo
+  Clock, Calendar, MoreVertical, RefreshCw, Eye, Download, Undo, Ban, CheckCircle, 
+  Settings, AlertTriangle
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -26,6 +27,7 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import { format, formatDistanceToNow } from "date-fns";
+import { EXPIRY_PRESETS, isVideoExpired, isVideoExpiringSoon, getTimeUntilExpiry, formatExpiryDate } from "@shared/expiry-utils";
 
 // Status configuration
 const STATUS_CONFIG = {
@@ -33,6 +35,7 @@ const STATUS_CONFIG = {
   in_review: { label: "In Review", color: "bg-yellow-100 text-yellow-800", icon: Clock },
   approved: { label: "Approved", color: "bg-green-100 text-green-800", icon: Eye },
   expired: { label: "Expired", color: "bg-red-100 text-red-800", icon: Calendar },
+  disabled: { label: "Disabled", color: "bg-orange-100 text-orange-800", icon: Ban },
   trash: { label: "Trash", color: "bg-red-100 text-red-800", icon: Trash2 },
 };
 
@@ -42,6 +45,7 @@ const FILTER_OPTIONS = [
   { value: "in_review", label: "In Review" },
   { value: "approved", label: "Approved" },
   { value: "expired", label: "Expired" },
+  { value: "disabled", label: "Disabled" },
   { value: "trash", label: "Trash" },
 ];
 
@@ -132,6 +136,52 @@ export default function VideoLibrary() {
     }
   });
 
+  const toggleLinkMutation = useMutation({
+    mutationFn: async ({ videoId, enabled }: { videoId: string; enabled: boolean }) => {
+      const response = await apiRequest("PATCH", `/api/videos/${videoId}/toggle`, { enabled });
+      if (!response.ok) throw new Error('Failed to toggle link');
+      return response.json();
+    },
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ predicate: (query) => 
+        query.queryKey[0] === "/api/videos" || 
+        (Array.isArray(query.queryKey) && query.queryKey[0] === "/api/videos")
+      });
+      toast({ 
+        title: `Link ${variables.enabled ? 'enabled' : 'disabled'}`, 
+        description: `Video link has been ${variables.enabled ? 'enabled' : 'disabled'}.` 
+      });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to toggle link", variant: "destructive" });
+    }
+  });
+
+  const updateExpiryMutation = useMutation({
+    mutationFn: async ({ videoId, expiryDuration, customExpiryDate }: { 
+      videoId: string; 
+      expiryDuration: string; 
+      customExpiryDate?: string 
+    }) => {
+      const response = await apiRequest("PATCH", `/api/videos/${videoId}/expiry`, { 
+        expiryDuration, 
+        customExpiryDate 
+      });
+      if (!response.ok) throw new Error('Failed to update expiry');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ predicate: (query) => 
+        query.queryKey[0] === "/api/videos" || 
+        (Array.isArray(query.queryKey) && query.queryKey[0] === "/api/videos")
+      });
+      toast({ title: "Expiry updated", description: "Video expiry duration has been updated." });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to update expiry", variant: "destructive" });
+    }
+  });
+
   // Filter and sort videos
   const filteredAndSortedVideos = useMemo(() => {
     let filtered = videos.filter((video: Video) =>
@@ -175,12 +225,20 @@ export default function VideoLibrary() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const isExpired = (video: Video) => {
-    return video.expiresAt && new Date(video.expiresAt) <= new Date();
+  const canShare = (video: Video) => {
+    return video.status === "approved" && !isVideoExpired(video.expiresAt);
   };
 
-  const canShare = (video: Video) => {
-    return video.status === "approved" && !isExpired(video);
+  const getExpiryStatus = (video: Video) => {
+    if (!video.expiresAt) return null;
+    
+    if (isVideoExpired(video.expiresAt)) {
+      return { type: "expired", message: "Expired", color: "text-red-600" };
+    } else if (isVideoExpiringSoon(video.expiresAt)) {
+      return { type: "expiring", message: `Expires in ${getTimeUntilExpiry(video.expiresAt)}`, color: "text-orange-600" };
+    } else {
+      return { type: "active", message: `Expires in ${getTimeUntilExpiry(video.expiresAt)}`, color: "text-gray-600" };
+    }
   };
 
   // Video action handlers
@@ -231,6 +289,14 @@ export default function VideoLibrary() {
 
   const handleRenew = (video: Video) => {
     renewMutation.mutate(video.id);
+  };
+
+  const handleToggleLink = (video: Video, enabled: boolean) => {
+    toggleLinkMutation.mutate({ videoId: video.id, enabled });
+  };
+
+  const handleUpdateExpiry = (video: Video, expiryDuration: string, customExpiryDate?: string) => {
+    updateExpiryMutation.mutate({ videoId: video.id, expiryDuration, customExpiryDate });
   };
 
   // Loading skeleton
@@ -464,9 +530,9 @@ export default function VideoLibrary() {
             )}
             <span>Views: {video.viewCount || 0}</span>
             {video.expiresAt && (
-              <span className={`flex items-center gap-1 ${isExpired(video) ? 'text-red-600' : ''}`}>
+              <span className={`flex items-center gap-1 ${isVideoExpired(video.expiresAt) ? 'text-red-600' : ''}`}>
                 <Calendar className="h-3 w-3" />
-                {isExpired(video) ? 'Expired' : `Expires ${formatDistanceToNow(new Date(video.expiresAt))}`}
+                {isVideoExpired(video.expiresAt) ? 'Expired' : `Expires ${formatDistanceToNow(new Date(video.expiresAt))}`}
               </span>
             )}
           </div>
@@ -525,14 +591,51 @@ export default function VideoLibrary() {
                       Share
                     </DropdownMenuItem>
                     
-                    {isExpired(video) && (
+                    {/* Link Enable/Disable */}
+                    {(video.status === "approved" || video.status === "disabled") && (
                       <DropdownMenuItem 
-                        onClick={() => handleRenew(video)}
-                        disabled={renewMutation.isPending}
+                        onClick={() => handleToggleLink(video, video.status === "disabled")}
+                        disabled={toggleLinkMutation.isPending}
                       >
-                        <RefreshCw className="h-3 w-3 mr-2" />
-                        Renew for 30 days
+                        {video.status === "disabled" ? (
+                          <>
+                            <CheckCircle className="h-3 w-3 mr-2 text-green-600" />
+                            Enable Link
+                          </>
+                        ) : (
+                          <>
+                            <Ban className="h-3 w-3 mr-2 text-orange-600" />
+                            Disable Link
+                          </>
+                        )}
                       </DropdownMenuItem>
+                    )}
+                    
+                    {/* Expiry Management */}
+                    {video.status === "approved" && (
+                      <>
+                        <DropdownMenuSeparator />
+                        {EXPIRY_PRESETS.slice(0, 3).map((preset) => (
+                          <DropdownMenuItem 
+                            key={preset.id}
+                            onClick={() => handleUpdateExpiry(video, preset.duration)}
+                            disabled={updateExpiryMutation.isPending}
+                          >
+                            <Calendar className="h-3 w-3 mr-2" />
+                            Set Expiry: {preset.label}
+                          </DropdownMenuItem>
+                        ))}
+                        
+                        {isVideoExpired(video.expiresAt) && (
+                          <DropdownMenuItem 
+                            onClick={() => handleRenew(video)}
+                            disabled={renewMutation.isPending}
+                          >
+                            <RefreshCw className="h-3 w-3 mr-2" />
+                            Renew for 30 days
+                          </DropdownMenuItem>
+                        )}
+                      </>
                     )}
                     
                     <DropdownMenuSeparator />

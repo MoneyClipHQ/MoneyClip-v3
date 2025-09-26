@@ -19,6 +19,7 @@ import { format } from "date-fns";
 import { transcribeAndGenerateContent, generateCaptions, generateChartScript } from "./openai-service";
 import { Resend } from 'resend';
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
+import { calculateExpiryDate } from "../shared/expiry-utils";
 
 // Global type declarations for upload sessions
 declare global {
@@ -652,10 +653,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/videos", requireAuth, async (req: Request, res: Response) => {
     try {
       const advisorId = req.session.advisorId!;
+      
+      // Set default expiry duration if not provided (7 days default)
+      const expiryDuration = req.body.expiryDuration || "7d";
+      const expiresAt = req.body.customExpiryDate 
+        ? new Date(req.body.customExpiryDate)
+        : calculateExpiryDate(expiryDuration);
+      
       const videoData = {
         ...req.body,
         advisorId,
         shareLink: req.body.shareLink || `moneyclip-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+        expiryDuration,
+        expiresAt,
         // Set transcriptUrl to null initially, will be updated after processing
         transcriptUrl: null
       };
@@ -1175,10 +1185,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const advisorId = req.session.advisorId!;
       const { status } = req.body;
       
-      if (!status || !["draft", "in_review", "approved", "expired"].includes(status)) {
+      if (!status || !["draft", "in_review", "approved", "expired", "disabled"].includes(status)) {
         return res.status(400).json({
           error: "INVALID_STATUS",
-          message: "Status must be one of: draft, in_review, approved, expired"
+          message: "Status must be one of: draft, in_review, approved, expired, disabled"
         });
       }
       
@@ -1244,6 +1254,103 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Enable/disable video link
+  app.patch("/api/videos/:id/toggle", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const advisorId = req.session.advisorId!;
+      const { enabled } = req.body;
+      
+      if (typeof enabled !== "boolean") {
+        return res.status(400).json({
+          error: "INVALID_DATA",
+          message: "enabled field must be a boolean"
+        });
+      }
+      
+      const video = await storage.updateVideoStatus(
+        req.params.id, 
+        advisorId, 
+        enabled ? "approved" : "disabled"
+      );
+      
+      if (!video) {
+        return res.status(404).json({
+          error: "VIDEO_NOT_FOUND",
+          message: "Video not found or you don't have permission to update it"
+        });
+      }
+      
+      // Log event
+      await storage.logRecordingEvent({
+        advisorId,
+        videoId: video.id,
+        event: enabled ? "LINK_ENABLED" : "LINK_DISABLED",
+        metadata: JSON.stringify({
+          title: video.title,
+          enabled
+        })
+      });
+      
+      res.json({ success: true, video, enabled });
+    } catch (error) {
+      console.error("Toggle video link error:", error);
+      res.status(500).json({
+        error: "Failed to toggle video link"
+      });
+    }
+  });
+
+  // Update video expiry duration
+  app.patch("/api/videos/:id/expiry", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const advisorId = req.session.advisorId!;
+      const { expiryDuration, customExpiryDate } = req.body;
+      
+      if (!expiryDuration || !["24h", "7d", "30d", "custom"].includes(expiryDuration)) {
+        return res.status(400).json({
+          error: "INVALID_DURATION",
+          message: "expiryDuration must be one of: 24h, 7d, 30d, custom"
+        });
+      }
+      
+      const expiresAt = customExpiryDate && expiryDuration === "custom"
+        ? new Date(customExpiryDate)
+        : calculateExpiryDate(expiryDuration);
+      
+      const video = await storage.updateVideo(req.params.id, {
+        expiryDuration,
+        expiresAt,
+        renewedAt: new Date()
+      });
+      
+      if (!video) {
+        return res.status(404).json({
+          error: "VIDEO_NOT_FOUND",
+          message: "Video not found or you don't have permission to update it"
+        });
+      }
+      
+      // Log event
+      await storage.logRecordingEvent({
+        advisorId,
+        videoId: video.id,
+        event: "EXPIRY_UPDATED",
+        metadata: JSON.stringify({
+          title: video.title,
+          expiryDuration,
+          newExpiresAt: video.expiresAt
+        })
+      });
+      
+      res.json({ success: true, video });
+    } catch (error) {
+      console.error("Update video expiry error:", error);
+      res.status(500).json({
+        error: "Failed to update video expiry"
+      });
+    }
+  });
+
   // Admin endpoint to expire videos (for scheduled job)
   app.post("/api/videos/expire", async (req: Request, res: Response) => {
     try {
@@ -1273,6 +1380,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({
           error: "VIDEO_NOT_FOUND",
           message: "Video not found or link has expired"
+        });
+      }
+      
+      // Check if link is disabled
+      if (video.status === "disabled") {
+        return res.status(403).json({
+          error: "LINK_DISABLED",
+          message: "This video link has been disabled by the advisor",
+          linkDisabled: true
+        });
+      }
+      
+      // Check if link has expired
+      if (video.expiresAt && new Date(video.expiresAt) <= new Date()) {
+        return res.status(410).json({
+          error: "LINK_EXPIRED",
+          message: "This video link has expired",
+          linkExpired: true,
+          expiresAt: video.expiresAt
         });
       }
       
