@@ -37,8 +37,8 @@ export async function transcribeAndGenerateContent(audioBuffer: Buffer, original
   try {
     // Create a proper file object for OpenAI using their helper
     console.log("Converting audio buffer to file object...");
-    const audioFile = await toFile(audioBuffer, originalFilename || 'audio.webm', { 
-      type: 'audio/webm' 
+    const audioFile = await toFile(audioBuffer, originalFilename || 'audio.mp4', { 
+      type: 'audio/mp4' 
     });
 
     // Step 1: Transcribe audio using Whisper

@@ -108,7 +108,7 @@ export class ObjectStorageService {
       
       // Set appropriate headers
       const headers: Record<string, string> = {
-        "Content-Type": metadata.contentType || "video/webm",
+        "Content-Type": metadata.contentType || "video/mp4",
         "Accept-Ranges": "bytes",
         "Cache-Control": `${isPublic ? "public" : "private"}, max-age=${cacheTtlSec}`,
       };

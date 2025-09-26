@@ -672,7 +672,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // If videoData is provided, generate a data URL for fileUrl
       if (videoData.videoData) {
-        videoData.fileUrl = `data:video/webm;base64,${videoData.videoData}`;
+        videoData.fileUrl = `data:video/mp4;base64,${videoData.videoData}`;
       }
       
       const validatedData = insertVideoSchema.parse(videoData);
@@ -748,7 +748,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`Audio buffer starts with: ${buffer.toString('hex', 0, 20)}...`);
         
         // Process with OpenAI
-        const result = await transcribeAndGenerateContent(buffer, `video-${videoId}.webm`);
+        const result = await transcribeAndGenerateContent(buffer, `video-${videoId}.mp4`);
         
         // Generate captions if transcription successful
         console.log(`Generating captions for video ${videoId} with duration ${duration || 300}s`);
@@ -857,7 +857,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log("Converted buffer size:", buffer.length, "bytes");
         
         // Process with OpenAI
-        const result = await transcribeAndGenerateContent(buffer, 'preview.webm');
+        const result = await transcribeAndGenerateContent(buffer, 'preview.mp4');
         
         // Generate captions if transcription successful
         // Use the provided duration if available and valid, otherwise estimate from audio
@@ -1419,7 +1419,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Generate data URL from stored video data if no fileUrl exists
       if (!fileUrl && video.videoData) {
-        fileUrl = `data:video/webm;base64,${video.videoData}`;
+        fileUrl = `data:video/mp4;base64,${video.videoData}`;
       }
       
       // Ensure transcriptUrl is set if captions exist but URL is missing
@@ -1475,7 +1475,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Generate data URL from stored video data if no fileUrl exists
         let fileUrl = video.fileUrl;
         if (!fileUrl && video.videoData) {
-          fileUrl = `data:video/webm;base64,${video.videoData}`;
+          fileUrl = `data:video/mp4;base64,${video.videoData}`;
         }
         return res.json({ 
           success: true,
@@ -1493,7 +1493,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate data URL from stored video data for password-protected videos
       let fileUrl = video.fileUrl;
       if (video.videoData && !fileUrl) {
-        fileUrl = `data:video/webm;base64,${video.videoData}`;
+        fileUrl = `data:video/mp4;base64,${video.videoData}`;
       }
       
       res.json({ 
@@ -1599,11 +1599,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const objectStorageService = new ObjectStorageService();
       const videoId = `${Date.now()}-${Math.random().toString(36).substring(7)}`;
-      const uploadURL = await objectStorageService.getVideoUploadURL(`${videoId}.webm`);
+      const uploadURL = await objectStorageService.getVideoUploadURL(`${videoId}.mp4`);
       
       res.json({ 
         uploadURL,
-        videoPath: `${videoId}.webm`
+        videoPath: `${videoId}.mp4`
       });
     } catch (error) {
       console.error("Error getting video upload URL:", error);
@@ -1623,7 +1623,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const sessionId = `${Date.now()}-${Math.random().toString(36).substring(7)}`;
-      const filename = `${sessionId}.webm`;
+      const filename = `${sessionId}.mp4`;
       
       // Store upload session info (in production, use Redis or database)
       const uploadSession = {

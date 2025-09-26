@@ -43,7 +43,7 @@ export class VideoProcessor {
     const results: { hls?: AdaptiveManifest; dash?: AdaptiveManifest } = {};
 
     // Download source video to temp directory
-    const tempVideoPath = path.join(this.tempDir, `${videoId}-source.webm`);
+    const tempVideoPath = path.join(this.tempDir, `${videoId}-source.mp4`);
     await this.downloadSourceVideo(sourceVideoPath, tempVideoPath);
 
     try {
@@ -104,7 +104,7 @@ export class VideoProcessor {
       console.log(`Generating HLS ${quality} stream...`);
       
       // In production, use FFmpeg to generate actual HLS streams
-      // ffmpeg -i input.webm -c:v libx264 -b:v 800k -s 640x360 -f hls -hls_time 10 -hls_playlist_type vod output.m3u8
+      // ffmpeg -i input.mp4 -c:v libx264 -b:v 800k -s 640x360 -f hls -hls_time 10 -hls_playlist_type vod output.m3u8
       const playlistContent = this.generateHLSPlaylist(quality, 60); // 60 second duration
       const playlistPath = path.join(qualityDir, 'playlist.m3u8');
       await fs.writeFile(playlistPath, playlistContent);
