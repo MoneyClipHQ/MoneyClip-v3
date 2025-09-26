@@ -78,6 +78,8 @@ export default function SharePage() {
   // Video player state
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
+  const [videoError, setVideoError] = useState<string | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
   const [showCaptions, setShowCaptions] = useState(true);
   const [volume, setVolume] = useState(1);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -283,6 +285,16 @@ export default function SharePage() {
   
   // Check if video content should be shown
   const shouldShowVideo = hasAcceptedTerms && (!video?.passwordProtected || hasEnteredPassword);
+
+  // Detect mobile device
+  useEffect(() => {
+    const checkMobile = () => {
+      const userAgent = navigator.userAgent;
+      const mobile = /Mobi|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+      setIsMobile(mobile);
+    };
+    checkMobile();
+  }, []);
   
   // Video player controls
   const togglePlayPause = () => {
@@ -562,19 +574,38 @@ export default function SharePage() {
                       console.error('Video playback error:', e);
                       console.error('Video URL:', verifiedVideoUrl || video.fileUrl);
                       console.error('Video element error:', videoRef.current?.error);
+                      console.error('Is mobile device:', isMobile);
                       
-                      // Log mobile-specific error details
+                      // Handle mobile-specific error feedback
                       if (videoRef.current?.error) {
                         const error = videoRef.current.error;
                         console.error('Video error code:', error.code);
                         console.error('Video error message:', error.message);
                         
+                        let errorMessage = "Video playback failed. Please try refreshing the page.";
+                        
                         // Check for common mobile video issues
                         if (error.code === MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED) {
                           console.error('Video format not supported on this device');
+                          if (isMobile) {
+                            errorMessage = "Video format not supported on your mobile device. Please try opening this link on a desktop computer or different browser.";
+                          } else {
+                            errorMessage = "Video format not supported. Please try a different browser like Chrome or Firefox.";
+                          }
                         } else if (error.code === MediaError.MEDIA_ERR_DECODE) {
                           console.error('Video decoding error - possibly codec incompatibility');
+                          if (isMobile) {
+                            errorMessage = "Video playback error on mobile device. Please try opening this link on a desktop computer.";
+                          } else {
+                            errorMessage = "Video decoding error. Please try refreshing the page or using a different browser.";
+                          }
+                        } else if (error.code === MediaError.MEDIA_ERR_NETWORK) {
+                          errorMessage = "Network error loading video. Please check your internet connection and try again.";
+                        } else if (error.code === MediaError.MEDIA_ERR_ABORTED) {
+                          errorMessage = "Video loading was interrupted. Please try again.";
                         }
+                        
+                        setVideoError(errorMessage);
                       }
                     }}
                     onLoadStart={() => {
@@ -625,6 +656,53 @@ export default function SharePage() {
                     <div>
                       <Play className="h-16 w-16 mx-auto mb-4 opacity-50" />
                       <p className="text-lg">Video not available</p>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Video Error Message Overlay */}
+                {videoError && (
+                  <div className="absolute inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-lg p-6 max-w-md text-center">
+                      <div className="text-red-600 mb-4">
+                        <Play className="h-12 w-12 mx-auto mb-2" />
+                      </div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                        Video Playback Issue
+                      </h3>
+                      <p className="text-gray-600 mb-4" data-testid="video-error-message">
+                        {videoError}
+                      </p>
+                      <div className="flex gap-3 justify-center">
+                        <Button
+                          onClick={() => {
+                            setVideoError(null);
+                            if (videoRef.current) {
+                              videoRef.current.load(); // Reload the video
+                            }
+                          }}
+                          variant="outline"
+                          data-testid="retry-video-button"
+                        >
+                          Try Again
+                        </Button>
+                        {isMobile && (
+                          <Button
+                            onClick={() => {
+                              // Copy current URL to clipboard for desktop access
+                              navigator.clipboard.writeText(window.location.href).then(() => {
+                                toast({
+                                  title: "Link Copied",
+                                  description: "Link copied to clipboard. You can paste it on a desktop browser.",
+                                });
+                              });
+                            }}
+                            data-testid="copy-link-button"
+                          >
+                            Copy Link for Desktop
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 )}
