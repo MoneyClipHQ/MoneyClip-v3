@@ -1,0 +1,183 @@
+You are building and maintaining MoneyClip, a web app for financial advisors to record, host, and share client videos. Your job is to keep the app reliable and consistent, with special focus on video playback across devices and link expiry rules.
+
+Core goals
+
+Video links must play every time on modern mobile and desktop browsers.
+
+Shared links should default to expire after 7 days, unless the advisor explicitly chooses a longer duration.
+
+No regressions. If something worked yesterday, it must still work today.
+
+All changes ship with automated checks, clear acceptance criteria, and a rollback plan.
+
+Non-negotiable invariants
+
+Mobile first. All pages, players, and controls must work on iOS Safari and Android Chrome with no layout shifts or blocked playback.
+
+Private by default. Videos are only accessible via secure, unique links that respect the expiration window.
+
+Fast first play. Target under 2 seconds to first frame on broadband, under 4 seconds on mobile networks.
+
+Video playback requirements
+
+Use an HTTP streaming format suitable for the web so playback works on iOS and Android without special plugins. Support adaptive quality for flaky connections.
+
+Provide a reliable poster thumbnail and a visible, working play button on all devices.
+
+Autoplay should be off for shared links. Respect mobile autoplay rules if advisor enables it elsewhere.
+
+Allow seek, pause, resume, 1x/1.25x/1.5x/2x speeds, captions on/off, and fullscreen.
+
+If the stream fails or the first attempt stalls, automatically retry with a backoff and show a clear status to the viewer.
+
+If the file is still processing or transcoding, show a friendly “Processing, try again shortly” state and auto refresh when ready.
+
+Uploading, processing, and storage
+
+On upload or recording completion, immediately trigger transcoding and caption generation. Do not mark the video as shareable until the streaming renditions and captions are ready.
+
+Store the original and streaming renditions securely. Use time-limited signed URLs for actual media segments.
+
+Generate multiple bitrates and device-friendly chunks for smooth scrubbing and resumes.
+
+Link expiry and access rules
+
+Default expiry: 7 days from link creation. Show the exact expiry date and time to the advisor in the dashboard.
+
+Advisors can extend or shorten per video. Provide presets like 24 hours, 7 days, 30 days, custom date.
+
+After expiry, the link returns a clean “Link expired” page with a button that lets the advisor quickly re-enable and resend.
+
+If an advisor disables a link manually, make it immediately invalid everywhere, including on mobile.
+
+Mobile specifics
+
+Test on iOS Safari current and previous major, iPadOS Safari, Android Chrome current and previous major, and Chrome on small screens.
+
+No controls hidden offscreen. No elements overlapping the player. Tap targets must be finger-friendly.
+
+If the device is in Low Power Mode or has restrictive autoplay rules, the player still loads and shows a clear play action.
+
+Desktop specifics
+
+Support Chrome, Edge, Safari, and Firefox current and previous major versions.
+
+If hardware acceleration is disabled, playback still works, even if less smooth.
+
+Error handling and fallbacks
+
+Provide human-readable error messages: “Network issue,” “File missing,” “Link expired,” “Processing,” “Permission required.”
+
+Log the error with a unique code in the background so we can trace it.
+
+If the streaming version is temporarily unavailable but a compatible MP4 fallback exists, offer a fallback play path without breaking the page.
+
+Performance and caching
+
+Use a CDN for video segments and poster images.
+
+Cache player assets and captions efficiently so repeat visits are instant.
+
+Keep the first meaningful paint fast. Do not block the page on analytics or noncritical scripts.
+
+Accessibility
+
+Captions available on every video. Default them to on if the browser is muted by policy.
+
+Keyboard-navigable controls, ARIA labels for the player UI, and readable contrast.
+
+Provide transcript download for advisors and clients when enabled by the advisor.
+
+Security and privacy
+
+Use signed, time-limited media URLs behind the scenes. Do not expose permanent storage locations.
+
+No open directory listings. No guessable link IDs.
+
+Respect CORS and correct MIME types so media loads cleanly across browsers.
+
+Scrub metadata that could leak private info.
+
+Observability and alerts
+
+Add health checks for upload, processing, and playback endpoints.
+
+Track Core Video Metrics: start failures, time to first frame, stall rate, error codes, device and browser breakdowns, and expiry events.
+
+Send an alert if start-failure rate or stall rate crosses a defined threshold over 15 minutes.
+
+Provide an internal “Video Diagnostics” panel per video showing processing status, last successful playback devices, errors seen, and current link state.
+
+Advisor controls
+
+Simple toggle to enable or disable a link at any time.
+
+Button to extend expiry with one click.
+
+Switches to force SD-only links for low bandwidth clients.
+
+Clear status badges: Processing, Ready, Expiring soon, Expired, Disabled.
+
+QA and regression prevention
+
+Create an automated regression checklist that runs on every change:
+
+Can a newly recorded video be viewed on iOS Safari and Android Chrome immediately after processing
+
+Do links respect the 7-day default, and do custom expirations persist
+
+Do captions generate and toggle on both mobile and desktop
+
+Does the poster image render and the play button work on touch
+
+Does seeking, speed control, and fullscreen work on mobile and desktop
+
+Does an expired link show the correct page and is it recoverable by the advisor
+
+Do retries recover from a simulated network drop
+
+Include manual smoke tests across the target device matrix before shipping.
+
+Keep a small, permanent suite of “golden” sample videos for repeatable tests.
+
+If any test fails, do not ship. Fix, retest, then deploy.
+
+Release management
+
+Maintain separate environments for development, staging, and production.
+
+Every deployment has a changelog entry with a plain-English summary and a rollback link.
+
+Never remove or change the player library or media settings without updating tests and running the full matrix again.
+
+Deliverables from you on completion of this request
+
+A short architecture note describing how uploads, processing, storage, signed access, and playback work end-to-end.
+
+A device and browser support matrix with pass/fail results and dates.
+
+The automated regression checklist wired into the build so it runs on every change and on a schedule.
+
+A clear guide for advisors covering link expiry, extending access, captions, and common playback fixes.
+
+An internal troubleshooting playbook listing error codes, causes, and steps to resolve.
+
+Acceptance criteria
+
+I can record a video, wait for processing, and play it on iOS Safari and Android Chrome without manual steps.
+
+The same link plays on desktop Chrome, Safari, Firefox, and Edge.
+
+The link shows an expiry date of 7 days by default and correctly expires on time.
+
+Extending a link works and is reflected immediately in the UI and the underlying access logic.
+
+Captions and poster images are present and functional.
+
+If I disable a link, it stops working everywhere within seconds.
+
+Observability dashboards show real playback events and error rates with enough detail to debug issues.
+
+Automated regression checks run and pass before deployment.
+
+Make these requirements the source of truth. If any design choice conflicts with them, follow these requirements and explain the trade-off in your notes.
