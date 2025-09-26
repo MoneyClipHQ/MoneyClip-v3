@@ -238,10 +238,21 @@ export default function RecordPage() {
 
       streamRef.current = combinedStream;
 
-      // Setup MediaRecorder
-      const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9") 
-        ? "video/webm;codecs=vp9" 
-        : "video/webm";
+      // Setup MediaRecorder with mobile-compatible formats first
+      let mimeType = "video/webm"; // fallback
+      
+      // Prefer MP4 with H.264 for better mobile compatibility
+      if (MediaRecorder.isTypeSupported("video/mp4;codecs=h264")) {
+        mimeType = "video/mp4;codecs=h264";
+      } else if (MediaRecorder.isTypeSupported("video/mp4")) {
+        mimeType = "video/mp4";
+      } else if (MediaRecorder.isTypeSupported("video/webm;codecs=h264")) {
+        mimeType = "video/webm;codecs=h264";
+      } else if (MediaRecorder.isTypeSupported("video/webm;codecs=vp9")) {
+        mimeType = "video/webm;codecs=vp9";
+      } else if (MediaRecorder.isTypeSupported("video/webm;codecs=vp8")) {
+        mimeType = "video/webm;codecs=vp8";
+      }
       
       const recorder = new MediaRecorder(combinedStream, {
         mimeType,
@@ -265,6 +276,12 @@ export default function RecordPage() {
           const fileSize = blob.size;
           const isLargeFile = fileSize > 50 * 1024 * 1024; // 50MB threshold for chunked upload
           
+          // Determine file extension and content type based on actual format
+          const isMP4 = mimeType.includes("mp4");
+          const fileExtension = isMP4 ? "mp4" : "webm";
+          const contentType = isMP4 ? "video/mp4" : "video/webm";
+          const fileName = `recorded-video.${fileExtension}`;
+          
           let videoPath: string;
           
           // Show progress toast for large files
@@ -278,7 +295,7 @@ export default function RecordPage() {
           if (isLargeFile) {
             // Use chunked upload for large files
             console.log(`Large file detected (${Math.round(fileSize / 1024 / 1024)}MB), using chunked upload`);
-            videoPath = await uploadVideoInChunks(blob, "recorded-video.webm");
+            videoPath = await uploadVideoInChunks(blob, fileName);
           } else {
             // Use single upload for smaller files
             console.log(`Small file (${Math.round(fileSize / 1024 / 1024)}MB), using single upload`);
@@ -300,7 +317,7 @@ export default function RecordPage() {
               method: "PUT",
               body: blob,
               headers: {
-                "Content-Type": "video/webm",
+                "Content-Type": contentType,
               },
             });
             
