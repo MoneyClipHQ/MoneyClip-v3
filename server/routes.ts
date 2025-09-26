@@ -1810,11 +1810,136 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // REMOVED - Insecure streaming endpoint that bypassed authentication
-  // Will be replaced with secure implementation in next version
-
-  // REMOVED - Video processing endpoint with placeholder implementation
-  // Will be replaced with secure FFmpeg-based processing in next version
+  // === SECURE VIDEO STREAMING ENDPOINTS ===
+  
+  // Stream video manifest files (HLS/DASH) with authentication
+  app.get("/api/videos/stream/:manifestPath(*)", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const manifestPath = req.params.manifestPath;
+      const { videoId } = req.query;
+      
+      if (!manifestPath) {
+        return res.status(400).json({ error: "Manifest path required" });
+      }
+      
+      console.log('Streaming request:', {
+        manifestPath,
+        videoId,
+        userAgent: req.get('User-Agent'),
+        ip: req.ip
+      });
+      
+      const objectStorageService = new ObjectStorageService();
+      
+      // Construct the full path to the manifest file in object storage
+      const fullManifestPath = videoId 
+        ? `videos/${videoId}/streaming/${manifestPath}`
+        : `streaming/${manifestPath}`;
+      
+      try {
+        // Try to get the manifest file from object storage
+        const manifestFile = await objectStorageService.getVideoFile(fullManifestPath);
+        
+        // Set appropriate content-type based on file extension
+        if (manifestPath.endsWith('.m3u8')) {
+          res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
+        } else if (manifestPath.endsWith('.mpd')) {
+          res.setHeader('Content-Type', 'application/dash+xml');
+        } else if (manifestPath.endsWith('.mp4') || manifestPath.endsWith('.m4s')) {
+          res.setHeader('Content-Type', 'video/mp4');
+        } else {
+          res.setHeader('Content-Type', 'application/octet-stream');
+        }
+        
+        // Set mobile-friendly headers
+        res.setHeader('Cache-Control', 'public, max-age=3600'); // Cache for 1 hour
+        res.setHeader('Accept-Ranges', 'bytes');
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Headers', 'Range');
+        
+        // Stream the file
+        await objectStorageService.downloadObject(manifestFile, res, 3600);
+        
+      } catch (storageError) {
+        console.log(`Manifest file not found in object storage: ${fullManifestPath}`);
+        
+        // Fallback: try to serve from the main video file if it's a direct .mp4 request
+        if (manifestPath.endsWith('.mp4') && videoId) {
+          try {
+            const videoFile = await objectStorageService.getVideoFile(`${videoId}.mp4`);
+            res.setHeader('Content-Type', 'video/mp4');
+            res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache videos for 24 hours
+            res.setHeader('Accept-Ranges', 'bytes');
+            res.setHeader('Access-Control-Allow-Origin', '*');
+            await objectStorageService.downloadObject(videoFile, res, 86400);
+            return;
+          } catch (videoError) {
+            console.error('Video file not found:', videoError);
+          }
+        }
+        
+        if (storageError instanceof ObjectNotFoundError) {
+          return res.status(404).json({ error: "Manifest not found" });
+        }
+        throw storageError;
+      }
+      
+    } catch (error) {
+      console.error("Error serving video stream:", error);
+      res.status(500).json({ error: "Failed to serve video stream" });
+    }
+  });
+  
+  // Generate secure streaming URLs for video manifests
+  app.get("/api/videos/:videoId/streaming-url", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { videoId } = req.params;
+      const { format = 'mp4' } = req.query;
+      
+      if (!videoId) {
+        return res.status(400).json({ error: "Video ID required" });
+      }
+      
+      const objectStorageService = new ObjectStorageService();
+      
+      // Generate secure URLs based on requested format
+      let streamingUrls: any = {};
+      
+      if (format === 'hls' || format === 'all') {
+        // Generate HLS streaming URL
+        streamingUrls.hls = {
+          masterPlaylist: `/api/videos/stream/master.m3u8?videoId=${videoId}`,
+          type: 'hls'
+        };
+      }
+      
+      if (format === 'dash' || format === 'all') {
+        // Generate DASH streaming URL
+        streamingUrls.dash = {
+          manifest: `/api/videos/stream/manifest.mpd?videoId=${videoId}`,
+          type: 'dash'
+        };
+      }
+      
+      if (format === 'mp4' || format === 'all') {
+        // Generate direct MP4 streaming URL
+        streamingUrls.mp4 = {
+          url: `/api/videos/stream/${videoId}.mp4?videoId=${videoId}`,
+          type: 'mp4'
+        };
+      }
+      
+      res.json({
+        videoId,
+        streamingUrls,
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 hours
+      });
+      
+    } catch (error) {
+      console.error("Error generating streaming URLs:", error);
+      res.status(500).json({ error: "Failed to generate streaming URLs" });
+    }
+  });
 
   const httpServer = createServer(app);
 
