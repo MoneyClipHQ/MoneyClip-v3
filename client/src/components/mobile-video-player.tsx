@@ -77,9 +77,10 @@ export const MobileVideoPlayer = forwardRef<MobileVideoPlayerRef, MobileVideoPla
   const [isLoading, setIsLoading] = useState(false);
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [showCaptions, setShowCaptions] = useState(captionsEnabled);
+  const [showCaptions, setShowCaptions] = useState(captionsEnabled && !!captionsUrl);
   const [controlsVisible, setControlsVisible] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
+  const [captionsInitialized, setCaptionsInitialized] = useState(false);
   const [playerError, setPlayerError] = useState<string | null>(null);
 
   // Detect mobile device
@@ -237,6 +238,42 @@ export const MobileVideoPlayer = forwardRef<MobileVideoPlayerRef, MobileVideoPla
     };
   }, [onPlay, onPause, onError, isMobile]);
 
+  // Initialize captions when video loads
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !captionsUrl) return;
+
+    const handleLoadedMetadata = () => {
+      console.log('Video metadata loaded, initializing captions:', {
+        captionsUrl,
+        captionsEnabled,
+        showCaptions,
+        textTracks: video.textTracks.length
+      });
+      
+      // Ensure captions are properly configured
+      const tracks = video.textTracks;
+      for (let i = 0; i < tracks.length; i++) {
+        const track = tracks[i];
+        if (track.kind === 'captions' || track.kind === 'subtitles') {
+          // Set caption mode based on showCaptions state
+          track.mode = showCaptions ? 'showing' : 'hidden';
+          console.log(`Caption track ${i} initialized:`, {
+            mode: track.mode,
+            language: track.language,
+            label: track.label
+          });
+        }
+      }
+      setCaptionsInitialized(true);
+    };
+
+    video.addEventListener('loadedmetadata', handleLoadedMetadata);
+    return () => {
+      video.removeEventListener('loadedmetadata', handleLoadedMetadata);
+    };
+  }, [captionsUrl, captionsEnabled, showCaptions]);
+
   // Control handlers
   const togglePlayPause = useCallback(() => {
     const video = videoRef.current;
@@ -362,13 +399,21 @@ export const MobileVideoPlayer = forwardRef<MobileVideoPlayerRef, MobileVideoPla
     const video = videoRef.current;
     if (video) {
       const tracks = video.textTracks;
+      console.log('Toggling captions:', {
+        newShowCaptions,
+        trackCount: tracks.length,
+        captionsUrl
+      });
+      
       for (let i = 0; i < tracks.length; i++) {
-        if (tracks[i].kind === 'captions' || tracks[i].kind === 'subtitles') {
-          tracks[i].mode = newShowCaptions ? 'showing' : 'hidden';
+        const track = tracks[i];
+        if (track.kind === 'captions' || track.kind === 'subtitles') {
+          track.mode = newShowCaptions ? 'showing' : 'hidden';
+          console.log(`Caption track ${i} mode set to:`, track.mode);
         }
       }
     }
-  }, [showCaptions]);
+  }, [showCaptions, captionsUrl]);
 
   const toggleFullscreen = useCallback(() => {
     const video = videoRef.current;
@@ -496,7 +541,7 @@ export const MobileVideoPlayer = forwardRef<MobileVideoPlayerRef, MobileVideoPla
             src={captionsUrl}
             srcLang="en"
             label="English"
-            default={showCaptions}
+            default={true}
           />
         )}
       </video>
