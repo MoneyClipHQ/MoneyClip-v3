@@ -715,16 +715,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Process video with OpenAI transcription and AI-generated content
+  // Process video with manual title and description (AI disabled for MVP)
   app.post("/api/videos/process", requireAuth, async (req: Request, res: Response) => {
     try {
       const advisorId = req.session.advisorId!;
-      const { videoId, audioBuffer, duration } = req.body;
+      const { videoId, title, description } = req.body;
 
-      if (!videoId || !audioBuffer) {
+      if (!videoId) {
         return res.status(400).json({
           error: "MISSING_DATA",
-          message: "Video ID and audio data are required"
+          message: "Video ID is required"
         });
       }
 
@@ -734,98 +734,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
         videoId,
         event: "PROCESSING_STARTED",
         metadata: JSON.stringify({
-          audioDuration: duration,
+          manualProcessing: true,
           timestamp: new Date().toISOString()
         })
       });
 
-      console.log(`Starting AI processing for video ${videoId}...`);
+      console.log(`Processing video ${videoId} with manual content...`);
 
-      try {
-        // Convert base64 audio to buffer
-        const buffer = Buffer.from(audioBuffer, 'base64');
-        console.log(`Processing audio buffer of size: ${buffer.length} bytes`);
-        console.log(`Audio buffer starts with: ${buffer.toString('hex', 0, 20)}...`);
-        
-        // Process with OpenAI
-        const result = await transcribeAndGenerateContent(buffer, `video-${videoId}.mp4`);
-        
-        // Generate captions if transcription successful
-        console.log(`Generating captions for video ${videoId} with duration ${duration || 300}s`);
-        const captions = result.text !== "Transcription unavailable" 
-          ? generateCaptions(result.text, duration || 300)
-          : "";
-        console.log(`Generated ${captions.length} bytes of caption data`);
+      // Update video with manually provided content
+      const updatedVideo = await storage.updateVideo(videoId, {
+        title: title || "Financial Advisory Video",
+        description: description || "Professional financial guidance and insights.",
+        // AI features disabled for MVP
+        transcriptUrl: null,
+        captionsData: null,
+        transcriptText: null,
+        captionsEnabled: false
+      });
+      
+      console.log(`Video ${videoId} updated with manual content:`, {
+        title: updatedVideo.title,
+        description: updatedVideo.description
+      });
 
-        // Update video with AI-generated content and store captions directly
-        const updatedVideo = await storage.updateVideo(videoId, {
-          title: result.title,
-          description: result.description,
-          transcriptUrl: captions && captions.length > 0 ? `/api/videos/${videoId}/captions` : null,
-          captionsData: captions && captions.length > 0 ? captions : null,
-          transcriptText: result.text !== "Transcription unavailable" ? result.text : null,
-          captionsEnabled: true
-        });
-        
-        console.log(`Video ${videoId} updated with AI content:`, {
-          hasTitle: !!result.title,
-          hasDescription: !!result.description,
-          hasCaptions: captions && captions.length > 0,
-          captionLength: captions?.length || 0,
-          hasTranscriptText: result.text !== "Transcription unavailable"
-        });
+      // Log processing success
+      await storage.logRecordingEvent({
+        advisorId,
+        videoId,
+        event: "PROCESSING_COMPLETED",
+        metadata: JSON.stringify({
+          manualProcessing: true,
+          titleProvided: !!title,
+          descriptionProvided: !!description
+        })
+      });
 
-        // Log processing success
-        await storage.logRecordingEvent({
-          advisorId,
-          videoId,
-          event: "PROCESSING_COMPLETED",
-          metadata: JSON.stringify({
-            transcriptionLength: result.text.length,
-            titleGenerated: result.title,
-            descriptionGenerated: result.description,
-            captionsGenerated: captions.length > 0
-          })
-        });
+      console.log(`Manual processing completed for video ${videoId}`);
 
-        console.log(`AI processing completed for video ${videoId}`);
-
-        res.json({
-          success: true,
-          video: updatedVideo,
-          transcription: result.text,
-          captions: captions
-        });
-
-      } catch (openaiError) {
-        console.error("OpenAI processing error:", openaiError);
-        
-        // Log processing failure
-        await storage.logRecordingEvent({
-          advisorId,
-          videoId,
-          event: "PROCESSING_FAILED",
-          metadata: JSON.stringify({
-            error: openaiError instanceof Error ? openaiError.message : "Unknown error",
-            timestamp: new Date().toISOString()
-          })
-        });
-
-        // Update video with fallback content
-        const fallbackVideo = await storage.updateVideo(videoId, {
-          title: "Financial Advisory Video",
-          description: "Professional financial guidance and insights.",
-          captionsEnabled: false
-        });
-
-        res.json({
-          success: true,
-          video: fallbackVideo,
-          transcription: "Transcription unavailable",
-          captions: "",
-          warning: "AI processing failed, using fallback content"
-        });
-      }
+      res.json({
+        success: true,
+        video: updatedVideo,
+        // AI features disabled - no transcription or captions
+        transcription: null,
+        captions: null
+      });
 
     } catch (error) {
       console.error("Video processing error:", error);
@@ -835,76 +787,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Process video for preview (AI processing without saving to database)
+  // Process video for preview (AI disabled for MVP)
   app.post("/api/videos/process-preview", requireAuth, async (req: Request, res: Response) => {
     try {
-      const { audioBuffer, duration } = req.body;
+      console.log("Skipping AI processing for preview (MVP mode)...");
 
-      if (!audioBuffer) {
-        return res.status(400).json({
-          error: "MISSING_DATA",
-          message: "Audio data is required"
-        });
-      }
-
-      console.log("Starting AI processing for preview...");
-      console.log("Audio buffer length:", audioBuffer.length);
-      console.log("Duration:", duration);
-
-      try {
-        // Convert base64 audio to buffer
-        const buffer = Buffer.from(audioBuffer, 'base64');
-        console.log("Converted buffer size:", buffer.length, "bytes");
-        
-        // Process with OpenAI
-        const result = await transcribeAndGenerateContent(buffer, 'preview.mp4');
-        
-        // Generate captions if transcription successful
-        // Use the provided duration if available and valid, otherwise estimate from audio
-        let effectiveDuration = duration && duration > 0 ? duration : null;
-        
-        // If no duration provided, estimate from transcription length (more conservative estimate)
-        if (!effectiveDuration && result.text !== "Transcription unavailable") {
-          const wordCount = result.text.split(' ').length;
-          // More conservative: ~150 words per minute = 2.5 words/sec  
-          effectiveDuration = Math.max(30, Math.ceil(wordCount / 2.5));
-          console.log(`No duration provided, estimated ${effectiveDuration}s from ${wordCount} words`);
-        }
-        
-        // Final fallback - but this should rarely be needed now
-        if (!effectiveDuration) {
-          effectiveDuration = 60; // Much more reasonable 1-minute fallback
-        }
-        
-        console.log(`Generating preview captions with duration ${effectiveDuration}s`);
-        const captions = result.text !== "Transcription unavailable" 
-          ? generateCaptions(result.text, effectiveDuration)
-          : "";
-        console.log(`Generated preview ${captions.length} bytes of caption data`);
-
-        console.log("AI preview processing completed");
-
-        res.json({
-          success: true,
-          title: result.title,
-          description: result.description,
-          transcription: result.text,
-          captions: captions
-        });
-
-      } catch (openaiError) {
-        console.error("OpenAI preview processing error:", openaiError);
-        
-        // Return fallback content
-        res.json({
-          success: true,
-          title: "Financial Advisory Video",
-          description: "Professional financial guidance and insights.",
-          transcription: "Transcription unavailable",
-          captions: "",
-          warning: "AI processing failed, using fallback content"
-        });
-      }
+      // AI disabled for MVP - return placeholder suggestions
+      res.json({
+        success: true,
+        title: "Financial Advisory Video",
+        description: "Professional financial guidance and insights.",
+        // AI features disabled for MVP
+        transcription: null,
+        captions: null
+      });
 
     } catch (error) {
       console.error("Video preview processing error:", error);
