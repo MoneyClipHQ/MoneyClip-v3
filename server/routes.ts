@@ -1320,6 +1320,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         fileUrl = `data:video/mp4;base64,${video.videoData}`;
       }
       
+      // Append share token to fileUrl for access control (for non-password-protected videos)
+      if (!video.password && fileUrl && fileUrl.startsWith('/objects/')) {
+        const shareToken = video.shareLink?.split('-').pop();
+        fileUrl = `${fileUrl}?share=${shareToken}`;
+      }
+      
       // Ensure transcriptUrl is set if captions exist but URL is missing
       let transcriptUrl = video.transcriptUrl;
       if (!transcriptUrl && video.captionsEnabled && video.captionsData) {
@@ -1392,6 +1398,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let fileUrl = video.fileUrl;
       if (video.videoData && !fileUrl) {
         fileUrl = `data:video/mp4;base64,${video.videoData}`;
+      }
+      
+      // Append share token to fileUrl for access control
+      if (fileUrl && fileUrl.startsWith('/objects/')) {
+        const shareToken = video.shareLink?.split('-').pop();
+        fileUrl = `${fileUrl}?share=${shareToken}`;
       }
       
       res.json({ 
