@@ -1,9 +1,11 @@
 import { Button } from "@/components/ui/button";
+import { useLocation } from "wouter";
 
 export default function Hero() {
+  const [, setLocation] = useLocation();
+  
   const handleGetStarted = () => {
-    // TODO: Implement get started functionality
-    console.log("Get Started clicked");
+    setLocation("/signup");
   };
 
   return (
