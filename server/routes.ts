@@ -245,7 +245,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // === CHART ROUTES ===
   
-  // Generate AI script for finance chart
+  // Generate script for finance chart (AI disabled for MVP)
   app.post("/api/charts/generate-script", requireAuth, async (req: Request, res: Response) => {
     try {
       const { chart } = req.body;
@@ -258,36 +258,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Generate AI script using OpenAI
-      const scriptResult = await generateChartScript(chart);
+      console.log(`Generating placeholder script for chart: ${chart.title} (AI disabled for MVP)`);
+
+      // AI disabled for MVP - return placeholder script
+      const placeholderScript = `This chart shows important ${chart.category.toLowerCase()} data that can help guide your investment decisions. The trends shown here provide valuable insights for your financial planning.`;
       
-      // Store script in database for future use
+      // Store placeholder script in database for future use
       try {
         const chartScript = await storage.createChartScript({
           advisorId: req.session.advisorId!,
           chartId: chart.id,
           chartTitle: chart.title,
           chartCategory: chart.category,
-          scriptText: scriptResult.script,
-          estimatedDuration: scriptResult.estimatedDuration,
-          keyPoints: scriptResult.keyPoints,
+          scriptText: placeholderScript,
+          estimatedDuration: 25,
+          keyPoints: ["Key financial insights", "Important trends", "Investment implications"],
           isCustom: false
         });
 
         res.json({
           id: chartScript.id,
-          script: scriptResult.script,
-          estimatedDuration: scriptResult.estimatedDuration,
-          keyPoints: scriptResult.keyPoints
+          script: placeholderScript,
+          estimatedDuration: 25,
+          keyPoints: ["Key financial insights", "Important trends", "Investment implications"]
         });
       } catch (dbError) {
         console.error("Failed to save chart script to database:", dbError);
         // Still return the generated script even if DB save fails
         res.json({
           id: `temp-${Date.now()}`,
-          script: scriptResult.script,
-          estimatedDuration: scriptResult.estimatedDuration,
-          keyPoints: scriptResult.keyPoints
+          script: placeholderScript,
+          estimatedDuration: 25,
+          keyPoints: ["Key financial insights", "Important trends", "Investment implications"]
         });
       }
 
