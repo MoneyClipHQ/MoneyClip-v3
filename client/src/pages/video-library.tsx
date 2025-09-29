@@ -296,6 +296,14 @@ export default function VideoLibrary() {
   };
 
   const handleUpdateExpiry = (video: Video, expiryDuration: string, customExpiryDate?: string) => {
+    // Confirm if setting short-term expiry to prevent accidents
+    if (expiryDuration === "24h") {
+      const confirmed = window.confirm(
+        "Are you sure you want to set this video to expire in 24 hours? This will make the link unusable after tomorrow. Most users prefer 7 days or longer."
+      );
+      if (!confirmed) return;
+    }
+    
     updateExpiryMutation.mutate({ videoId: video.id, expiryDuration, customExpiryDate });
   };
 

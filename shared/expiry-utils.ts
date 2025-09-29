@@ -6,9 +6,9 @@ export interface ExpiryPreset {
 }
 
 export const EXPIRY_PRESETS: ExpiryPreset[] = [
-  { id: "24h", label: "24 hours", duration: "24h" },
-  { id: "7d", label: "7 days (default)", duration: "7d" },
+  { id: "7d", label: "7 days (recommended)", duration: "7d" },
   { id: "30d", label: "30 days", duration: "30d" },
+  { id: "24h", label: "24 hours (short term)", duration: "24h" },
   { id: "custom", label: "Custom date", duration: "custom" }
 ];
 

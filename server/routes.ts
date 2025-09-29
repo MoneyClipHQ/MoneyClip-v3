@@ -1352,10 +1352,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Admin endpoint to expire videos (for scheduled job)
-  app.post("/api/videos/expire", async (req: Request, res: Response) => {
+  app.post("/api/videos/expire", requireAuth, async (req: Request, res: Response) => {
     try {
       // This endpoint should be called by a scheduler/cron job
-      // In production, you might want to add authentication for this endpoint
+      // Now protected with authentication to prevent unauthorized access
       const expiredCount = await storage.expireVideos();
       
       res.json({ 
