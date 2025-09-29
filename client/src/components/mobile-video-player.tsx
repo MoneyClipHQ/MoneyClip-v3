@@ -571,18 +571,6 @@ export const MobileVideoPlayer = forwardRef<MobileVideoPlayerRef, MobileVideoPla
         </div>
       )}
 
-      {/* Debug info - remove in production */}
-      {process.env.NODE_ENV === 'development' && (
-        <div className="absolute top-2 left-2 bg-black/90 text-white text-xs p-2 rounded z-20 max-w-xs">
-          <div>Mobile: {isMobile ? 'YES' : 'NO'}</div>
-          <div>Playing: {isPlaying ? 'YES' : 'NO'}</div>
-          <div>Loading: {isLoading ? 'YES' : 'NO'}</div>
-          <div>Controls: {controlsVisible ? 'YES' : 'NO'}</div>
-          <div>Has Src: {src ? 'YES' : 'NO'}</div>
-          <div>Duration: {duration.toFixed(1)}s</div>
-          {playerError && <div className="text-red-300">Error: {playerError.substring(0, 50)}</div>}
-        </div>
-      )}
 
       {/* Desktop Controls */}
       {showControls && !isMobile && (
