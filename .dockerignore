@@ -1,0 +1,15 @@
+node_modules
+.git
+.replit
+.vscode
+.idea
+*.md
+
+# Ignore local development files
+.env
+dist
+npm-debug.log
+
+# Ignore OS-specific files
+.DS_Store
+Thumbs.db

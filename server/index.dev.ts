@@ -1,7 +1,12 @@
 import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
 import { registerRoutes } from "./routes";
-import { setupVite, serveStatic, log } from "./vite";
+import path from "path";
+import fs from "fs";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 
@@ -11,7 +16,7 @@ app.use(session({
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: false, // Set to true in production with HTTPS
+    secure: process.env.NODE_ENV === 'production', // Set to true in production with HTTPS
     httpOnly: true,
     maxAge: 24 * 60 * 60 * 1000, // 24 hours
   },
@@ -43,46 +48,14 @@ app.use((req, res, next) => {
         logLine = logLine.slice(0, 79) + "…";
       }
 
-      log(logLine);
+      console.log(logLine);
     }
   });
 
   next();
 });
 
-// Validate required environment variables for object storage
-function validateEnvironmentVariables() {
-  const requiredEnvVars = [
-    'PRIVATE_OBJECT_DIR',
-    'PUBLIC_OBJECT_SEARCH_PATHS'
-  ];
-  
-  const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
-  
-  if (missingVars.length > 0) {
-    console.error(`❌ Missing required environment variables: ${missingVars.join(', ')}`);
-    console.error('💡 Please set up object storage in the Object Storage tool pane to configure these variables.');
-    process.exit(1);
-  }
-  
-  // Validate PUBLIC_OBJECT_SEARCH_PATHS format
-  const searchPaths = process.env.PUBLIC_OBJECT_SEARCH_PATHS!.split(',');
-  const invalidPaths = searchPaths.filter(path => !path.trim() || !path.startsWith('/'));
-  
-  if (invalidPaths.length > 0) {
-    console.error(`❌ Invalid PUBLIC_OBJECT_SEARCH_PATHS format. All paths must start with '/': ${invalidPaths.join(', ')}`);
-    process.exit(1);
-  }
-  
-  console.log(`✅ Object storage environment variables validated successfully`);
-  console.log(`   PRIVATE_OBJECT_DIR: ${process.env.PRIVATE_OBJECT_DIR}`);
-  console.log(`   PUBLIC_OBJECT_SEARCH_PATHS: ${process.env.PUBLIC_OBJECT_SEARCH_PATHS}`);
-}
-
 (async () => {
-  // Validate environment variables before starting server
-  validateEnvironmentVariables();
-  
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
@@ -96,22 +69,32 @@ function validateEnvironmentVariables() {
   // importantly only setup vite in development and after
   // setting up all the other routes so the catch-all route
   // doesn't interfere with the other routes
-  if (app.get("env") === "development") {
+  if (process.env.NODE_ENV === "development") {
+    const { setupVite } = await import("./vite.js");
     await setupVite(app, server);
   } else {
-    serveStatic(app);
+    const distPath = path.resolve(__dirname, "..", "client", "dist");
+
+    if (!fs.existsSync(distPath)) {
+      throw new Error(
+        `Could not find the build directory: ${distPath}, make sure to build the client first`,
+      );
+    }
+
+    app.use(express.static(distPath));
+
+    // fall through to index.html if the file doesn't exist
+    app.use("*", (_req, res) => {
+      res.sendFile(path.resolve(distPath, "index.html"));
+    });
   }
 
   // ALWAYS serve the app on the port specified in the environment variable PORT
-  // Other ports are firewalled. Default to 5000 if not specified.
+  // Other ports are firewalled. Default to 8080 if not specified.
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
-  const port = parseInt(process.env.PORT || '5000', 10);
-  server.listen({
-    port,
-    host: "0.0.0.0",
-    reusePort: true,
-  }, () => {
-    log(`serving on port ${port}`);
+  const port = parseInt(process.env.PORT || '8080', 10);
+  server.listen(port, "0.0.0.0", () => {
+    console.log(`serving on port ${port}`);
   });
 })();
