@@ -122,6 +122,16 @@ export default function Dashboard() {
                     Coming Soon
                   </Button>
                 </Link>
+				<Link href="/subscribe">
+				  <Button
+					variant="ghost"
+					data-testid="button-subscribe"
+					className="flex items-center gap-2 px-3 py-2"
+					size="sm"
+				  >
+					Subscribe
+				  </Button>
+				</Link>
               </nav>
             </div>
             <AdvisorDropdown
@@ -166,6 +176,16 @@ export default function Dashboard() {
               >
                 <Clock className="h-4 w-4" />
                 Coming Soon
+              </Button>
+            </Link>
+            <Link href="/subscribe">
+              <Button
+                variant="outline"
+                data-testid="button-subscribe-mobile"
+                className="flex items-center gap-2 flex-1"
+                size="sm"
+              >
+                Subscribe
               </Button>
             </Link>
           </div>

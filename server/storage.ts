@@ -20,7 +20,7 @@ import { DEFAULT_DISCLOSURE_TEXT } from "@shared/constants";
 import { randomUUID } from "crypto";
 import { addDays } from "date-fns";
 import { eq, and, sql } from "drizzle-orm";
-import { db } from "./db";
+import { getDb } from "./db";
 import bcrypt from "bcryptjs";
 
 // modify the interface with any CRUD methods
@@ -39,8 +39,12 @@ export interface IStorage {
   authenticateAdvisor(email: string, password: string): Promise<Advisor | null>;
   
   // Subscription methods
-  createSubscription(subscription: InsertSubscription): Promise<Subscription>;
+  createSubscription(advisorId: string, data: { planName: string, amount: string, stripeCustomerId?: string, stripeSubscriptionId?: string, stripePriceId?: string, nextBillingDate: Date, paymentToken?: string }): Promise<Subscription>;
+  updateSubscription(stripeSubscriptionId: string, data: { status?: string, nextBillingDate?: Date, stripePaymentMethodId?: string }): Promise<Subscription | undefined>;
   getSubscriptionByAdvisorId(advisorId: string): Promise<Subscription | undefined>;
+  getSubscriptionByStripeId(stripeSubscriptionId: string): Promise<Subscription | undefined>;
+  getActiveSubscription(advisorId: string): Promise<Subscription | undefined>;
+  cancelSubscription(stripeSubscriptionId: string, reason?: string): Promise<Subscription | undefined>;
   
   // Event tracking methods
   logSignupEvent(event: InsertSignupEvent): Promise<SignupEvent>;
@@ -246,16 +250,52 @@ export class MemStorage implements IStorage {
   }
 
   // Subscription methods
-  async createSubscription(insertSubscription: InsertSubscription): Promise<Subscription> {
+  async createSubscription(advisorId: string, data: { planName: string, amount: string, stripeCustomerId?: string, stripeSubscriptionId?: string, stripePriceId?: string, nextBillingDate: Date, paymentToken?: string }): Promise<Subscription> {
     const id = randomUUID();
     const subscription: Subscription = { 
-      ...insertSubscription, 
+      advisorId,
+      planName: data.planName,
+      amount: data.amount,
+      nextBillingDate: data.nextBillingDate,
       id,
       status: "active",
       createdAt: new Date(),
-      paymentToken: insertSubscription.paymentToken || null
+      paymentToken: data.paymentToken || null,
+      stripeCustomerId: data.stripeCustomerId || null,
+      stripeSubscriptionId: data.stripeSubscriptionId || null,
+      stripePriceId: data.stripePriceId || null,
+      stripePaymentMethodId: null
     };
     this.subscriptions.set(id, subscription);
+    return subscription;
+  }
+
+  async updateSubscription(stripeSubscriptionId: string, data: { status?: string, nextBillingDate?: Date, stripePaymentMethodId?: string }): Promise<Subscription | undefined> {
+    const subscription = Array.from(this.subscriptions.values()).find(s => s.stripeSubscriptionId === stripeSubscriptionId);
+    if (!subscription) return undefined;
+    
+    if (data.status) subscription.status = data.status;
+    if (data.nextBillingDate) subscription.nextBillingDate = data.nextBillingDate;
+    if (data.stripePaymentMethodId) subscription.stripePaymentMethodId = data.stripePaymentMethodId;
+    
+    this.subscriptions.set(subscription.id, subscription);
+    return subscription;
+  }
+
+  async getSubscriptionByStripeId(stripeSubscriptionId: string): Promise<Subscription | undefined> {
+    return Array.from(this.subscriptions.values()).find(s => s.stripeSubscriptionId === stripeSubscriptionId);
+  }
+
+  async getActiveSubscription(advisorId: string): Promise<Subscription | undefined> {
+    return Array.from(this.subscriptions.values()).find(s => s.advisorId === advisorId && s.status === 'active');
+  }
+
+  async cancelSubscription(stripeSubscriptionId: string, reason?: string): Promise<Subscription | undefined> {
+    const subscription = Array.from(this.subscriptions.values()).find(s => s.stripeSubscriptionId === stripeSubscriptionId);
+    if (!subscription) return undefined;
+    
+    subscription.status = 'cancelled';
+    this.subscriptions.set(subscription.id, subscription);
     return subscription;
   }
 
@@ -296,7 +336,7 @@ export class MemStorage implements IStorage {
     const advisor = await this.createAdvisor(advisorData);
 
     // Get selected plan details
-    const selectedPlanData = PLANS[selectedPlan];
+    const selectedPlanData = PLANS[selectedPlan as keyof typeof PLANS];
     
     // Log signup event
     await this.logSignupEvent({
@@ -314,8 +354,7 @@ export class MemStorage implements IStorage {
     const paymentToken = `tok_${randomUUID()}`;
 
     // Create subscription with selected plan
-    const subscription = await this.createSubscription({
-      advisorId: advisor.id,
+    const subscription = await this.createSubscription(advisor.id, {
       planName: selectedPlanData.name,
       amount: selectedPlanData.price.toString(),
       nextBillingDate: addDays(new Date(), 30),
@@ -481,6 +520,7 @@ export class MemStorage implements IStorage {
 
   // Video methods
   async createVideo(video: InsertVideo): Promise<Video> {
+    const db = getDb();
     const [newVideo] = await db
       .insert(videos)
       .values({
@@ -552,10 +592,12 @@ export class MemStorage implements IStorage {
   }
 
   async deleteVideo(id: string): Promise<void> {
+    const db = getDb();
     await db.delete(videos).where(eq(videos.id, id));
   }
 
   async logRecordingEvent(event: InsertRecordingEvent): Promise<RecordingEvent> {
+    const db = getDb();
     const [newEvent] = await db
       .insert(recordingEvents)
       .values({
@@ -569,6 +611,7 @@ export class MemStorage implements IStorage {
 
   // Viewer interaction methods
   async logViewerEvent(event: InsertViewerEvent): Promise<ViewerEvent> {
+    const db = getDb();
     const [newEvent] = await db
       .insert(viewerEvents)
       .values({
@@ -580,6 +623,7 @@ export class MemStorage implements IStorage {
   }
 
   async logViewerCompliment(compliment: InsertViewerCompliment): Promise<ViewerCompliment> {
+    const db = getDb();
     const [newCompliment] = await db
       .insert(viewerCompliments)
       .values({
@@ -867,6 +911,7 @@ export class MemStorage implements IStorage {
 export class DatabaseStorage implements IStorage {
   // Video methods
   async createVideo(video: InsertVideo): Promise<Video> {
+    const db = getDb();
     const [newVideo] = await db
       .insert(videos)
       .values(video)
@@ -875,6 +920,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateVideo(id: string, data: UpdateVideo): Promise<Video | undefined> {
+    const db = getDb();
     const [updated] = await db
       .update(videos)
       .set({
@@ -887,6 +933,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getVideo(id: string): Promise<Video | undefined> {
+    const db = getDb();
     const [video] = await db
       .select()
       .from(videos)
@@ -895,6 +942,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getVideoByShareLink(shareLink: string): Promise<Video | undefined> {
+    const db = getDb();
     const [video] = await db
       .select()
       .from(videos)
@@ -903,6 +951,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getVideoByFileUrl(fileUrl: string): Promise<Video | undefined> {
+    const db = getDb();
     const [video] = await db
       .select()
       .from(videos)
@@ -911,6 +960,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getRecentVideos(advisorId: string, limit: number = 3): Promise<Video[]> {
+    const db = getDb();
     const recentVideos = await db
       .select()
       .from(videos)
@@ -921,6 +971,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllVideos(advisorId: string): Promise<Video[]> {
+    const db = getDb();
     const allVideos = await db
       .select()
       .from(videos)
@@ -930,10 +981,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteVideo(id: string): Promise<void> {
+    const db = getDb();
     await db.delete(videos).where(eq(videos.id, id));
   }
 
   async getVideosByStatus(advisorId: string, status?: string): Promise<Video[]> {
+    const db = getDb();
     let whereConditions = [eq(videos.advisorId, advisorId)];
 
     if (status) {
@@ -956,6 +1009,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async softDeleteVideo(id: string, advisorId: string): Promise<Video | undefined> {
+    const db = getDb();
     const [updatedVideo] = await db
       .update(videos)
       .set({
@@ -969,6 +1023,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async restoreVideo(id: string, advisorId: string): Promise<Video | undefined> {
+    const db = getDb();
     const [updatedVideo] = await db
       .update(videos)
       .set({
@@ -982,6 +1037,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateVideoStatus(id: string, advisorId: string, status: string): Promise<Video | undefined> {
+    const db = getDb();
     const now = new Date();
     const updateData: any = {
       status,
@@ -1002,6 +1058,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async renewVideo(id: string, advisorId: string): Promise<Video | undefined> {
+    const db = getDb();
     const now = new Date();
     
     const [currentVideo] = await db
@@ -1025,6 +1082,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async expireVideos(): Promise<number> {
+    const db = getDb();
     const now = new Date();
     const result = await db
       .update(videos)
@@ -1041,6 +1099,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async logRecordingEvent(event: InsertRecordingEvent): Promise<RecordingEvent> {
+    const db = getDb();
     const [newEvent] = await db
       .insert(recordingEvents)
       .values({
@@ -1065,16 +1124,19 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAdvisor(id: string): Promise<Advisor | undefined> {
+    const db = getDb();
     const [advisor] = await db.select().from(advisors).where(eq(advisors.id, id));
     return advisor;
   }
 
   async getAdvisorByEmail(email: string): Promise<Advisor | undefined> {
+    const db = getDb();
     const [advisor] = await db.select().from(advisors).where(eq(advisors.email, email));
     return advisor;
   }
 
   async createAdvisor(insertAdvisor: InsertAdvisor | SignupData): Promise<Advisor> {
+    const db = getDb();
     // Check if email already exists
     const existingAdvisor = await this.getAdvisorByEmail(insertAdvisor.email);
     if (existingAdvisor) {
@@ -1140,15 +1202,74 @@ export class DatabaseStorage implements IStorage {
     return advisor;
   }
 
-  async createSubscription(insertSubscription: InsertSubscription): Promise<Subscription> {
+  async createSubscription(advisorId: string, data: { planName: string, amount: string, stripeCustomerId?: string, stripeSubscriptionId?: string, stripePriceId?: string, nextBillingDate: Date, paymentToken?: string }): Promise<Subscription> {
+    const db = getDb();
     const [subscription] = await db
       .insert(subscriptions)
-      .values(insertSubscription)
+      .values({
+        advisorId,
+        planName: data.planName,
+        amount: data.amount,
+        nextBillingDate: data.nextBillingDate,
+        stripeCustomerId: data.stripeCustomerId || null,
+        stripeSubscriptionId: data.stripeSubscriptionId || null,
+        stripePriceId: data.stripePriceId || null,
+        paymentToken: data.paymentToken || null,
+        status: "active"
+      })
       .returning();
     return subscription;
   }
 
+  async updateSubscription(stripeSubscriptionId: string, data: { status?: string, nextBillingDate?: Date, stripePaymentMethodId?: string }): Promise<Subscription | undefined> {
+    const db = getDb();
+    const updateData: any = {};
+    if (data.status) updateData.status = data.status;
+    if (data.nextBillingDate) updateData.nextBillingDate = data.nextBillingDate;
+    if (data.stripePaymentMethodId) updateData.stripePaymentMethodId = data.stripePaymentMethodId;
+
+    if (Object.keys(updateData).length === 0) {
+      return this.getSubscriptionByStripeId(stripeSubscriptionId);
+    }
+
+    const [updated] = await db
+      .update(subscriptions)
+      .set(updateData)
+      .where(eq(subscriptions.stripeSubscriptionId, stripeSubscriptionId))
+      .returning();
+    return updated;
+  }
+
+  async getSubscriptionByStripeId(stripeSubscriptionId: string): Promise<Subscription | undefined> {
+    const db = getDb();
+    const [subscription] = await db
+      .select()
+      .from(subscriptions)
+      .where(eq(subscriptions.stripeSubscriptionId, stripeSubscriptionId));
+    return subscription;
+  }
+
+  async getActiveSubscription(advisorId: string): Promise<Subscription | undefined> {
+    const db = getDb();
+    const [subscription] = await db
+      .select()
+      .from(subscriptions)
+      .where(and(eq(subscriptions.advisorId, advisorId), eq(subscriptions.status, 'active')));
+    return subscription;
+  }
+
+  async cancelSubscription(stripeSubscriptionId: string, reason?: string): Promise<Subscription | undefined> {
+    const db = getDb();
+    const [updated] = await db
+      .update(subscriptions)
+      .set({ status: 'cancelled' })
+      .where(eq(subscriptions.stripeSubscriptionId, stripeSubscriptionId))
+      .returning();
+    return updated;
+  }
+
   async getSubscriptionByAdvisorId(advisorId: string): Promise<Subscription | undefined> {
+    const db = getDb();
     const [subscription] = await db
       .select()
       .from(subscriptions)
@@ -1157,6 +1278,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async logSignupEvent(insertEvent: InsertSignupEvent): Promise<SignupEvent> {
+    const db = getDb();
     const [event] = await db
       .insert(signupEvents)
       .values(insertEvent)
@@ -1180,7 +1302,7 @@ export class DatabaseStorage implements IStorage {
     const advisor = await this.createAdvisor(advisorData);
 
     // Get selected plan details
-    const selectedPlanData = PLANS[selectedPlan];
+    const selectedPlanData = PLANS[selectedPlan as keyof typeof PLANS];
     
     // Log signup event
     await this.logSignupEvent({
@@ -1198,8 +1320,7 @@ export class DatabaseStorage implements IStorage {
     const paymentToken = `tok_${randomUUID()}`;
 
     // Create subscription with selected plan
-    const subscription = await this.createSubscription({
-      advisorId: advisor.id,
+    const subscription = await this.createSubscription(advisor.id, {
       planName: selectedPlanData.name,
       amount: selectedPlanData.price.toString(),
       nextBillingDate: addDays(new Date(), 30),
@@ -1221,6 +1342,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAdvisorSettings(advisorId: string): Promise<AdvisorSettings | undefined> {
+    const db = getDb();
     const [settings] = await db
       .select()
       .from(advisorSettings)
@@ -1229,6 +1351,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createAdvisorSettings(insertSettings: InsertAdvisorSettings): Promise<AdvisorSettings> {
+    const db = getDb();
     const [settings] = await db
       .insert(advisorSettings)
       .values(insertSettings)
@@ -1237,6 +1360,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateContactInfo(advisorId: string, data: UpdateContactInfo): Promise<void> {
+    const db = getDb();
     // Update advisor basic info
     await db
       .update(advisors)
@@ -1284,6 +1408,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateCompliance(advisorId: string, data: UpdateCompliance): Promise<void> {
+    const db = getDb();
     const existingSettings = await this.getAdvisorSettings(advisorId);
     
     if (!existingSettings) {
@@ -1319,6 +1444,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateBranding(advisorId: string, data: UpdateBranding): Promise<void> {
+    const db = getDb();
     console.log("Updating branding for advisor:", advisorId, {
       logoUrl: data.logoUrl ? `${data.logoUrl.substring(0, 50)}...` : "null",
       primaryColor: data.primaryColor,
@@ -1368,6 +1494,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async logSettingsEvent(insertEvent: InsertSettingsEvent): Promise<SettingsEvent> {
+    const db = getDb();
     const [event] = await db
       .insert(settingsEvents)
       .values(insertEvent)
@@ -1377,6 +1504,7 @@ export class DatabaseStorage implements IStorage {
 
   // Viewer interaction methods
   async logViewerEvent(event: InsertViewerEvent): Promise<ViewerEvent> {
+    const db = getDb();
     const [newEvent] = await db
       .insert(viewerEvents)
       .values({
@@ -1388,6 +1516,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async logViewerCompliment(compliment: InsertViewerCompliment): Promise<ViewerCompliment> {
+    const db = getDb();
     const [newCompliment] = await db
       .insert(viewerCompliments)
       .values({
@@ -1400,6 +1529,7 @@ export class DatabaseStorage implements IStorage {
 
   // Caption and transcript storage methods (using database)
   async storeCaptions(videoId: string, captions: string): Promise<void> {
+    const db = getDb();
     await db
       .update(videos)
       .set({ captionsData: captions })
@@ -1407,6 +1537,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getCaptions(videoId: string): Promise<string | undefined> {
+    const db = getDb();
     const [video] = await db
       .select({ captionsData: videos.captionsData })
       .from(videos)
@@ -1415,6 +1546,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async storeTranscript(videoId: string, transcript: string): Promise<void> {
+    const db = getDb();
     await db
       .update(videos)
       .set({ transcriptText: transcript })
@@ -1422,6 +1554,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getTranscript(videoId: string): Promise<string | undefined> {
+    const db = getDb();
     const [video] = await db
       .select({ transcriptText: videos.transcriptText })
       .from(videos)
@@ -1431,6 +1564,7 @@ export class DatabaseStorage implements IStorage {
 
   // Password reset methods  
   async createPasswordResetToken(advisorId: string): Promise<{ token: string; expiresAt: Date }> {
+    const db = getDb();
     // Generate 6-digit code
     const token = Math.floor(100000 + Math.random() * 900000).toString();
     
@@ -1452,6 +1586,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getPasswordResetToken(email: string, token: string): Promise<{ advisorId: string } | null> {
+    const db = getDb();
     // First find the advisor by email
     const advisor = await this.getAdvisorByEmail(email);
     if (!advisor) {
@@ -1482,6 +1617,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateAdvisorPassword(advisorId: string, newPassword: string): Promise<void> {
+    const db = getDb();
     // In a real app, hash the password with bcrypt
     const hashedPassword = await bcrypt.hash(newPassword, 10);
     
@@ -1492,10 +1628,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deletePasswordResetToken(advisorId: string): Promise<void> {
+    const db = getDb();
     await db.delete(passwordResetTokens).where(eq(passwordResetTokens.advisorId, advisorId));
   }
 
   async logPasswordResetEvent(advisorId: string): Promise<void> {
+    const db = getDb();
     // Log the password reset event using existing settings event system
     await db.insert(settingsEvents).values({
       advisorId,
@@ -1510,6 +1648,7 @@ export class DatabaseStorage implements IStorage {
 
   // Chart script methods
   async createChartScript(script: InsertChartScript): Promise<ChartScript> {
+    const db = getDb();
     const [chartScript] = await db.insert(chartScripts).values({
       ...script,
       estimatedDuration: script.estimatedDuration.toString(), // Convert to string for DB
@@ -1520,6 +1659,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getChartScripts(advisorId: string): Promise<ChartScript[]> {
+    const db = getDb();
     return await db.select()
       .from(chartScripts)
       .where(eq(chartScripts.advisorId, advisorId))
@@ -1527,6 +1667,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getChartScript(id: string): Promise<ChartScript | undefined> {
+    const db = getDb();
     const [script] = await db.select()
       .from(chartScripts)
       .where(eq(chartScripts.id, id));
@@ -1534,6 +1675,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateChartScript(id: string, data: Partial<ChartScript>): Promise<ChartScript | undefined> {
+    const db = getDb();
     const [updatedScript] = await db.update(chartScripts)
       .set({
         ...data,
@@ -1545,12 +1687,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteChartScript(id: string): Promise<void> {
+    const db = getDb();
     await db.delete(chartScripts)
       .where(eq(chartScripts.id, id));
   }
 
   // Chart session methods
   async createChartSession(session: InsertChartSession): Promise<ChartSession> {
+    const db = getDb();
     const [chartSession] = await db.insert(chartSessions).values({
       ...session,
       sessionType: session.sessionType || "practice",
@@ -1560,6 +1704,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getChartSessions(advisorId: string): Promise<ChartSession[]> {
+    const db = getDb();
     return await db.select()
       .from(chartSessions)
       .where(eq(chartSessions.advisorId, advisorId))
@@ -1567,6 +1712,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateChartSession(id: string, data: Partial<ChartSession>): Promise<ChartSession | undefined> {
+    const db = getDb();
     const [updatedSession] = await db.update(chartSessions)
       .set(data)
       .where(eq(chartSessions.id, id))

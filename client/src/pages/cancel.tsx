@@ -1,0 +1,17 @@
+import { Link } from 'wouter';
+
+export default function CancelPage() {
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50">
+      <div className="max-w-md p-8 text-center bg-white rounded-lg shadow-md">
+        <h1 className="text-2xl font-bold text-red-600">Payment Canceled</h1>
+        <p className="mt-4 text-gray-600">You have not been charged. Would you like to return to the subscription page?</p>
+        <Link href="/subscribe">
+          <a className="inline-block px-6 py-3 mt-6 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700">
+            Go to Subscription Page
+          </a>
+        </Link>
+      </div>
+    </div>
+  );
+}

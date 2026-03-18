@@ -20,6 +20,10 @@ import { transcribeAndGenerateContent, generateCaptions, generateChartScript } f
 import { Resend } from 'resend';
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { calculateExpiryDate } from "../shared/expiry-utils";
+import { stripe, createCheckoutSession, cancelSubscription, getOrCreateStripeCustomer, parseWebhookEvent } from "./stripe-service";
+import Stripe from "stripe";
+import checkoutRoutes from "./routes/checkout";
+
 
 // Global type declarations for upload sessions
 declare global {
@@ -29,7 +33,7 @@ declare global {
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 // Auth middleware
-function requireAuth(req: any, res: any, next: any) {
+export function requireAuth(req: any, res: any, next: any) {
   if (!req.session?.advisorId) {
     return res.status(401).json({
       error: "UNAUTHORIZED",
@@ -40,6 +44,8 @@ function requireAuth(req: any, res: any, next: any) {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  app.use('/api', checkoutRoutes);
+
   // Login route
   app.post("/api/auth/login", async (req: Request, res: Response) => {
     try {
@@ -754,6 +760,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         captionsEnabled: false
       });
       
+      if (!updatedVideo) {
+        return res.status(404).json({ error: "VIDEO_NOT_FOUND", message: "Video not found" });
+      }
+
       console.log(`Video ${videoId} updated with manual content:`, {
         title: updatedVideo.title,
         description: updatedVideo.description
@@ -1848,6 +1858,173 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error generating streaming URLs:", error);
       res.status(500).json({ error: "Failed to generate streaming URLs" });
+    }
+  });
+
+  // === STRIPE BILLING ROUTES ===
+
+  // 1. POST /api/billing/checkout-session — requireAuth, create Stripe checkout for planId
+  app.post("/api/billing/checkout-session", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const advisorId = req.session.advisorId!;
+      const { planId } = req.body;
+      
+      if (!planId || !PLANS[planId as keyof typeof PLANS]) {
+        return res.status(400).json({ error: "Invalid plan ID" });
+      }
+      
+      const advisor = await storage.getAdvisor(advisorId);
+      if (!advisor) {
+        return res.status(404).json({ error: "Advisor not found" });
+      }
+      
+      const customer = await getOrCreateStripeCustomer(advisor.email, advisor.advisorName);
+      
+      const priceId = process.env[`STRIPE_PRICE_ID_${planId.toUpperCase()}`] || planId;
+      
+      const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
+      const host = req.headers['x-forwarded-host'] || req.get('host');
+      const origin = `${protocol}://${host}`;
+      
+      const successUrl = `${origin}/settings?checkout=success`;
+      const cancelUrl = `${origin}/settings?checkout=cancelled`;
+      
+      const session = await createCheckoutSession(customer.id, priceId, successUrl, cancelUrl);
+      
+      console.log(`[Stripe] Successfully created checkout session for plan ${planId}`);
+      res.json({ url: session.url });
+    } catch (error) {
+      console.error("Create checkout session error:", error);
+      res.status(500).json({ error: "Failed to create checkout session" });
+    }
+  });
+
+  // 2. GET /api/billing/subscriptions — requireAuth, return array of advisor's subscriptions
+  app.get("/api/billing/subscriptions", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const advisorId = req.session.advisorId!;
+      const activeSub = await storage.getActiveSubscription(advisorId);
+      
+      console.log(`[Stripe] Successfully fetched subscriptions for advisor ${advisorId}`);
+      res.json(activeSub ? [activeSub] : []);
+    } catch (error) {
+      console.error("Get subscriptions error:", error);
+      res.status(500).json({ error: "Failed to get subscriptions" });
+    }
+  });
+
+  // 3. POST /api/billing/subscriptions/:stripeSubscriptionId/cancel — requireAuth, cancel subscription
+  app.post("/api/billing/subscriptions/:stripeSubscriptionId/cancel", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const advisorId = req.session.advisorId!;
+      const { stripeSubscriptionId } = req.params;
+      
+      const activeSub = await storage.getSubscriptionByStripeId(stripeSubscriptionId);
+      if (!activeSub || activeSub.advisorId !== advisorId) {
+        return res.status(403).json({ error: "Unauthorized or not found" });
+      }
+      
+      await cancelSubscription(stripeSubscriptionId);
+      const updatedSub = await storage.cancelSubscription(stripeSubscriptionId, "User requested cancellation");
+      
+      console.log(`[Stripe] Successfully cancelled subscription ${stripeSubscriptionId}`);
+      res.json({ success: true, subscription: updatedSub });
+    } catch (error) {
+      console.error("Cancel subscription error:", error);
+      res.status(500).json({ error: "Failed to cancel subscription" });
+    }
+  });
+
+  // 4. POST /api/billing-portal-session — requireAuth, return Stripe portal URL
+  app.post("/api/billing-portal-session", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const advisorId = req.session.advisorId!;
+      const activeSub = await storage.getActiveSubscription(advisorId);
+      
+      if (!activeSub || !activeSub.stripeCustomerId) {
+        return res.status(400).json({ error: "No active subscription or customer ID found" });
+      }
+      
+      const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
+      const host = req.headers['x-forwarded-host'] || req.get('host');
+      const origin = `${protocol}://${host}`;
+      
+      const session = await stripe.billingPortal.sessions.create({
+        customer: activeSub.stripeCustomerId,
+        return_url: `${origin}/settings`,
+      });
+      
+      console.log(`[Stripe] Successfully created billing portal session for customer ${activeSub.stripeCustomerId}`);
+      res.json({ url: session.url });
+    } catch (error) {
+      console.error("Create billing portal session error:", error);
+      res.status(500).json({ error: "Failed to create billing portal session" });
+    }
+  });
+
+  // 5. POST /api/webhooks/stripe — UPDATE EXISTING, add handlers
+  app.post("/api/webhooks/stripe", async (req: Request, res: Response) => {
+    const signature = req.headers['stripe-signature'];
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+    
+    if (!signature || !webhookSecret) {
+      console.error("[Stripe] Missing signature or webhook secret");
+      return res.status(400).send("Webhook config error");
+    }
+
+    let event;
+    try {
+      const payload = (req as any).rawBody || req.body;
+      event = parseWebhookEvent(payload, signature as string, webhookSecret);
+    } catch (err: any) {
+      console.error(`[Stripe] Webhook signature verification failed: ${err.message}`);
+      return res.status(400).send(`Webhook Error: ${err.message}`);
+    }
+
+    try {
+      switch (event.type) {
+        case 'checkout.session.completed': {
+          const session = event.data.object as any;
+          console.log(`[Stripe] Checkout session completed: ${session.id}`);
+          break;
+        }
+        case 'customer.subscription.updated': {
+          const subscription = event.data.object as any;
+          console.log(`[Stripe] Subscription updated: ${subscription.id}`);
+          
+          await storage.updateSubscription(subscription.id, {
+            status: subscription.status,
+            nextBillingDate: new Date(subscription.current_period_end * 1000),
+            stripePaymentMethodId: subscription.default_payment_method as string | undefined
+          });
+          break;
+        }
+        case 'customer.subscription.deleted': {
+          const subscription = event.data.object as any;
+          console.log(`[Stripe] Subscription deleted: ${subscription.id}`);
+          
+          await storage.cancelSubscription(subscription.id, "Stripe subscription deleted");
+          break;
+        }
+        case 'invoice.payment_failed': {
+          const invoice = event.data.object as any;
+          console.log(`[Stripe] Invoice payment failed: ${invoice.id} for subscription ${invoice.subscription}`);
+          
+          if (invoice.subscription) {
+            await storage.updateSubscription(invoice.subscription as string, {
+              status: 'past_due'
+            });
+          }
+          break;
+        }
+        default:
+          console.log(`[Stripe] Unhandled event type ${event.type}`);
+      }
+      
+      res.json({ received: true });
+    } catch (err: any) {
+      console.error(`[Stripe] Error processing webhook event ${event.type}:`, err);
+      res.status(500).send(`Webhook Error: ${err.message}`);
     }
   });
 

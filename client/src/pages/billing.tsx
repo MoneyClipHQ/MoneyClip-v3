@@ -1,84 +1,191 @@
-import { Link } from "wouter";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { CreditCardIcon, CalendarIcon } from "lucide-react";
-import { usePageTitle } from "@/hooks/usePageTitle";
+import { useAuth } from '../hooks/useAuth';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { toast } from '@/hooks/use-toast';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Skeleton } from '@/components/ui/skeleton';
 
-export default function Billing() {
-  usePageTitle("MoneyClip - Billing");
-  
+const plans = [
+  { id: 'starter', name: 'Starter', price: 20, description: 'Essential features for individual advisors.' },
+  { id: 'professional', name: 'Professional', price: 45, description: 'Advanced tools for growing teams.' },
+  { id: 'premium', name: 'Premium', price: 60, description: 'Full access for enterprise clients.' },
+];
+
+type Subscription = {
+  id: string;
+  planName: string;
+  status: string;
+  nextBillingDate: string;
+  stripeSubscriptionId: string;
+};
+
+const BillingPage = () => {
+  const { user, isLoading: isAuthLoading } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const queryClient = useQueryClient();
+
+  const { data: subscriptionData, isLoading: isSubscriptionLoading, error: subscriptionError } = useQuery<{ subscriptions: Subscription[] }>({
+    queryKey: ['subscriptions', user?.id],
+    queryFn: async () => {
+      const response = await fetch('/api/billing/subscriptions');
+      if (!response.ok) {
+        throw new Error('Failed to fetch subscriptions');
+      }
+      return response.json();
+    },
+    enabled: !!user,
+  });
+
+  const checkoutMutation = useMutation<any, Error, string>({
+    mutationFn: (planId) =>
+      fetch('/api/billing/checkout-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ planId }),
+      }).then((res) => res.json()),
+    onSuccess: (data) => {
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    },
+    onError: () => {
+      toast({
+        title: 'Error',
+        description: 'Failed to create checkout session. Please try again.',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const cancelMutation = useMutation<any, Error, string>({
+      mutationFn: (stripeSubscriptionId) =>
+      fetch(`/api/billing/subscriptions/${stripeSubscriptionId}/cancel`, {
+          method: 'POST',
+      }).then((res) => res.json()),
+      onSuccess: () => {
+          toast({
+              title: 'Success',
+              description: 'Your subscription has been cancelled.',
+          });
+          queryClient.invalidateQueries({ queryKey: ['subscriptions', user?.id] });
+      },
+      onError: () => {
+          toast({
+              title: 'Error',
+              description: 'Failed to cancel subscription. Please contact support.',
+              variant: 'destructive',
+          });
+      },
+  });
+
+  useEffect(() => {
+    if (searchParams.get('success')) {
+      toast({
+        title: 'Subscription Activated!',
+        description: 'Welcome to your new plan.',
+      });
+      setSearchParams({});
+    }
+    if (searchParams.get('cancel')) {
+      toast({
+        title: 'Checkout Cancelled',
+        description: 'You have not been charged.',
+        variant: 'destructive',
+      });
+      setSearchParams({});
+    }
+  }, [searchParams, setSearchParams]);
+
+  const handleSubscribe = (planId: string) => {
+    checkoutMutation.mutate(planId);
+  };
+
+    const handleCancel = () => {
+        const activeSubscription = subscriptionData?.subscriptions.find(sub => sub.status === 'active');
+        if (activeSubscription) {
+            cancelMutation.mutate(activeSubscription.stripeSubscriptionId);
+        }
+    };
+
+  const isLoading = isAuthLoading || isSubscriptionLoading;
+  const activeSubscription = subscriptionData?.subscriptions.find(sub => sub.status === 'active');
+
+  if (isLoading) {
+    return (
+      <div className="container mx-auto p-4">
+        <Skeleton className="h-8 w-1/4 mb-4" />
+        <Skeleton className="h-32 w-full" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+            <Skeleton className="h-64 w-full" />
+            <Skeleton className="h-64 w-full" />
+            <Skeleton className="h-64 w-full" />
+        </div>
+      </div>
+    )
+  }
+
+  if (subscriptionError) {
+      return (
+          <div className="container mx-auto p-4">
+              <Alert variant="destructive">
+                  <AlertTitle>Error</AlertTitle>
+                  <AlertDescription>{subscriptionError.message}</AlertDescription>
+              </Alert>
+          </div>
+      )
+  }
+
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-white">
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold mb-2">Billing & Subscription</h1>
-            <p className="text-muted-foreground">
-              Manage your MoneyClip subscription and billing information.
-            </p>
-          </div>
-          
-          <div className="grid gap-6 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  Current Plan
-                  <Badge className="bg-green-100 text-green-800">Active</Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <h3 className="font-semibold">MoneyClip MVP</h3>
-                  <p className="text-2xl font-bold">$20<span className="text-sm font-normal text-muted-foreground">/month</span></p>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm">
-                    <CalendarIcon className="h-4 w-4" />
-                    <span>Next billing: {new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString()}</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <CreditCardIcon className="h-5 w-5" />
-                  Payment Method
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <p className="text-sm text-muted-foreground">•••• •••• •••• 1234</p>
-                  <p className="text-sm text-muted-foreground">Expires 12/2025</p>
-                </div>
-                <Button variant="outline" className="w-full" data-testid="button-update-payment">
-                  Update Payment Method
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-          
-          <Card className="mt-6">
+    <div className="container mx-auto p-4">
+      <h1 className="text-3xl font-bold mb-4">Billing</h1>
+      
+      {activeSubscription ? (
+        <Card className="mb-8">
             <CardHeader>
-              <CardTitle>Billing History</CardTitle>
+                <CardTitle>Current Subscription</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-muted-foreground">
-                Your billing history will appear here after your first payment.
-              </p>
-              <div className="mt-4 pt-4 border-t">
-                <Link href="/dashboard">
-                  <Button data-testid="button-back-dashboard">
-                    Back to Dashboard
-                  </Button>
-                </Link>
-              </div>
+                <p>Plan: <span className="font-semibold">{activeSubscription.planName}</span></p>
+                <p>Next Billing Date: <span className="font-semibold">{new Date(activeSubscription.nextBillingDate).toLocaleDateString()}</span></p>
             </CardContent>
+            <CardFooter>
+                <Button variant="destructive" onClick={handleCancel} disabled={cancelMutation.isPending}>
+                    {cancelMutation.isPending ? 'Cancelling...' : 'Cancel Plan'}
+                </Button>
+            </CardFooter>
+        </Card>
+      ) : (
+          <Alert>
+              <AlertDescription>No active subscription.</AlertDescription>
+          </Alert>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {plans.map((plan) => (
+          <Card key={plan.id}>
+            <CardHeader>
+              <CardTitle>{plan.name}</CardTitle>
+              <CardDescription>${plan.price}/month</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p>{plan.description}</p>
+            </CardContent>
+            <CardFooter>
+              <Button onClick={() => handleSubscribe(plan.id)} disabled={checkoutMutation.isPending || !!activeSubscription}>
+                {checkoutMutation.isPending ? 'Redirecting...' : 'Subscribe'}
+              </Button>
+            </CardFooter>
           </Card>
-        </div>
+        ))}
       </div>
     </div>
   );
-}
+};
+
+export default BillingPage;

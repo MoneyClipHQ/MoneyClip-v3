@@ -1,3 +1,5 @@
+import dotenv from 'dotenv';
+dotenv.config();
 import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
 import { registerRoutes } from "./routes";
@@ -22,7 +24,14 @@ app.use(session({
   },
 }));
 
-app.use(express.json({ limit: '50mb' })); // Increase limit for large disclosure text
+app.use(express.json({ 
+  limit: '50mb',
+  verify: (req, res, buf) => {
+    if (req.url && req.url.startsWith('/api/webhooks/stripe')) {
+      (req as any).rawBody = buf;
+    }
+  }
+})); 
 app.use(express.urlencoded({ extended: false, limit: '50mb' }));
 
 app.use((req, res, next) => {
