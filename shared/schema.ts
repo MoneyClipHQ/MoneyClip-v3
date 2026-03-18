@@ -18,9 +18,16 @@ export const subscriptions = pgTable("subscriptions", {
   advisorId: varchar("advisor_id").notNull().references(() => advisors.id),
   planName: text("plan_name").notNull(),
   amount: numeric("amount", { precision: 10, scale: 2 }).notNull(),
-  status: text("status").notNull().default("active"), // active, cancelled, suspended
+  status: text("status").notNull().default("active"), // active, cancelled, suspended, paused
   nextBillingDate: timestamp("next_billing_date").notNull(),
   paymentToken: text("payment_token"), // tokenized payment method from provider
+  
+  // STRIPE-SPECIFIC COLUMNS
+  stripeCustomerId: varchar("stripe_customer_id"), // Stripe customer ID (cus_...)
+  stripeSubscriptionId: varchar("stripe_subscription_id"), // Stripe subscription ID (sub_...)
+  stripePriceId: varchar("stripe_price_id"), // Stripe price ID (price_...)
+  stripePaymentMethodId: varchar("stripe_payment_method_id"), // Stripe payment method ID (pm_...)
+  
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
