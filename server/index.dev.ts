@@ -14,17 +14,15 @@ const app = express();
 
 // Session configuration - must be before JSON parsing
 app.use(session({
-  secret: process.env.SESSION_SECRET || "dev-secret-key-change-in-production",
+  secret: process.env.SESSION_SECRET || "YTH2/rZD7FxHfI9g7bms0Rhw41qu41Hzz2VQmosnOwbgBMuz1yLOgAzUTMqkdMBqXJ293rGymfiPt2RDh2snJg==",
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: true, // Force secure for HTTPS, even in dev
+    secure: process.env.NODE_ENV === 'production', // Set to true in production with HTTPS
     httpOnly: true,
-    sameSite: 'none', // Allow cross-origin if needed
     maxAge: 24 * 60 * 60 * 1000, // 24 hours
   },
 }));
-
 
 app.use(express.json({ 
   limit: '50mb',
