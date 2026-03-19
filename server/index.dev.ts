@@ -12,16 +12,19 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
-// Session configuration - must be before JSON parsing
+// Tell Express that it's behind a trusted proxy (Cloudflare/nginx)
+app.set('trust proxy', 1);
+
+// Then your session config
 app.use(session({
-  secret: process.env.SESSION_SECRET || "dev-secret-key-change-in-production",
+  secret: process.env.SESSION_SECRET || "dev-secret-in-production",
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: true, // Keep for HTTPS
+    secure: true,  // This will now work correctly
     httpOnly: true,
-    sameSite: 'lax', // More compatible than 'none'
-    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    sameSite: 'lax',
+    maxAge: 24 * 60 * 60 * 1000,
   },
 }));
 
