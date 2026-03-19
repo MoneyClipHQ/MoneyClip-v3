@@ -18,11 +18,13 @@ app.use(session({
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: process.env.NODE_ENV === 'production', // Set to true in production with HTTPS
+    secure: true, // Force secure for HTTPS, even in dev
     httpOnly: true,
+    sameSite: 'none', // Allow cross-origin if needed
     maxAge: 24 * 60 * 60 * 1000, // 24 hours
   },
 }));
+
 
 app.use(express.json({ 
   limit: '50mb',
