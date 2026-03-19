@@ -36,7 +36,7 @@ app.use(express.json({
 app.use(express.urlencoded({ extended: false, limit: '50mb' }));
 
 app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', '*'); // Or specific frontend domain like 'https://dev.usemoneyclip.com'
+  res.header('Access-Control-Allow-Origin', 'https://dev.usemoneyclip.com'); // Specific domain
   res.header('Access-Control-Allow-Credentials', 'true');
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
   if (req.method === 'OPTIONS') {
