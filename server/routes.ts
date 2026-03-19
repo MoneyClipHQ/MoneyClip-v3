@@ -48,6 +48,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Login route
   app.post("/api/auth/login", async (req: Request, res: Response) => {
+console.log('LOGIN ROUTE HIT', req.body, 'IP:', req.ip, 'X-Forwarded-For:', req.get('x-forwarded-for'));
     try {
       const validatedData = loginSchema.parse(req.body);
       
@@ -2027,8 +2028,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).send(`Webhook Error: ${err.message}`);
     }
   });
+  app.get("/api/debug/users", async (req: Request, res: Response) => {
+    try {
+      const users = await db.query("SELECT id, email FROM users LIMIT 10");
+      res.json(users.rows);
+    } catch (err) {
+      res.json({ error: String(err) });
+    }
+  });
 
   const httpServer = createServer(app);
-
   return httpServer;
 }
