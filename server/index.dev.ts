@@ -21,7 +21,7 @@ app.use(session({
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: true,  // This will now work correctly
+    secure: true,
     httpOnly: true,
     sameSite: 'lax',
     maxAge: 24 * 60 * 60 * 1000,
@@ -39,7 +39,7 @@ app.use(express.json({
 app.use(express.urlencoded({ extended: false, limit: '50mb' }));
 
 app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', 'https://dev.usemoneyclip.com'); // Specific domain
+  res.header('Access-Control-Allow-Origin', 'https://dev.usemoneyclip.com');
   res.header('Access-Control-Allow-Credentials', 'true');
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
   if (req.method === 'OPTIONS') {
@@ -48,6 +48,9 @@ app.use((req, res, next) => {
   }
   next();
 });
+
+// LOGGING MIDDLEWARE
+app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
   let capturedJsonResponse: Record<string, any> | undefined = undefined;
@@ -88,9 +91,6 @@ app.use((req, res, next) => {
     throw err;
   });
 
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
   if (process.env.NODE_ENV === "development") {
     const { setupVite } = await import("./vite.js");
     await setupVite(app, server);
@@ -105,16 +105,11 @@ app.use((req, res, next) => {
 
     app.use(express.static(distPath));
 
-    // fall through to index.html if the file doesn't exist
     app.use("*", (_req, res) => {
       res.sendFile(path.resolve(distPath, "index.html"));
     });
   }
 
-  // ALWAYS serve the app on the port specified in the environment variable PORT
-  // Other ports are firewalled. Default to 8080 if not specified.
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
   const port = parseInt(process.env.PORT || '8080', 10);
   server.listen(port, "0.0.0.0", () => {
     console.log(`serving on port ${port}`);
