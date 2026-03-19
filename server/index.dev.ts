@@ -14,12 +14,13 @@ const app = express();
 
 // Session configuration - must be before JSON parsing
 app.use(session({
-  secret: process.env.SESSION_SECRET || "YTH2/rZD7FxHfI9g7bms0Rhw41qu41Hzz2VQmosnOwbgBMuz1yLOgAzUTMqkdMBqXJ293rGymfiPt2RDh2snJg==",
+  secret: process.env.SESSION_SECRET || "dev-secret-key-change-in-production",
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: process.env.NODE_ENV === 'production', // Set to true in production with HTTPS
+    secure: true, // Keep for HTTPS
     httpOnly: true,
+    sameSite: 'lax', // More compatible than 'none'
     maxAge: 24 * 60 * 60 * 1000, // 24 hours
   },
 }));
@@ -35,6 +36,15 @@ app.use(express.json({
 app.use(express.urlencoded({ extended: false, limit: '50mb' }));
 
 app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*'); // Or specific frontend domain like 'https://dev.usemoneyclip.com'
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+  if (req.method === 'OPTIONS') {
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    return res.status(200).end();
+  }
+  next();
+});
   const start = Date.now();
   const path = req.path;
   let capturedJsonResponse: Record<string, any> | undefined = undefined;
